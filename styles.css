@@ -1002,6 +1002,92 @@ body.theme-starwars .notebook-page-right .note-time { color: rgba(79,195,247,0.4
     border-radius: 20px; width: auto; height: 40px;
     padding: 0 20px; font-size: 0.9rem; font-weight: 600;
 }
+.stats-empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; padding: 3rem 1rem; gap: 8px;
+    background: var(--bg-card); border-radius: var(--border-radius);
+    border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem;
+    animation: slideUp 0.4s ease-out;
+}
+.stats-empty-icon { font-size: 3rem; margin-bottom: 8px; }
+.stats-empty-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+.stats-empty-desc { font-size: 0.88rem; color: var(--text-secondary); max-width: 280px; line-height: 1.5; }
+.theme-preview-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+.theme-previews { display: flex; gap: 12px; }
+.theme-preview-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    cursor: pointer; transition: 0.2s;
+}
+.theme-preview-card:hover { transform: translateY(-2px); }
+.theme-preview-swatch {
+    width: 72px; height: 52px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 4px; border: 2px solid rgba(255,255,255,0.1);
+    transition: 0.2s; position: relative; overflow: hidden;
+}
+.theme-swatch-normal { background: linear-gradient(135deg, #0f172a, #1e293b); }
+.theme-swatch-starwars { background: linear-gradient(135deg, #000, #001830); }
+.theme-swatch-bar {
+    width: 60%; height: 4px; border-radius: 2px;
+    background: #ff6b6b;
+}
+.theme-swatch-bar.sw { background: #4fc3f7; box-shadow: 0 0 6px #4fc3f7; }
+.theme-preview-swatch span { font-size: 1.2rem; }
+.theme-preview-card.active .theme-preview-swatch {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+.theme-preview-label {
+    font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.theme-preview-card.active .theme-preview-label { color: var(--accent); }
+.toast-journal-prompt { border-left-color: #d4a96a; }
+body.theme-starwars .toast-journal-prompt { border-left-color: #4fc3f7; }
+.toast-journal-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.2);
+    color: var(--text-primary); padding: 4px 10px; border-radius: 12px;
+    font-size: 0.78rem; cursor: pointer; transition: 0.2s;
+}
+.toast-journal-btn:hover { background: rgba(255,255,255,0.1); }
+.tooltip-btn { position: relative; }
+.tooltip {
+    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-primary); color: var(--text-primary);
+    font-size: 0.72rem; white-space: nowrap; padding: 4px 8px;
+    border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    font-family: var(--font-sans); font-weight: 500; z-index: 100;
+}
+.tooltip-btn:hover .tooltip { opacity: 1; }
+body.minimal-mode .focus-moods-section,
+body.minimal-mode .ambient-mixer,
+body.minimal-mode .settings-panel,
+body.minimal-mode .quote-display,
+body.minimal-mode .level-progress-container,
+body.minimal-mode .breathing-widget { display: none !important; }
+
+body.minimal-mode #btn-minimal { transform: rotate(180deg); color: var(--accent); }
+.wallpaper-picker-new { display: flex; gap: 10px; flex-wrap: wrap; }
+.wp-thumb {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; cursor: pointer; transition: 0.2s;
+}
+.wp-thumb:hover { transform: translateY(-2px); }
+.wp-thumb-img {
+    width: 64px; height: 44px; border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; overflow: hidden; transition: 0.2s;
+    background: var(--bg-secondary);
+}
+.wp-thumb.active .wp-thumb-img { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.wp-thumb-label { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.wp-thumb.active .wp-thumb-label { color: var(--accent); }
+.wp-thumb-default { background: var(--bg-primary); }
+.wp-thumb-upload { background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 1.5rem; }
+.wp-custom-label { cursor: pointer; }
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }

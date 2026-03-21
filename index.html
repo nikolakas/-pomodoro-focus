@@ -70,14 +70,24 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-secondary" id="btn-zen" title="Zen Mode (Z)" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">☯</button>
+                <button class="btn btn-secondary tooltip-btn" id="btn-minimal" style="font-size:1rem; border:none; background:transparent; padding:8px;">
+    ▲
+    <span class="tooltip">Minimal Mode</span>
+</button>
+                <button class="btn btn-secondary tooltip-btn" id="btn-zen" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">
+    ☯
+    <span class="tooltip">Zen Mode (Z)</span>
+</button>
                 <button class="btn btn-secondary" id="btn-reset" title="Reset"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
                 <button class="btn btn-primary" id="btn-start">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-play"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 </button>
                 <button class="btn btn-secondary" id="btn-skip" title="Skip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
-                <button class="btn btn-secondary" id="btn-warp" title="Hyperspace Jump" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">🚀</button>
+                <button class="btn btn-secondary tooltip-btn" id="btn-warp" style="font-size:1.3rem; border:none; background:transparent; padding:8px; display:none;">
+    🚀
+    <span class="tooltip">Hyperspace Jump (W)</span>
+</button>
             </div>
 <div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
 <div class="subtask-tracker" id="subtask-tracker"></div>
@@ -267,12 +277,24 @@
                     </div>
 
                     <h3 class="settings-section-title">Appearance</h3>
-                    <div class="setting-row">
-                        <label>Theme</label>
-                        <button class="theme-toggle-btn" id="btn-theme-toggle">
-                            <span id="theme-toggle-text">⚔️ Star Wars</span>
-                        </button>
-                    </div>
+                    <div class="setting-row theme-preview-row">
+    <div class="theme-previews">
+        <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
+            <div class="theme-preview-swatch theme-swatch-normal">
+                <span>🍅</span>
+                <div class="theme-swatch-bar"></div>
+            </div>
+            <span class="theme-preview-label">Normal</span>
+        </div>
+        <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
+            <div class="theme-preview-swatch theme-swatch-starwars">
+                <span>⚔️</span>
+                <div class="theme-swatch-bar sw"></div>
+            </div>
+            <span class="theme-preview-label">Star Wars</span>
+        </div>
+    </div>
+</div>
                     <div class="setting-row">
                         <label>Accent Color</label>
                         <div class="color-picker" id="color-picker">
@@ -285,12 +307,25 @@
                     </div>
                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
     <label>Background</label>
-    <div class="wallpaper-picker" id="wallpaper-picker">
-        <button class="wp-btn active" data-wp="default" title="No background">🌙</button>
-        <button class="wp-btn" data-wp="preset_forest" title="Forest">🌲</button>
-        <button class="wp-btn" data-wp="preset_space" title="Deep Space">🌌</button>
-        <label class="wp-btn wp-custom-label" title="Upload your own">＋<input type="file" id="wallpaper-upload" accept="image/*" hidden></label>
-    </div>
+    <div class="wallpaper-picker-new" id="wallpaper-picker">
+    <button class="wp-thumb active" data-wp="default">
+        <div class="wp-thumb-img wp-thumb-default">🌙</div>
+        <span class="wp-thumb-label">None</span>
+    </button>
+    <button class="wp-thumb" data-wp="preset_forest">
+        <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
+        <span class="wp-thumb-label">Forest</span>
+    </button>
+    <button class="wp-thumb" data-wp="preset_space">
+        <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
+        <span class="wp-thumb-label">Space</span>
+    </button>
+    <label class="wp-thumb wp-custom-label">
+        <div class="wp-thumb-img wp-thumb-upload">＋</div>
+        <span class="wp-thumb-label">Upload</span>
+        <input type="file" id="wallpaper-upload" accept="image/*" hidden>
+    </label>
+</div>
     <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
 </div>
 
@@ -323,7 +358,13 @@
 
         <!-- Stats Tab -->
         <main class="tab-content" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats">
-            <div class="stats-overview">
+            <div class="stats-empty-state" id="stats-empty-state" style="display:none;">
+    <span class="stats-empty-icon">🌱</span>
+    <div class="stats-empty-title">No sessions yet</div>
+    <div class="stats-empty-desc">Complete your first focus session to start tracking your progress here.</div>
+    <button class="btn btn-primary stats-empty-btn" onclick="app.switchTab('timer')" style="border-radius:20px; width:auto; padding:0 24px; height:44px; margin-top:8px; font-size:0.9rem;">Start Focusing</button>
+</div>
+            <div class="stats-overview" id="stats-overview-grid">
                 <div class="stat-card stat-today-card">
                     <div class="goal-ring-container">
                         <svg class="goal-ring" viewBox="0 0 60 60"><circle cx="30" cy="30" r="28"/><circle class="goal-ring-path" cx="30" cy="30" r="28" id="goal-progress"/></svg>

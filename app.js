@@ -116,7 +116,7 @@ ambientVolInput: null,
             swMusicInput: document.getElementById('setting-sw-music'),
             bsVolumeInput: document.getElementById('b-sunset-volume'),
 
-            wpBtns: document.querySelectorAll('.wp-btn[data-wp]'),
+            wpBtns: document.querySelectorAll('.wp-thumb[data-wp]'),
             wpUpload: document.getElementById('wallpaper-upload'),
             wpGallery: document.getElementById('wallpaper-gallery'),
 
@@ -135,6 +135,14 @@ ambientVolInput: null,
         this.elements.btnReset.addEventListener('click', () => this.resetTimer());
         this.elements.btnSkip.addEventListener('click', () => this.skipSession());
         this.elements.btnZen.addEventListener('click', () => document.body.classList.toggle('zen-mode'));
+        const btnMinimal = document.getElementById('btn-minimal');
+if (btnMinimal) {
+    btnMinimal.addEventListener('click', () => {
+        document.body.classList.toggle('minimal-mode');
+        btnMinimal.querySelector('.tooltip').textContent =
+            document.body.classList.contains('minimal-mode') ? 'Full Mode' : 'Minimal Mode';
+    });
+}
         if (this.elements.btnWarp) {
             this.elements.btnWarp.addEventListener('click', () => this.triggerHyperspaceJump());
         }
@@ -443,6 +451,37 @@ initMixer() {
         }
 		if (target === 'notes') {
     this.initNotebook();
+    openJournalPrompt(prompt) {
+    const cover = document.getElementById('notebook-cover');
+    const openBook = document.getElementById('notebook-open');
+    const noteInput = document.getElementById('note-input');
+    if (!cover || !openBook || !noteInput) return;
+
+    // Show a subtle toast invitation instead of forcing the tab switch
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast toast-journal-prompt';
+    t.innerHTML = `
+        <div class="toast-icon">📖</div>
+        <div class="toast-content">
+            <div class="toast-title">${prompt}</div>
+            <div class="toast-desc" style="margin-top:6px;">
+                <button class="toast-journal-btn" onclick="app.switchTab('notes'); this.closest('.toast').remove();">Open Journal →</button>
+            </div>
+        </div>
+    `;
+    c.appendChild(t);
+
+    // Pre-fill the note input with the prompt as placeholder
+    noteInput.placeholder = prompt;
+
+    setTimeout(() => {
+        t.classList.add('hiding');
+        setTimeout(() => t.remove(), 300);
+        // Reset placeholder after toast disappears
+        noteInput.placeholder = 'Write your thought...';
+    }, 8000);
+},
 }
     },
 
@@ -575,7 +614,17 @@ if (reminder) reminder.style.display = 'none';
                 this.elements.container.classList.remove('timer-pulse');
             }, 2000);
             this.createConfetti();
-
+// Auto-open journal with session prompt
+setTimeout(() => {
+    const journalPrompts = [
+        "What did you accomplish this session?",
+        "What are you most proud of from this session?",
+        "Any blockers you want to note?",
+        "One thing done. What's next?"
+    ];
+    const prompt = journalPrompts[Math.floor(Math.random() * journalPrompts.length)];
+    this.openJournalPrompt(prompt);
+}, 3000);
             // Fixed: unified 3-arg signature
             this.showSessionRecap(completedIntention, this.state.settings.work, 15);
 
@@ -1032,7 +1081,7 @@ this.state.history.push({
         const rankName = rankArr[Math.min(this.state.level - 1, rankArr.length - 1)];
 
         if (this.elements.lvlRank) this.elements.lvlRank.textContent = `${rankName} (Lvl ${this.state.level})`;
-        if (this.elements.lvlXp) this.elements.lvlXp.textContent = `${this.state.xp} XP`;
+        if (this.elements.lvlXp) this.elements.lvlXp.textContent = `${xpInLevel} / ${xpRequired} XP to Lvl ${this.state.level + 1}`;
         if (this.elements.lvlFill) this.elements.lvlFill.style.width = `${pct}%`;
 
         const rD = document.getElementById('stat-rank-display');
@@ -1065,6 +1114,11 @@ this.state.history.push({
             this.setAccent(this.state.settings.accent);
         }
         this.setWallpaper(this.state.settings.wallpaper);
+        const isSw = this.state.settings.theme === 'starwars';
+const pNormal = document.getElementById('theme-preview-normal');
+const pSw = document.getElementById('theme-preview-starwars');
+if (pNormal) pNormal.classList.toggle('active', !isSw);
+if (pSw) pSw.classList.toggle('active', isSw);
         this.updateLogo();
         this.updateLevel();
     },
@@ -1077,6 +1131,13 @@ this.state.history.push({
         window.AmbienceModule.play('binary_sunset');
     } else {
         window.AmbienceModule.stop('binary_sunset');
+    }
+},
+setThemePreview(theme) {
+    document.getElementById('theme-preview-normal').classList.toggle('active', theme === 'normal');
+    document.getElementById('theme-preview-starwars').classList.toggle('active', theme === 'starwars');
+    if (theme !== this.state.settings.theme) {
+        this.toggleTheme();
     }
 },
 
