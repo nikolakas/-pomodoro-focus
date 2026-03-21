@@ -439,50 +439,20 @@ initMixer() {
         });
     }
 },
-    switchTab(target) {
-        this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
-        this.elements.panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
-        document.body.classList.toggle('hide-logo', target !== 'timer');
-        if (target === 'stats') {
-            this.renderStats();
-            this.renderHeatmap();
-            this.renderInsights();
-            requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, 0)));
-        }
-		if (target === 'notes') {
-    this.initNotebook();
-    openJournalPrompt(prompt) {
-    const cover = document.getElementById('notebook-cover');
-    const openBook = document.getElementById('notebook-open');
-    const noteInput = document.getElementById('note-input');
-    if (!cover || !openBook || !noteInput) return;
-
-    // Show a subtle toast invitation instead of forcing the tab switch
-    const c = document.getElementById('toast-container');
-    const t = document.createElement('div');
-    t.className = 'toast toast-journal-prompt';
-    t.innerHTML = `
-        <div class="toast-icon">📖</div>
-        <div class="toast-content">
-            <div class="toast-title">${prompt}</div>
-            <div class="toast-desc" style="margin-top:6px;">
-                <button class="toast-journal-btn" onclick="app.switchTab('notes'); this.closest('.toast').remove();">Open Journal →</button>
-            </div>
-        </div>
-    `;
-    c.appendChild(t);
-
-    // Pre-fill the note input with the prompt as placeholder
-    noteInput.placeholder = prompt;
-
-    setTimeout(() => {
-        t.classList.add('hiding');
-        setTimeout(() => t.remove(), 300);
-        // Reset placeholder after toast disappears
-        noteInput.placeholder = 'Write your thought...';
-    }, 8000);
+switchTab(target) {
+    this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+    this.elements.panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
+    document.body.classList.toggle('hide-logo', target !== 'timer');
+    if (target === 'stats') {
+        this.renderStats();
+        this.renderHeatmap();
+        this.renderInsights();
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, 0)));
+    }
+    if (target === 'notes') {
+        this.initNotebook();
+    }
 },
-}
     },
 
     // ===================================
@@ -1113,9 +1083,8 @@ this.state.history.push({
         } else {
             this.setAccent(this.state.settings.accent);
         }
-        this.setWallpaper(this.state.settings.wallpaper);
-        const isSw = this.state.settings.theme === 'starwars';
-const pNormal = document.getElementById('theme-preview-normal');
+this.setWallpaper(this.state.settings.wallpaper);
+        const pNormal = document.getElementById('theme-preview-normal');
 const pSw = document.getElementById('theme-preview-starwars');
 if (pNormal) pNormal.classList.toggle('active', !isSw);
 if (pSw) pSw.classList.toggle('active', isSw);
@@ -1629,6 +1598,32 @@ deleteHistoryItem(date) {
             list.appendChild(el);
         });
     },
+  openJournalPrompt(prompt) {
+    const noteInput = document.getElementById('note-input');
+    const c = document.getElementById('toast-container');
+    if (!c) return;
+
+    const t = document.createElement('div');
+    t.className = 'toast toast-journal-prompt';
+    t.innerHTML = `
+        <div class="toast-icon">📖</div>
+        <div class="toast-content">
+            <div class="toast-title">${prompt}</div>
+            <div class="toast-desc" style="margin-top:6px;">
+                <button class="toast-journal-btn" onclick="app.switchTab('notes'); this.closest('.toast').remove();">Open Journal →</button>
+            </div>
+        </div>
+    `;
+    c.appendChild(t);
+
+    if (noteInput) noteInput.placeholder = prompt;
+
+    setTimeout(() => {
+        t.classList.add('hiding');
+        setTimeout(() => t.remove(), 300);
+        if (noteInput) noteInput.placeholder = 'Write your thought...';
+    }, 8000);
+},
 	initNotebook() {
     const cover = document.getElementById('notebook-cover');
     const openBook = document.getElementById('notebook-open');
