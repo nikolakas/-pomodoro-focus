@@ -1088,6 +1088,108 @@ body.minimal-mode #btn-minimal { transform: rotate(180deg); color: var(--accent)
 .wp-thumb-default { background: var(--bg-primary); }
 .wp-thumb-upload { background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 1.5rem; }
 .wp-custom-label { cursor: pointer; }
+/* ── Rage Quit Modal ── */
+.ragequit-card {
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid rgba(255, 100, 100, 0.25);
+}
+.rq-emoji {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  display: block;
+  animation: rq-shake 0.5s ease;
+}
+@keyframes rq-shake {
+  0%,100% { transform: translateX(0) rotate(0); }
+  20%      { transform: translateX(-6px) rotate(-5deg); }
+  40%      { transform: translateX(6px) rotate(5deg); }
+  60%      { transform: translateX(-4px) rotate(-3deg); }
+  80%      { transform: translateX(4px) rotate(3deg); }
+}
+.rq-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+.rq-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.2rem;
+}
+.rq-subtitle strong { color: var(--accent); }
+.rq-progress-wrap { margin: 0.8rem 0 0.4rem; }
+.rq-bar-bg {
+  height: 12px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  overflow: visible;
+  position: relative;
+}
+.rq-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+  transition: width 0.7s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+.rq-bar-fill::after {
+  content: '✈️';
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+}
+.rq-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.rq-message {
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  text-align: left;
+}
+.rq-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 1.2rem;
+}
+.rq-quit-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rq-quit-btn:hover {
+  background: rgba(255,80,80,0.15);
+  color: #ff6b6b;
+  border-color: rgba(255,80,80,0.3);
+}
+.rq-keep-btn {
+  flex: 2;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }

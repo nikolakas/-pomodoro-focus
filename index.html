@@ -620,5 +620,29 @@
         </div>
     </div>
 </div>
+<!-- Rage Quit Modal -->
+<div id="ragequit-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card ragequit-card">
+    <div class="rq-emoji" id="rq-emoji">😤</div>
+    <h3 class="rq-title" id="rq-title">You were 73% there!</h3>
+    <p class="rq-subtitle">Quit now and lose your shot at <strong id="rq-xp">15 XP</strong></p>
+    <div class="rq-progress-wrap">
+      <div class="rq-bar-bg">
+        <div class="rq-bar-fill" id="rq-bar-fill"></div>
+      </div>
+      <div class="rq-bar-labels">
+        <span>0%</span>
+        <span id="rq-pct-label">73%</span>
+        <span>100%</span>
+      </div>
+    </div>
+    <div class="rq-message" id="rq-message">"The last 27% is where the magic happens."</div>
+    <div class="rq-actions">
+      <button class="btn rq-quit-btn" id="btn-rq-quit">Quit Anyway 😞</button>
+      <button class="btn btn-primary rq-keep-btn" id="btn-rq-keep">Keep Going 💪</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -345,6 +345,9 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
 
       const intMod = document.getElementById('intention-modal');
       if (intMod) intMod.style.display = 'none';
+      const rqMod = document.getElementById('ragequit-modal');
+if (rqMod) rqMod.style.display = 'none';
+
     }
 
     if (e.code === 'Space') {
@@ -615,10 +618,52 @@ this.renderSubtaskTracker();
 if (reminder) reminder.style.display = 'none';
     },
 
-    resetTimer() {
+resetTimer() {
+  if (this.state.isRunning && this.state.mode === 'work') {
+    const total = this.state.settings.work * 60;
+    const pct = Math.round(((total - this.state.timeLeft) / total) * 100);
+    if (pct >= 20) {
+      this.showRageQuitModal(pct, () => {
         this.stopTimer();
         this.setMode(this.state.mode);
-    },
+      });
+      return;
+    }
+  }
+  this.stopTimer();
+  this.setMode(this.state.mode);
+}
+showRageQuitModal(pct, onQuit) {
+  const modal = document.getElementById('ragequit-modal');
+  if (!modal) return;
+  const remaining = 100 - pct;
+  const messages = [
+    `"The last ${remaining}% is where the magic happens."`,
+    `"Champions are built in the moments they want to quit."`,
+    `"Your future self will thank you for these last ${remaining}%."`,
+    `"You've already done the hard part. Don't stop now."`,
+    `"Flow state hits after the resistance. Push through."`,
+  ];
+  const emoji = pct > 80 ? '😱' : pct > 60 ? '😤' : pct > 40 ? '😬' : '🙁';
+  document.getElementById('rq-emoji').textContent = emoji;
+  document.getElementById('rq-title').textContent = `You're ${pct}% there!`;
+  document.getElementById('rq-pct-label').textContent = `${pct}%`;
+  document.getElementById('rq-bar-fill').style.width = '0%';
+  document.getElementById('rq-message').textContent =
+    messages[Math.floor(Math.random() * messages.length)];
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    document.getElementById('rq-bar-fill').style.width = `${pct}%`;
+  }, 50);
+  document.getElementById('btn-rq-keep').onclick = () => {
+    modal.style.display = 'none';
+  };
+  document.getElementById('btn-rq-quit').onclick = () => {
+    modal.style.display = 'none';
+    onQuit();
+  };
+}
+
 
     skipSession() {
         this.stopTimer();
