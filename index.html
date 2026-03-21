@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Focus</title>
+    <meta name="description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta property="og:title" content="Pomodoro Focus">
+    <meta property="og:description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#ff6b6b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="starfield" id="starfield" style="display:none;">
+        <div class="stars stars-sm"></div>
+        <div class="stars stars-md"></div>
+        <div class="stars stars-lg"></div>
+    </div>
+    <div class="wallpaper-layer" id="wallpaper-layer"></div>
+
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon" id="logo-icon">🍅</span>
+                <h1 id="logo-title">Pomodoro Focus</h1>
+                <span class="logo-subtitle" id="logo-subtitle"></span>
+            </div>
+            <nav class="tabs" role="tablist">
+                <button class="tab active" data-tab="timer" role="tab" aria-selected="true" id="tab-timer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Timer
+                </button>
+                <button class="tab" data-tab="stats" role="tab" aria-selected="false" id="tab-stats">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Stats
+                </button>
+                <button class="tab" data-tab="notes" role="tab" aria-selected="false" id="tab-notes">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Notes
+                </button>
+            </nav>
+        </header>
+
+        <main class="tab-content active" id="panel-timer" role="tabpanel" aria-labelledby="tab-timer">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="work" id="mode-work">Focus</button>
+                <button class="mode-btn" data-mode="shortBreak" id="mode-short-break">Short Break</button>
+                <button class="mode-btn" data-mode="longBreak" id="mode-long-break">Long Break</button>
+            </div>
+
+            <div class="timer-container" id="timer-container">
+                <svg class="timer-ring" viewBox="0 0 260 260">
+                    <defs>
+                        <filter id="saber-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <filter id="saber-glow-intense"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    </defs>
+                    <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
+                    <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
+                    <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress"/>
+                </svg>
+                <div class="timer-display">
+                    <span class="timer-time" id="timer-time">25:00</span>
+                    <span class="timer-label" id="timer-label">Focus Time</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" id="btn-zen" title="Zen Mode (Z)" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">☯</button>
+                <button class="btn btn-secondary" id="btn-reset" title="Reset"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                <button class="btn btn-primary" id="btn-start">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-play"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <button class="btn btn-secondary" id="btn-skip" title="Skip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                <button class="btn btn-secondary" id="btn-warp" title="Hyperspace Jump" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">🚀</button>
+            </div>
+<div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
+<div class="subtask-tracker" id="subtask-tracker"></div>
+            <div class="session-counter">
+                <span class="session-dots" id="session-dots"></span>
+                <span class="session-text" id="session-text">Session 1 of 4</span>
+            </div>
+
+            <!-- Focus Leveling System -->
+            <div class="level-progress-container" id="level-container">
+                <div class="level-info">
+                    <span class="level-rank" id="level-rank">Novice (Lvl 1)</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="streak-badge" id="streak-badge" style="display:none;"></span>
+                        <span class="level-xp" id="level-xp">0 / 100 XP</span>
+                    </div>
+                </div>
+                <div class="level-bar-bg">
+                    <div class="level-bar-fill" id="level-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Motivational Quote -->
+            <div class="quote-display" id="quote-display">
+                <p id="quote-text">"Focus is a matter of deciding what things you're not going to do."</p>
+            </div>
+
+            <!-- Breathing Exercise Guide (Hidden by default) -->
+            <div class="breathing-widget glass-card" id="breathing-widget" style="display:none;">
+    <div class="breathing-container">
+        <svg class="breathing-ring-svg" viewBox="0 0 120 120">
+            <circle class="breathing-ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="breathing-ring-progress" cx="60" cy="60" r="54" id="breathing-ring"/>
+        </svg>
+        <div class="breathing-inner">
+            <div class="breathing-text" id="breathing-text">Ready</div>
+            <div class="breathing-countdown" id="breathing-countdown">4</div>
+        </div>
+    </div>
+    <button class="btn-toggle-breathe" id="btn-toggle-breathe">Start Breathing Guide</button>
+</div>
+
+            <!-- Focus Moods (Curated Presets) -->
+            <div class="focus-moods-section" aria-label="Focus Moods">
+                <h3 class="moods-title">Focus Moods</h3>
+                <div class="moods-grid">
+                    <button class="mood-card" data-mood="cozy_cafe">
+                        <span class="mood-icon">☕</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Cozy Café</span><span class="mood-desc">Café + Jazz</span>
+                        </div>
+                    </button>
+                    <button class="mood-card" data-mood="rainy_day">
+                        <span class="mood-icon">🌧️</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Rainy Day</span><span class="mood-desc">Rain + Brown Noise</span>
+                        </div>
+                    </button>
+                    <button class="mood-card" data-mood="deep_focus">
+                        <span class="mood-icon">📚</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Deep Focus</span><span class="mood-desc">Library + Forest</span>
+                        </div>
+                    </button>
+                    <button class="mood-card" data-mood="ocean_breeze">
+                        <span class="mood-icon">🌊</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Ocean Breeze</span><span class="mood-desc">Waves + Nature</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ambient Sound Picker -->
+<div class="ambient-mixer glass-card" id="ambient-bar" aria-label="Ambient Mixer">
+    <div class="mixer-header">
+        <span class="mixer-title">🎛️ Ambient Mixer</span>
+        <button class="mixer-stop-all" id="btn-stop-all-ambient">Stop All</button>
+    </div>
+    <div class="mixer-grid">
+        <div class="mixer-channel" data-scene="rain">
+            <button class="mixer-btn" data-scene="rain">🌧️</button>
+            <span class="mixer-label">Rain</span>
+            <input type="range" class="mixer-slider" data-scene="rain" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="waves">
+            <button class="mixer-btn" data-scene="waves">🌊</button>
+            <span class="mixer-label">Waves</span>
+            <input type="range" class="mixer-slider" data-scene="waves" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="brown">
+            <button class="mixer-btn" data-scene="brown">📻</button>
+            <span class="mixer-label">Brown</span>
+            <input type="range" class="mixer-slider" data-scene="brown" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="nature">
+            <button class="mixer-btn" data-scene="nature">🌲</button>
+            <span class="mixer-label">Forest</span>
+            <input type="range" class="mixer-slider" data-scene="nature" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="cafe">
+            <button class="mixer-btn" data-scene="cafe">☕</button>
+            <span class="mixer-label">Café</span>
+            <input type="range" class="mixer-slider" data-scene="cafe" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="library">
+            <button class="mixer-btn" data-scene="library">📚</button>
+            <span class="mixer-label">Library</span>
+            <input type="range" class="mixer-slider" data-scene="library" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="jazz">
+            <button class="mixer-btn" data-scene="jazz">🎷</button>
+            <span class="mixer-label">Jazz</span>
+            <input type="range" class="mixer-slider" data-scene="jazz" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+    </div>
+</div>
+
+            <!-- Settings -->
+            <details class="settings-panel" id="settings-panel">
+                <summary class="settings-toggle">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Settings
+                </summary>
+                <div class="settings-body">
+                    <h3 class="settings-section-title">Timer</h3>
+                    <div class="setting-row">
+                        <label for="setting-work">Focus (min)</label>
+                        <div class="stepper">
+                            <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
+                            <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
+                            <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label for="setting-short">Short Break (min)</label>
+                        <div class="stepper">
+                            <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
+                            <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
+                            <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label for="setting-long">Long Break (min)</label>
+                        <div class="stepper">
+                            <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
+                            <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
+                            <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label for="setting-rounds">Rounds before long break</label>
+                        <div class="stepper">
+                            <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
+                            <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
+                            <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label for="setting-daily-goal">Daily Goal (Sessions)</label>
+                        <div class="stepper">
+                            <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
+                            <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
+                            <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label for="setting-sound">Completion Sound</label>
+                        <div style="display:flex; gap:8px;">
+                            <select id="setting-sound">
+                                <option value="bell">🔔 Ship Bell</option>
+                                <option value="chime">✨ Force Chime</option>
+                                <option value="digital">💎 Digital</option>
+                                <option value="zen">🧘 Zen Bowl</option>
+                                <option value="sw_theme">⚔️ Force Theme</option>
+                                <option value="none">🔇 None</option>
+                            </select>
+                            <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
+                        </div>
+                    </div>
+
+                    <h3 class="settings-section-title">Appearance</h3>
+                    <div class="setting-row">
+                        <label>Theme</label>
+                        <button class="theme-toggle-btn" id="btn-theme-toggle">
+                            <span id="theme-toggle-text">⚔️ Star Wars</span>
+                        </button>
+                    </div>
+                    <div class="setting-row">
+                        <label>Accent Color</label>
+                        <div class="color-picker" id="color-picker">
+                            <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
+                            <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
+                            <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
+                            <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
+                            <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
+                        </div>
+                    </div>
+                   <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+    <label>Background</label>
+    <div class="wallpaper-picker" id="wallpaper-picker">
+        <button class="wp-btn active" data-wp="default" title="No background">🌙</button>
+        <button class="wp-btn" data-wp="preset_forest" title="Forest">🌲</button>
+        <button class="wp-btn" data-wp="preset_space" title="Deep Space">🌌</button>
+        <label class="wp-btn wp-custom-label" title="Upload your own">＋<input type="file" id="wallpaper-upload" accept="image/*" hidden></label>
+    </div>
+    <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
+</div>
+
+                    <!-- Star Wars specific (hidden by default) -->
+                    <div class="sw-settings" id="sw-settings" style="display:none;">
+                        <h3 class="settings-section-title">Lightsaber Color</h3>
+                        <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
+                            <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
+                            <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
+                            <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
+                            <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
+                            <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
+                        </div>
+                        <div class="setting-row">
+                            <label for="setting-sw-music">Binary Sunset Auto-Play</label>
+                            <input type="checkbox" id="setting-sw-music" checked>
+                        </div>
+                        <div class="setting-row">
+                            <label>Binary Sunset</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width: auto; padding: 0 12px; border-radius: 12px; font-size: 0.8rem; height: 32px;">▶ Play Binary Sunset</button>
+                                <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width: 80px;">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </details>
+        </main>
+
+        <!-- Stats Tab -->
+        <main class="tab-content" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats">
+            <div class="stats-overview">
+                <div class="stat-card stat-today-card">
+                    <div class="goal-ring-container">
+                        <svg class="goal-ring" viewBox="0 0 60 60"><circle cx="30" cy="30" r="28"/><circle class="goal-ring-path" cx="30" cy="30" r="28" id="goal-progress"/></svg>
+                        <span class="stat-value goal-value" id="stat-today">0</span>
+                    </div>
+                    <span class="stat-label">Today</span>
+                </div>
+                <div class="stat-card"><span class="stat-value" id="stat-week">0</span><span class="stat-label">This Week</span></div>
+                <div class="stat-card"><span class="stat-value" id="stat-total">0</span><span class="stat-label">All Time</span></div>
+                <div class="stat-card"><span class="stat-value" id="stat-rank-display" style="font-size: 1.1rem; padding-top: 6px;">Novice</span><span class="stat-label">Current Rank</span></div>
+            </div>
+
+            <!-- Focus Insights Dashoard -->
+            <section class="insights-section glass-card" aria-label="Focus Insights">
+                <h2><span aria-hidden="true">💡</span> Focus Insights</h2>
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <div class="insight-icon">📈</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Productivity Score</div>
+                            <div class="insight-val" id="insight-score">0/100</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon">⏰</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Best Focus Hour</div>
+                            <div class="insight-val" id="insight-hour">N/A</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon">🔥</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Weekly Trend</div>
+                            <div class="insight-val" id="insight-trend">Neutral</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="insight-tip" id="insight-tip">Complete more sessions to get personalized tips!</div>
+            </section>
+
+            <!-- Focus Heatmap (30-day Grid) -->
+            <section class="heatmap-section glass-card" aria-label="30-Day Focus Heatmap">
+                <h2><span aria-hidden="true">📅</span> 30-Day Heatmap</h2>
+                <div class="heatmap-container">
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="heatmap-keys">
+                        <div class="h-cell level-0"></div>
+                        <div class="h-cell level-1"></div>
+                        <div class="h-cell level-2"></div>
+                        <div class="h-cell level-3"></div>
+                        <div class="h-cell level-4"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </section>
+
+            <!-- Achievements -->
+            <section class="achievements-section glass-card" aria-label="Achievements">
+                <h2><span aria-hidden="true">🏆</span> Achievements</h2>
+                <div class="achievements-grid" id="achievements-grid"></div>
+            </section>
+
+            <!-- 2-Column charts and history -->
+            <div class="stats-split">
+                <div class="charts-col">
+                    <div class="chart-container glass-card">
+                        <div class="chart-header"><h2>Focus Sessions</h2>
+                            <div class="chart-range-btns">
+                                <button class="chart-range active" data-range="7">7d</button>
+                                <button class="chart-range" data-range="14">14d</button>
+                                <button class="chart-range" data-range="30">30d</button>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper" style="position:relative; height:180px; width:100%;">
+                            <canvas id="sessions-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container glass-card">
+                        <div class="chart-header"><h2>Focus Minutes</h2></div>
+                        <div class="canvas-wrapper" style="position:relative; height:180px; width:100%;">
+                            <canvas id="minutes-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="history-col">
+                    <section class="history-section glass-card" aria-label="Session History">
+                        <h2>Session History</h2>
+                        <div class="history-list" id="history-list">
+                            <p class="empty-state">No sessions yet. Start your first focus session!</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <!-- Notes Tab -->
+        <main class="tab-content" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes">
+    <div class="notebook-wrap">
+        <div class="notebook-cover" id="notebook-cover">
+            <div class="notebook-cover-inner">
+                <div class="notebook-emblem">📖</div>
+                <div class="notebook-title" id="notebook-cover-title">My Journal</div>
+                <div class="notebook-subtitle">Tap to open</div>
+            </div>
+        </div>
+        <div class="notebook-open" id="notebook-open" style="display:none;">
+            <div class="notebook-pages">
+                <!-- Left page — write -->
+                <div class="notebook-page notebook-page-left">
+                    <div class="notebook-page-title">New Entry</div>
+                    <textarea id="note-input" placeholder="Write your thought..." rows="6"></textarea>
+                    <div class="notebook-actions">
+                        <div id="tags-filter" class="tags-filter-container"></div>
+                        <button class="btn btn-primary btn-add-note" id="btn-add-note">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Save Entry
+                        </button>
+                    </div>
+                </div>
+                <!-- Spine -->
+                <div class="notebook-spine"></div>
+                <!-- Right page — read -->
+                <div class="notebook-page notebook-page-right">
+                    <div class="notebook-page-title">Entries</div>
+                    <div class="notes-list" id="notes-list">
+                        <p class="empty-state">No entries yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+    <!-- Shortcut Modal -->
+    <div id="shortcut-modal" class="modal" style="display:none;">
+        <div class="modal-content glass-card">
+            <h3 style="margin-top:0; margin-bottom:1rem;">⌨️ Keyboard Shortcuts</h3>
+            <div class="shortcut-list" style="display:flex; flex-direction:column; gap:8px;">
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Space</kbd></span><span>Play / Pause</span></div>
+				<div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>I</kbd></span><span>Set Intention</span></div>
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>N</kbd></span><span>Skip Session</span></div>
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Z</kbd></span><span>Zen Mode</span></div>
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>W</kbd></span><span>Hyperspace Warp (SW Theme)</span></div>
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>?</kbd></span><span>Show this menu</span></div>
+                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Esc</kbd></span><span>Close menu</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Intention Modal -->
+<div id="intention-modal" class="modal" style="display:none;">
+    <div class="modal-content glass-card intention-modal-card">
+        <h3 class="intention-modal-title">🎯 What are you focusing on?</h3>
+        <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input">
+        <div class="subtasks-section">
+            <div class="subtasks-label">Subtasks <span style="color:var(--text-muted); font-weight:400;">(optional)</span></div>
+            <div class="subtask-list" id="subtask-list">
+                <div class="subtask-row">
+                    <span class="subtask-dot">◦</span>
+                    <input type="text" class="subtask-input" placeholder="Subtask 1..." maxlength="60">
+                </div>
+                <div class="subtask-row">
+                    <span class="subtask-dot">◦</span>
+                    <input type="text" class="subtask-input" placeholder="Subtask 2..." maxlength="60">
+                </div>
+                <div class="subtask-row">
+                    <span class="subtask-dot">◦</span>
+                    <input type="text" class="subtask-input" placeholder="Subtask 3..." maxlength="60">
+                </div>
+            </div>
+            <div class="subtasks-label" style="margin-top:12px;">Session Type</div>
+            <div class="label-picker" id="label-picker">
+                <button class="label-btn active" data-label="work" style="--lc:#a78bfa">Deep Work</button>
+                <button class="label-btn" data-label="study" style="--lc:#38bdf8">Study</button>
+                <button class="label-btn" data-label="creative" style="--lc:#fb923c">Creative</button>
+                <button class="label-btn" data-label="admin" style="--lc:#94a3b8">Admin</button>
+                <button class="label-btn" data-label="other" style="--lc:#4ecdc4">Other</button>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:1rem;">
+            <button class="btn btn-secondary" id="btn-skip-intention" style="border-radius:20px; width:auto; padding:0 20px;">Skip</button>
+            <button class="btn btn-primary" id="btn-start-intention" style="border-radius:20px; width:auto; height:48px; padding:0 20px; font-size:1rem;">Start Focus</button>
+        </div>
+    </div>
+</div>
+
+    <!-- Achievement Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="ambience.js"></script>
+    <script src="app.js"></script>
+	<!-- End of Day Summary Modal -->
+<div id="eod-modal" class="modal" style="display:none;">
+    <div class="modal-content glass-card eod-modal-content">
+        <div class="eod-header">
+            <span class="eod-icon">🌙</span>
+            <h2>Day Complete</h2>
+            <p class="eod-subtitle" id="eod-subtitle">Great work today!</p>
+        </div>
+        <div class="eod-stats">
+            <div class="eod-stat">
+                <span class="eod-stat-val" id="eod-sessions">0</span>
+                <span class="eod-stat-label">Sessions</span>
+            </div>
+            <div class="eod-stat">
+                <span class="eod-stat-val" id="eod-minutes">0m</span>
+                <span class="eod-stat-label">Focus Time</span>
+            </div>
+            <div class="eod-stat">
+                <span class="eod-stat-val" id="eod-xp">+0</span>
+                <span class="eod-stat-label">XP Earned</span>
+            </div>
+            <div class="eod-stat">
+                <span class="eod-stat-val" id="eod-hour">—</span>
+                <span class="eod-stat-label">Best Hour</span>
+            </div>
+        </div>
+        <div class="eod-bar-wrap">
+            <div class="eod-bar-label">
+                <span>Daily Goal</span>
+                <span id="eod-goal-text">0 / 8</span>
+            </div>
+            <div class="eod-bar-bg">
+                <div class="eod-bar-fill" id="eod-bar-fill"></div>
+            </div>
+        </div>
+        <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
+            Keep Going 💪
+        </button>
+    </div>
+</div>
+<!-- Onboarding Overlay -->
+<div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
+    <div class="onboarding-card glass-card">
+        <div class="onboarding-step" id="onboarding-step">
+            <div class="onboarding-icon" id="onboarding-icon">🍅</div>
+            <h3 class="onboarding-title" id="onboarding-title">Welcome to Pomodoro Focus</h3>
+            <p class="onboarding-desc" id="onboarding-desc">The Pomodoro technique helps you focus in short, powerful bursts. Work 25 minutes, then take a 5-minute break. Simple. Effective.</p>
+        </div>
+        <div class="onboarding-dots" id="onboarding-dots">
+            <span class="ob-dot active"></span>
+            <span class="ob-dot"></span>
+            <span class="ob-dot"></span>
+            <span class="ob-dot"></span>
+        </div>
+        <div class="onboarding-actions">
+            <button class="btn-ob-skip" id="btn-ob-skip">Skip</button>
+            <button class="btn-ob-next btn-primary btn" id="btn-ob-next">Next →</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
