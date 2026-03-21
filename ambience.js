@@ -15,16 +15,16 @@ window.AmbienceModule = (() => {
   let sceneVolumes = {};
   let volume = 0.5;
 
-  function getCtx() {
+ function getCtx() {
     if (!ctx) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = ctx.createGain();
-      masterGain.gain.value = volume;
-      masterGain.connect(ctx.destination);
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = ctx.createGain();
+        masterGain.gain.value = volume;
+        masterGain.connect(ctx.destination);
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    // Don't auto-resume here — only resume on explicit user action
     return ctx;
-  }
+}
 
   function setVolume(v) {
     volume = Math.max(0, Math.min(1, v));
@@ -730,7 +730,9 @@ let idx = 0;
 
   function play(sceneKey) {
     if (!SCENES[sceneKey] || activeScenes[sceneKey]) return;
-    getCtx(); // ensure context exists
+    getCtx();
+    if (ctx.state === 'suspended') ctx.resume(); // resume on user gesture
+    // ... rest of existing play() code
 
     // Create a gain node for this scene and wire it
     const sg = ctx.createGain();

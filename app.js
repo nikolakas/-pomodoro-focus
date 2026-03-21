@@ -1198,6 +1198,7 @@ setThemePreview(theme) {
     },
 
  setWallpaper(wpId) {
+    if (!wpId) return; // guard against undefined
     this.state.settings.wallpaper = wpId;
     this.elements.wpBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.wp === wpId));
 
@@ -1209,14 +1210,13 @@ setThemePreview(theme) {
         preset_space:  'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920&q=80'
     };
 
-    layer.className = 'wallpaper-layer';
     layer.style.backgroundImage = 'none';
 
     if (wpId === 'default') {
-        // already cleared
+        // cleared above
     } else if (presets[wpId]) {
         layer.style.backgroundImage = `url('${presets[wpId]}')`;
-    } else {
+    } else if (wpId.startsWith('wp_')) {
         const req = indexedDB.open('pomodoro_db', 1);
         req.onsuccess = (e) => {
             const db = e.target.result;
