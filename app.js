@@ -453,7 +453,6 @@ switchTab(target) {
         this.initNotebook();
     }
 },
-    },
 
     // ===================================
     // TIMER LOGIC
