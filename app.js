@@ -47,8 +47,12 @@ const app = {
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
       currentIntention: null,
 currentSubtasks: [],
-        activeNoteFilter: null
+        activeNoteFilter: null,
+        sessionStartTime: null,
+        minutesToday: 0,
+        totalMinutes: 0,
     },
+
 
     elements: {},
 
@@ -571,7 +575,9 @@ switchTab(target) {
 
     startTimer() {
         if (this.state.timeLeft <= 0) return;
-        this.state.isRunning = true;
+  this.state.isRunning = true;
+this.state.sessionStartTime = Date.now();
+
 		// Show intention reminder
 const reminder = document.getElementById('intention-reminder');
 if (reminder) {
@@ -632,7 +638,7 @@ resetTimer() {
   }
   this.stopTimer();
   this.setMode(this.state.mode);
-}
+},
 showRageQuitModal(pct, onQuit) {
   const modal = document.getElementById('ragequit-modal');
   if (!modal) return;
@@ -662,7 +668,7 @@ showRageQuitModal(pct, onQuit) {
     modal.style.display = 'none';
     onQuit();
   };
-}
+},
 
 
     skipSession() {
@@ -676,13 +682,17 @@ showRageQuitModal(pct, onQuit) {
         this.playAudio(this.state.settings.sound);
 
         if (this.state.mode === 'work') {
-            this.state.sessionsToday++;
-            this.state.totalSessions++;
-            this.addXp(15);
-            this.saveStats();
+const elapsedMs = this.state.sessionStartTime ? Date.now() - this.state.sessionStartTime : 0;
+const elapsedMin = Math.max(1, Math.floor(elapsedMs / 60000));
+this.state.sessionsToday++;
+this.state.totalSessions++;
+this.state.minutesToday = (this.state.minutesToday || 0) + elapsedMin;
+this.state.totalMinutes = (this.state.totalMinutes || 0) + elapsedMin;
+this.addXp(elapsedMin);
+this.saveStats();
+const completedIntention = this.state.currentIntention;
+this.recordSession(elapsedMin, 'focus');
 
-            const completedIntention = this.state.currentIntention;
-            this.recordSession(this.state.settings.work, 'focus');
 
             this.elements.container.classList.add('celebrating');
             this.elements.container.classList.add('timer-pulse');
@@ -1099,15 +1109,22 @@ el.addEventListener('click', () => {
         const todayStr = new Date().toDateString();
         const savedDate = localStorage.getItem('pomodoro_date');
 
-        if (savedDate !== todayStr) {
-            this.state.sessionsToday = 0;
-            localStorage.setItem('pomodoro_date', todayStr);
+if (savedDate !== todayStr) {
+  this.state.sessionsToday = 0;
+  this.state.minutesToday = 0;
+  localStorage.setItem('pomodoro-date', todayStr);
+  localStorage.setItem('pomodoro-minutes-today', 0);
+
         } else {
             this.state.sessionsToday = parseInt(localStorage.getItem('pomodoro_today')) || 0;
         }
 
-        this.state.totalSessions = parseInt(localStorage.getItem('pomodoro_total')) || 0;
-        this.state.xp = parseInt(localStorage.getItem('pomodoro_xp')) || 0;
+this.state.sessionsToday = parseInt(localStorage.getItem('pomodoro-today') || 0);
+this.state.totalSessions = parseInt(localStorage.getItem('pomodoro-total') || 0);
+this.state.minutesToday = parseInt(localStorage.getItem('pomodoro-minutes-today') || 0);
+this.state.totalMinutes = parseInt(localStorage.getItem('pomodoro-total-minutes') || 0);
+this.state.xp = parseInt(localStorage.getItem('pomodoro-xp') || 0);
+
         this.updateLevel();
 
         const h = localStorage.getItem('pomodoro_history');
@@ -1115,11 +1132,21 @@ el.addEventListener('click', () => {
     },
 
     saveStats() {
-        localStorage.setItem('pomodoro_today', this.state.sessionsToday);
-        localStorage.setItem('pomodoro_total', this.state.totalSessions);
-        localStorage.setItem('pomodoro_xp', this.state.xp);
+localStorage.setItem('pomodoro-today', this.state.sessionsToday);
+localStorage.setItem('pomodoro-total', this.state.totalSessions);
+localStorage.setItem('pomodoro-minutes-today', this.state.minutesToday || 0);
+localStorage.setItem('pomodoro-total-minutes', this.state.totalMinutes || 0);
+localStorage.setItem('pomodoro-xp', this.state.xp);
+
         this.renderStats();
     },
+formatTime(minutes) {
+  if (!minutes || minutes < 1) return '0m';
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+},
 
     recordSession(duration, type) {
 this.state.history.push({
@@ -1332,16 +1359,19 @@ if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔
         const statToday = document.getElementById('stat-today');
         const statTotal = document.getElementById('stat-total');
         const statWeek = document.getElementById('stat-week');
-        if (statToday) statToday.textContent = this.state.sessionsToday;
-        if (statTotal) statTotal.textContent = this.state.totalSessions;
+if (statToday) statToday.textContent = this.formatTime(this.state.minutesToday || 0);
+if (statTotal) statTotal.textContent = this.formatTime(this.state.totalMinutes || 0);
+
 
         const now = new Date();
         const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
         let weekTotal = 0;
         this.state.history.forEach(s => {
-            if (s.type === 'focus' && new Date(s.date) >= weekStart) weekTotal++;
-        });
-        if (statWeek) statWeek.textContent = weekTotal;
+  if (s.type === 'focus' && new Date(s.date) >= weekStart) weekTotal += (s.duration || 0);
+});
+
+        if (statWeek) statWeek.textContent = this.formatTime(weekTotal);
+
 
         const goalP = document.getElementById('goal-progress');
         if (goalP) {
@@ -1549,7 +1579,8 @@ if (s.label && labelColors[s.label]) {
             if (s.type !== 'focus') return;
             const d = new Date(s.date);
             d.setHours(0, 0, 0, 0);
-            counts[d.getTime()] = (counts[d.getTime()] || 0) + 1;
+            counts[d.getTime()] = (counts[d.getTime()] || 0) + (s.duration || 0);
+
         });
 
         for (let i = 34; i >= 0; i--) {
@@ -1558,14 +1589,16 @@ if (s.label && labelColors[s.label]) {
             const count = counts[d.getTime()] || 0;
 
             let lvl = 0;
-            if (count > 0) lvl = 1;
-            if (count >= 3) lvl = 2;
-            if (count >= 6) lvl = 3;
-            if (count >= 8) lvl = 4;
+if (count >= 1)   lvl = 1;
+if (count >= 25)  lvl = 2;
+if (count >= 75)  lvl = 3;
+if (count >= 150) lvl = 4;
+
 
             const cell = document.createElement('div');
             cell.className = `h-cell level-${lvl}`;
-            cell.title = `${d.toDateString()}: ${count} sessions`;
+            cell.title = `${d.toDateString()}: ${this.formatTime(count)}`;
+
             grid.appendChild(cell);
         }
     },
