@@ -175,7 +175,10 @@ if (btnMinimal) {
         }
 
         // Appearance
-        this.elements.themeBtn.addEventListener('click', () => this.toggleTheme());
+      if (this.elements.themeBtn) {
+  this.elements.themeBtn.addEventListener('click', this.toggleTheme);
+}
+
         this.elements.colorBtns.forEach(btn => btn.addEventListener('click', (e) => this.setAccent(e.target.dataset.color)));
         this.elements.saberBtns.forEach(btn => btn.addEventListener('click', (e) => this.setSaber(e.target.dataset.color)));
         this.elements.wpBtns.forEach(btn => btn.addEventListener('click', (e) => this.setWallpaper(e.target.dataset.wp)));
@@ -220,19 +223,23 @@ if (btnMinimal) {
         }
 
         // Binary Sunset Toggle
-        const btnBs = document.getElementById('btn-binary-sunset-toggle');
-        if (btnBs) {
-            btnBs.addEventListener('click', () => {
-                const isPlaying = window.AmbienceModule.isActive('binary_sunset');
-                if (isPlaying) {
-                    window.AmbienceModule.stop('binary_sunset');
-                    btnBs.textContent = '▶ Play Binary Sunset';
-                } else {
-                    window.AmbienceModule.play('binary_sunset');
-                    btnBs.textContent = '⏹ Stop Binary Sunset';
-                }
-            });
-        }
+const btnBs = document.getElementById('btn-binary-sunset-toggle');
+if (btnBs) {
+  btnBs.addEventListener('click', () => {
+    if (!window.AmbienceModule) return;
+
+    const isPlaying = window.AmbienceModule.isActive('binary_sunset');
+
+    if (isPlaying) {
+      window.AmbienceModule.stop('binary_sunset');
+      btnBs.textContent = '▶ Play Binary Sunset';
+    } else {
+      window.AmbienceModule.play('binary_sunset');
+      btnBs.textContent = '■ Stop Binary Sunset';
+    }
+  });
+}
+
 
         // Ambient auto-pause on tab hide — use exposed getActiveSceneKeys()
         document.addEventListener('visibilitychange', () => {
@@ -1095,11 +1102,13 @@ if (pSw) pSw.classList.toggle('active', isSw);
     this.state.settings.theme = this.state.settings.theme === 'starwars' ? 'normal' : 'starwars';
     this.saveSettings();
     this.updateTheme();
-    if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
-        window.AmbienceModule.play('binary_sunset');
-    } else {
-        window.AmbienceModule.stop('binary_sunset');
-    }
+if (window.AmbienceModule) {
+  if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
+    window.AmbienceModule.play('binary_sunset');
+  } else {
+    window.AmbienceModule.stop('binary_sunset');
+  }
+}
 },
 setThemePreview(theme) {
     document.getElementById('theme-preview-normal').classList.toggle('active', theme === 'normal');
@@ -1868,4 +1877,6 @@ initOnboarding() {
     }
 };
 
+window.app = app;
 document.addEventListener('DOMContentLoaded', () => app.init());
+
