@@ -129,205 +129,261 @@ ambientVolInput: null,
         };
     },
 
-    bindEvents() {
-        // Core Timer Controls
-        this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
-        this.elements.btnReset.addEventListener('click', () => this.resetTimer());
-        this.elements.btnSkip.addEventListener('click', () => this.skipSession());
-        this.elements.btnZen.addEventListener('click', () => document.body.classList.toggle('zen-mode'));
-        const btnMinimal = document.getElementById('btn-minimal');
-if (btnMinimal) {
+bindEvents() {
+  // Core Timer Controls
+  if (this.elements.btnStart) {
+    this.elements.btnStart.addEventListener('click', this.toggleTimer);
+  }
+
+  if (this.elements.btnReset) {
+    this.elements.btnReset.addEventListener('click', this.resetTimer);
+  }
+
+  if (this.elements.btnSkip) {
+    this.elements.btnSkip.addEventListener('click', this.skipSession);
+  }
+
+  if (this.elements.btnZen) {
+    this.elements.btnZen.addEventListener('click', () => {
+      document.body.classList.toggle('zen-mode');
+    });
+  }
+
+  const btnMinimal = document.getElementById('btn-minimal');
+  if (btnMinimal) {
     btnMinimal.addEventListener('click', () => {
-        document.body.classList.toggle('minimal-mode');
-        btnMinimal.querySelector('.tooltip').textContent =
-            document.body.classList.contains('minimal-mode') ? 'Full Mode' : 'Minimal Mode';
+      document.body.classList.toggle('minimal-mode');
+      const tooltip = btnMinimal.querySelector('.tooltip');
+      if (tooltip) {
+        tooltip.textContent = document.body.classList.contains('minimal-mode')
+          ? 'Full Mode'
+          : 'Minimal Mode';
+      }
     });
-}
-        if (this.elements.btnWarp) {
-            this.elements.btnWarp.addEventListener('click', () => this.triggerHyperspaceJump());
-        }
+  }
 
-        // Mode Switching
-        this.elements.modeBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => this.setMode(e.target.dataset.mode));
-        });
+  if (this.elements.btnWarp) {
+    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump);
+  }
 
-        // Tabs
-        this.elements.tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const target = e.target.closest('.tab').dataset.tab;
-                this.switchTab(target);
-            });
-        });
+  // Mode Switching
+  this.elements.modeBtns.forEach(btn => {
+    btn.addEventListener('click', e => this.setMode(e.target.dataset.mode));
+  });
 
+  // Tabs
+  this.elements.tabs.forEach(tab => {
+    tab.addEventListener('click', e => {
+      const target = e.target.closest('.tab')?.dataset.tab;
+      if (target) this.switchTab(target);
+    });
+  });
 
-        // Focus Moods
-        this.elements.moodCards.forEach(card => {
-            card.addEventListener('click', (e) => this.activateMood(e.currentTarget.dataset.mood));
-        });
+  // Focus Moods
+  this.elements.moodCards.forEach(card => {
+    card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
+  });
 
-        // Breathing Toggle
-        if (this.elements.btnToggleBreathe) {
-            this.elements.btnToggleBreathe.addEventListener('click', () => {
-                if (this.state.breathingState.active) this.stopBreathing();
-                else this.startBreathing();
-            });
-        }
+  // Breathing Toggle
+  if (this.elements.btnToggleBreathe) {
+    this.elements.btnToggleBreathe.addEventListener('click', () => {
+      if (this.state.breathingState.active) this.stopBreathing();
+      else this.startBreathing();
+    });
+  }
 
-        // Appearance
-      if (this.elements.themeBtn) {
-  this.elements.themeBtn.addEventListener('click', this.toggleTheme);
-}
+  // Appearance
+  if (this.elements.themeBtn) {
+    this.elements.themeBtn.addEventListener('click', this.toggleTheme);
+  }
 
-        this.elements.colorBtns.forEach(btn => btn.addEventListener('click', (e) => this.setAccent(e.target.dataset.color)));
-        this.elements.saberBtns.forEach(btn => btn.addEventListener('click', (e) => this.setSaber(e.target.dataset.color)));
-        this.elements.wpBtns.forEach(btn => btn.addEventListener('click', (e) => this.setWallpaper(e.target.dataset.wp)));
-        this.elements.wpUpload.addEventListener('change', (e) => this.handleImageUpload(e));
+  this.elements.colorBtns.forEach(btn => {
+    btn.addEventListener('click', e => this.setAccent(e.target.dataset.color));
+  });
 
-        // Sound Preview
- if (this.elements.btnPreviewSound) {
+  this.elements.saberBtns.forEach(btn => {
+    btn.addEventListener('click', e => this.setSaber(e.target.dataset.color));
+  });
+
+  this.elements.wpBtns.forEach(btn => {
+    btn.addEventListener('click', e => this.setWallpaper(e.target.dataset.wp));
+  });
+
+  if (this.elements.wpUpload) {
+    this.elements.wpUpload.addEventListener('change', e => this.handleImageUpload(e));
+  }
+
+  // Sound Preview
+  if (this.elements.btnPreviewSound) {
     this.elements.btnPreviewSound.addEventListener('click', () => {
-        const sel = document.getElementById('setting-sound').value;
-        this.playAudio(sel);
+      const sel = document.getElementById('setting-sound');
+      if (sel) this.playAudio(sel.value);
     });
-}
+  }
 
-        // General Settings Inputs (save on change)
-        const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
-        inputs.forEach(input => {
-            input.addEventListener('change', () => this.saveSettings());
-        });
+  // General Settings Inputs
+  const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
+  inputs.forEach(input => input.addEventListener('change', this.saveSettings));
 
-        // Notes
-        document.getElementById('btn-add-note').addEventListener('click', () => this.addNote());
-        document.getElementById('note-input').addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') this.addNote();
-        });
+  // Notes
+  const btnAddNote = document.getElementById('btn-add-note');
+  if (btnAddNote) {
+    btnAddNote.addEventListener('click', this.addNote);
+  }
 
-        // Chart Range Buttons
-        document.querySelectorAll('.chart-range').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.chart-range').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.renderCharts();
-            });
-        });
+  const noteInput = document.getElementById('note-input');
+  if (noteInput) {
+    noteInput.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'Enter') this.addNote();
+    });
+  }
 
-        // BS Volume
-        if (this.elements.bsVolumeInput) {
-            this.elements.bsVolumeInput.addEventListener('input', (e) => {
-                if (window.AmbienceModule && window.AmbienceModule.setBsVolume) {
-                    window.AmbienceModule.setBsVolume(e.target.value / 100);
-                }
-            });
-        }
+  // Chart Range Buttons
+  document.querySelectorAll('.chart-range').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chart-range').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      this.renderCharts();
+    });
+  });
 
-        // Binary Sunset Toggle
-const btnBs = document.getElementById('btn-binary-sunset-toggle');
-if (btnBs) {
-  btnBs.addEventListener('click', () => {
+  // BS Volume
+  if (this.elements.bsVolumeInput) {
+    this.elements.bsVolumeInput.addEventListener('input', e => {
+      if (window.AmbienceModule && window.AmbienceModule.setBsVolume) {
+        window.AmbienceModule.setBsVolume(e.target.value / 100);
+      }
+    });
+  }
+
+  // Binary Sunset Toggle
+  const btnBs = document.getElementById('btn-binary-sunset-toggle');
+  if (btnBs) {
+    btnBs.addEventListener('click', () => {
+      if (!window.AmbienceModule) return;
+
+      const isPlaying = window.AmbienceModule.isActive('binary_sunset');
+
+      if (isPlaying) {
+        window.AmbienceModule.stop('binary_sunset');
+        btnBs.textContent = '▶ Play Binary Sunset';
+      } else {
+        window.AmbienceModule.play('binary_sunset');
+        btnBs.textContent = '■ Stop Binary Sunset';
+      }
+    });
+  }
+
+  // Ambient auto-pause on tab hide
+  document.addEventListener('visibilitychange', () => {
     if (!window.AmbienceModule) return;
 
-    const isPlaying = window.AmbienceModule.isActive('binary_sunset');
-
-    if (isPlaying) {
-      window.AmbienceModule.stop('binary_sunset');
-      btnBs.textContent = '▶ Play Binary Sunset';
-    } else {
-      window.AmbienceModule.play('binary_sunset');
-      btnBs.textContent = '■ Stop Binary Sunset';
+    if (document.hidden) {
+      this.ambientWasPlaying = window.AmbienceModule.getActiveSceneKeys();
+      window.AmbienceModule.stopAll();
+    } else if (this.ambientWasPlaying && this.ambientWasPlaying.length > 0) {
+      this.ambientWasPlaying.forEach(k => window.AmbienceModule.play(k));
     }
   });
-}
 
-
-        // Ambient auto-pause on tab hide — use exposed getActiveSceneKeys()
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this._ambientWasPlaying = window.AmbienceModule.getActiveSceneKeys();
-                window.AmbienceModule.stopAll();
-            } else {
-                if (this._ambientWasPlaying && this._ambientWasPlaying.length > 0) {
-                    this._ambientWasPlaying.forEach(k => window.AmbienceModule.play(k));
-                    // Re-sync pill active states
-                   
-                }
-                this._ambientWasPlaying = [];
-            }
-        });
-
-        // Intention Modal — wire up "Start Focus" button
-		const btnSkipIntention = document.getElementById('btn-skip-intention');
-if (btnSkipIntention) {
+  // Intention Modal
+  const btnSkipIntention = document.getElementById('btn-skip-intention');
+  if (btnSkipIntention) {
     btnSkipIntention.addEventListener('click', () => {
-        document.getElementById('intention-modal').style.display = 'none';
-        document.getElementById('intention-input').value = '';
-        document.querySelectorAll('.subtask-input').forEach(i => i.value = '');
-        this.state.currentSubtasks = [];
-        this.startTimer();
+      const modal = document.getElementById('intention-modal');
+      const input = document.getElementById('intention-input');
+      if (modal) modal.style.display = 'none';
+      if (input) input.value = '';
+      document.querySelectorAll('.subtask-input').forEach(i => i.value = '');
+      this.state.currentSubtasks = [];
+      this.startTimer();
     });
-}
-        const btnStartIntention = document.getElementById('btn-start-intention');
-        if (btnStartIntention) {
-			document.querySelectorAll('.label-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+  }
+
+  const btnStartIntention = document.getElementById('btn-start-intention');
+  if (btnStartIntention) {
+    document.querySelectorAll('.label-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
         document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this._sessionLabel = btn.dataset.label;
+        this.sessionLabel = btn.dataset.label || 'work';
+      });
     });
-});
-this._sessionLabel = 'work';
-btnStartIntention.addEventListener('click', () => {
-    const inp = document.getElementById('intention-input');
-    if (inp && inp.value.trim()) {
-        this.state.currentIntention = inp.value.trim();
-    }
-    // Collect subtasks
-    this.state.currentSubtasks = [];
-    document.querySelectorAll('.subtask-input').forEach(input => {
-        if (input.value.trim()) {
-            this.state.currentSubtasks.push({ text: input.value.trim(), done: false });
-        }
-    });
-    document.getElementById('intention-modal').style.display = 'none';
-    this.startTimer();
-});
-        }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === '?') {
-                const mod = document.getElementById('shortcut-modal');
-                if (mod) mod.style.display = mod.style.display === 'none' ? 'flex' : 'none';
-            }
-            if (e.key === 'Escape') {
-                const mod = document.getElementById('shortcut-modal');
-                if (mod) mod.style.display = 'none';
-                const intMod = document.getElementById('intention-modal');
-                if (intMod) intMod.style.display = 'none';
-            }
-            if (e.code === 'Space') { e.preventDefault(); this.toggleTimer(); }
-			if (e.code === 'KeyI') {
-    const mod = document.getElementById('intention-modal');
-    if (mod) {
-        mod.style.display = mod.style.display === 'none' ? 'flex' : 'none';
-        if (mod.style.display === 'flex') {
-            setTimeout(() => document.getElementById('intention-input').focus(), 50);
+    btnStartIntention.addEventListener('click', () => {
+      const inp = document.getElementById('intention-input');
+      if (inp && inp.value.trim()) this.state.currentIntention = inp.value.trim();
+
+      this.state.currentSubtasks = [];
+      document.querySelectorAll('.subtask-input').forEach(input => {
+        if (input.value.trim()) {
+          this.state.currentSubtasks.push({
+            text: input.value.trim(),
+            done: false
+          });
         }
+      });
+
+      const modal = document.getElementById('intention-modal');
+      if (modal) modal.style.display = 'none';
+      this.startTimer();
+    });
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === '?') {
+      const mod = document.getElementById('shortcut-modal');
+      if (mod) mod.style.display = mod.style.display === 'flex' ? 'none' : 'flex';
     }
-}
-            if (e.code === 'KeyZ') { document.body.classList.toggle('zen-mode'); }
-            if (e.code === 'KeyN') { this.skipSession(); }
-            if (document.body.classList.contains('theme-starwars') && e.code === 'KeyW') {
-                this.triggerHyperspaceJump();
-            }
-        });
-		const btnEod = document.getElementById('btn-eod-close');
-if (btnEod) btnEod.addEventListener('click', () => {
-    document.getElementById('eod-modal').style.display = 'none';
-});
-    },
+
+    if (e.key === 'Escape') {
+      const mod = document.getElementById('shortcut-modal');
+      if (mod) mod.style.display = 'none';
+
+      const intMod = document.getElementById('intention-modal');
+      if (intMod) intMod.style.display = 'none';
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      this.toggleTimer();
+    }
+
+    if (e.code === 'KeyI') {
+      const mod = document.getElementById('intention-modal');
+      if (mod) {
+        mod.style.display = mod.style.display === 'flex' ? 'none' : 'flex';
+        if (mod.style.display === 'flex') {
+          setTimeout(() => document.getElementById('intention-input')?.focus(), 50);
+        }
+      }
+    }
+
+    if (e.code === 'KeyZ') {
+      document.body.classList.toggle('zen-mode');
+    }
+
+    if (e.code === 'KeyN') {
+      this.skipSession();
+    }
+
+    if (document.body.classList.contains('theme-starwars') && e.code === 'KeyW') {
+      this.triggerHyperspaceJump();
+    }
+  });
+
+  const btnEod = document.getElementById('btn-eod-close');
+  if (btnEod) {
+    btnEod.addEventListener('click', () => {
+      const modal = document.getElementById('eod-modal');
+      if (modal) modal.style.display = 'none';
+    });
+  }
+},
+
 
     bindSteppers() {
         document.querySelectorAll('.stepper-btn').forEach(btn => {
