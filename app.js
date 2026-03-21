@@ -205,8 +205,7 @@ bindEvents() {
     btn.addEventListener('click', e => this.setSaber(e.target.dataset.color));
   });
 
-  this.elements.wpBtns.forEach(btn => {
-    btn.addEventListener('click', e => this.setWallpaper(e.target.dataset.wp));
+ this.elements.wpBtns.forEach(btn => btn.addEventListener('click', () => this.setWallpaper(btn.dataset.wp)));
   });
 
   if (this.elements.wpUpload) {

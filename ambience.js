@@ -633,12 +633,12 @@ let idx = 0;
     const iv = setInterval(playChord, 4800);
     nodes.push({ stop: () => { clearInterval(iv); state.active = false; } });
 
-    const brush = createNoise('pink'), bg = createGainNode(0.02);
+    const brush = createNoise('pink'), bg = createGainNode(0.005);
     brush.connect(createFilter('bandpass', 6000, 2)).connect(bg).connect(dest);
     brush.start(); nodes.push(brush);
     nodes.push(createLFO(2.2, 0.006, 0.028, bg.gain));
 
-    const hihat = createNoise('white'), hg = createGainNode(0.008);
+    const hihat = createNoise('white'), hg = createGainNode(0.002);
     hihat.connect(createFilter('highpass', 8000, 0.5)).connect(hg).connect(dest);
     hihat.start(); nodes.push(hihat);
     nodes.push(createLFO(3.3, 0.003, 0.012, hg.gain));
