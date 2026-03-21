@@ -93,7 +93,7 @@ body.hyperspace-jump .app {
     animation: appShake 1.2s cubic-bezier(.36,.07,.19,.97) both;
 }
 @keyframes appShake {
-    0%   { transform: scale(1);     filter: blur(0)      opacity: 1; }
+    0%   { transform: scale(1);     filter: blur(0);     opacity: 1; }
     30%  { transform: scale(0.85);  filter: blur(3px);   opacity: 0.6; }
     60%  { transform: scale(0.1);   filter: blur(12px);  opacity: 0; }
     61%  { transform: scale(0.1);   filter: blur(12px);  opacity: 0; }
