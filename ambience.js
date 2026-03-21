@@ -728,11 +728,19 @@ let idx = 0;
   //  PLAY / STOP / LOOP
   // ============================================
 
-  function play(sceneKey) {
+ function play(sceneKey) {
     if (!SCENES[sceneKey] || activeScenes[sceneKey]) return;
     getCtx();
-    if (ctx.state === 'suspended') ctx.resume(); // resume on user gesture
-    // ... rest of existing play() code
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const sg = ctx.createGain();
+    sg.gain.value = sceneVolumes[sceneKey] !== undefined ? sceneVolumes[sceneKey] : 1.0;
+    sg.connect(masterGain);
+    sceneGains[sceneKey] = sg;
+
+    activeScenes[sceneKey] = SCENES[sceneKey].build(sg);
+    activeScenes[sceneKey].push({ disconnect: () => { sg.disconnect(); delete sceneGains[sceneKey]; } });
+}
 
     // Create a gain node for this scene and wire it
     const sg = ctx.createGain();
