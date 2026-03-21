@@ -742,16 +742,6 @@ function play(sceneKey) {
     activeScenes[sceneKey].push({ disconnect: () => { sg.disconnect(); delete sceneGains[sceneKey]; } });
 }
 
-    // Create a gain node for this scene and wire it
-    const sg = ctx.createGain();
-    sg.gain.value = sceneVolumes[sceneKey] !== undefined ? sceneVolumes[sceneKey] : 1.0;
-    sg.connect(masterGain);
-    sceneGains[sceneKey] = sg;
-
-    // Pass dest directly into builder — no more global currentBuildingScene
-    activeScenes[sceneKey] = SCENES[sceneKey].build(sg);
-    activeScenes[sceneKey].push({ disconnect: () => { sg.disconnect(); delete sceneGains[sceneKey]; } });
-  }
 
 function stop(sceneKey) {
     if (activeScenes[sceneKey]) {
