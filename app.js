@@ -132,15 +132,15 @@ ambientVolInput: null,
 bindEvents() {
   // Core Timer Controls
   if (this.elements.btnStart) {
-    this.elements.btnStart.addEventListener('click', this.toggleTimer);
+this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
   }
 
   if (this.elements.btnReset) {
-    this.elements.btnReset.addEventListener('click', this.resetTimer);
+this.elements.btnReset.addEventListener('click', () => this.resetTimer());
   }
 
   if (this.elements.btnSkip) {
-    this.elements.btnSkip.addEventListener('click', this.skipSession);
+this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
 
   if (this.elements.btnZen) {
@@ -222,7 +222,8 @@ bindEvents() {
 
   // General Settings Inputs
   const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
-  inputs.forEach(input => input.addEventListener('change', this.saveSettings));
+ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings()));
+
 
   // Notes
   const btnAddNote = document.getElementById('btn-add-note');
