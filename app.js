@@ -47,8 +47,9 @@ const app = {
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
       currentIntention: null,
 currentSubtasks: [],
-        activeNoteFilter: null,
-        sessionStartTime: null,
+activeNoteFilter: null,
+sessionStartTime: null,
+unlockedThemes: ['normal', 'starwars'],
         minutesToday: 0,
         totalMinutes: 0,
     },
@@ -62,6 +63,8 @@ currentSubtasks: [],
     init() {
         this.cacheDOM();
         this.loadSettings();
+        this.loadUnlockedThemes();
+
         this.loadStats();
         this.loadCustomWallpapers();
         this.updateTheme();
@@ -1193,37 +1196,33 @@ this.state.history.push({
         if (this.state.level > cl && cl > 0) {
             this.showToast('Level Up!', `You've reached Level ${this.state.level}: ${rankName}`, '⭐');
         }
+        this.checkThemeUnlocks();
+
     },
 
     // ===================================
     // THEMES & APPEARANCE
     // ===================================
-    updateTheme() {
-        const isSw = this.state.settings.theme === 'starwars';
-        document.body.classList.toggle('theme-starwars', isSw);
-        if (this.elements.swSettings) this.elements.swSettings.style.display = isSw ? 'block' : 'none';
+updateTheme() {
+  const theme = this.state.settings.theme;
+  const isSw = theme === 'starwars';
+  document.body.classList.remove('theme-starwars','theme-cyberpunk','theme-lofi','theme-matrix');
+  if (theme !== 'normal') document.body.classList.add(`theme-${theme}`);
+  if (this.elements.swSettings) this.elements.swSettings.style.display = isSw ? 'block' : 'none';
+  if (this.elements.btnWarp) this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
+  const sf = document.getElementById('starfield');
+  if (sf) sf.style.display = isSw ? 'block' : 'none';
+  if (isSw) this.setSaber(this.state.settings.saber);
+  else if (theme === 'normal') this.setAccent(this.state.settings.accent);
+  this.toggleMatrixRain(theme === 'matrix');
+  this.setWallpaper(this.state.settings.wallpaper);
+  document.querySelectorAll('.theme-preview-card').forEach(c => c.classList.remove('active'));
+  const activeCard = document.getElementById(`theme-preview-${theme}`);
+  if (activeCard) activeCard.classList.add('active');
+  this.updateLogo();
+  this.updateLevel();
+},
 
-        const tText = document.getElementById('theme-toggle-text');
-        if (tText) tText.textContent = isSw ? '🌿 Normal Mode' : '⚔️ Star Wars';
-        if (this.elements.btnWarp) this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
-
-        const sf = document.getElementById('starfield');
-        if (sf) sf.style.display = isSw ? 'block' : 'none';
-
-        if (isSw) {
-            this.setSaber(this.state.settings.saber);
-            document.body.style.setProperty('--accent', this.state.saberColors[this.state.settings.saber]);
-        } else {
-            this.setAccent(this.state.settings.accent);
-        }
-this.setWallpaper(this.state.settings.wallpaper);
-        const pNormal = document.getElementById('theme-preview-normal');
-const pSw = document.getElementById('theme-preview-starwars');
-if (pNormal) pNormal.classList.toggle('active', !isSw);
-if (pSw) pSw.classList.toggle('active', isSw);
-        this.updateLogo();
-        this.updateLevel();
-    },
 
    toggleTheme() {
     this.state.settings.theme = this.state.settings.theme === 'starwars' ? 'normal' : 'starwars';
@@ -1238,12 +1237,19 @@ if (window.AmbienceModule) {
 }
 },
 setThemePreview(theme) {
-    document.getElementById('theme-preview-normal').classList.toggle('active', theme === 'normal');
-    document.getElementById('theme-preview-starwars').classList.toggle('active', theme === 'starwars');
-    if (theme !== this.state.settings.theme) {
-        this.toggleTheme();
-    }
+  const lockLevels = { cyberpunk: 5, lofi: 10, matrix: 15 };
+  if (lockLevels[theme] && !this.state.unlockedThemes.includes(theme)) {
+    this.showToast('🔒 Locked!', `Reach Level ${lockLevels[theme]} to unlock ${theme}`, '🔒');
+    return;
+  }
+  document.querySelectorAll('.theme-preview-card').forEach(c => c.classList.remove('active'));
+  const active = document.getElementById(`theme-preview-${theme}`);
+  if (active) active.classList.add('active');
+  this.state.settings.theme = theme;
+  this.saveSettings();
+  this.updateTheme();
 },
+
 
     setAccent(colorName) {
         if (!this.state.accents[colorName]) return;
@@ -1306,21 +1312,94 @@ setThemePreview(theme) {
     // UI RENDERING
     // ===================================
     updateLogo() {
-        const title = document.getElementById('logo-title');
-        const subtitle = document.getElementById('logo-subtitle');
-        if (this.state.settings.theme === 'starwars') {
-            if (title) title.textContent = 'JEDI FOCUS';
-            if (subtitle) subtitle.textContent = 'May the force be with you';
-} else {
-    if (title) title.textContent = 'Pomodoro Focus';
-    if (subtitle) subtitle.textContent = '';
-}
-// Always refresh notebook regardless of theme
-const titleEl = document.getElementById('notebook-cover-title');
-const emblem = document.querySelector('.notebook-emblem');
-if (titleEl) titleEl.textContent = this.state.settings.theme === 'starwars' ? 'Jedi Archives' : 'My Journal';
-if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔️' : '📖';
-    },
+  const theme = this.state.settings.theme;
+  const title = document.getElementById('logo-title');
+  const subtitle = document.getElementById('logo-subtitle');
+  const logoMap = {
+    starwars:  { title:'JEDI FOCUS',    sub:'May the force be with you' },
+    cyberpunk: { title:'CYBER FOCUS',   sub:'Jack in. Focus up.' },
+    lofi:      { title:'lo-fi focus',   sub:'chill · study · repeat' },
+    matrix:    { title:'MATRIX FOCUS',  sub:'There is no spoon.' },
+    normal:    { title:'Pomodoro Focus', sub:'' },
+  };
+  const l = logoMap[theme] || logoMap.normal;
+  if (title) title.textContent = l.title;
+  if (subtitle) subtitle.textContent = l.sub;
+  const titleEl = document.getElementById('notebook-cover-title');
+  const emblem = document.querySelector('.notebook-emblem');
+  if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : 'My Journal';
+  if (emblem) emblem.textContent = theme === 'starwars' ? '⚔️' : '📖';
+},
+toggleMatrixRain(active) {
+  const canvas = document.getElementById('matrix-rain');
+  if (!canvas) return;
+  if (!active) {
+    canvas.style.display = 'none';
+    if (this._matrixInterval) { clearInterval(this._matrixInterval); this._matrixInterval = null; }
+    return;
+  }
+  canvas.style.display = 'block';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const cols = Math.floor(canvas.width / 16);
+  const drops = Array(cols).fill(1);
+  if (this._matrixInterval) clearInterval(this._matrixInterval);
+  this._matrixInterval = setInterval(() => {
+    ctx.fillStyle = 'rgba(0,3,0,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff41';
+    ctx.font = '14px monospace';
+    drops.forEach((y, i) => {
+      const char = String.fromCharCode(0x30A0 + Math.random() * 96);
+      ctx.fillText(char, i * 16, y * 16);
+      if (y * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    });
+  }, 50);
+},
+
+loadUnlockedThemes() {
+  const saved = localStorage.getItem('pomodoro-unlocked-themes');
+  if (saved) this.state.unlockedThemes = JSON.parse(saved);
+  this.refreshThemeCards();
+},
+
+saveUnlockedThemes() {
+  localStorage.setItem('pomodoro-unlocked-themes', JSON.stringify(this.state.unlockedThemes));
+},
+
+refreshThemeCards() {
+  const iconMap = { cyberpunk:'🌆', lofi:'🎵', matrix:'💊' };
+  ['cyberpunk','lofi','matrix'].forEach(theme => {
+    const card = document.getElementById(`theme-preview-${theme}`);
+    if (!card) return;
+    if (this.state.unlockedThemes.includes(theme)) {
+      card.classList.remove('theme-locked');
+      const lockIcon = card.querySelector('.theme-lock-icon');
+      if (lockIcon) lockIcon.textContent = iconMap[theme];
+      const unlockLabel = card.querySelector('.theme-unlock-label');
+      if (unlockLabel) unlockLabel.remove();
+    }
+  });
+},
+
+checkThemeUnlocks() {
+  const unlocks = [
+    { theme:'cyberpunk', level:5,  name:'Cyberpunk', icon:'🌆' },
+    { theme:'lofi',      level:10, name:'Lo-fi',     icon:'🎵' },
+    { theme:'matrix',    level:15, name:'Matrix',    icon:'💊' },
+  ];
+  unlocks.forEach(({ theme, level, name, icon }) => {
+    if (this.state.level >= level && !this.state.unlockedThemes.includes(theme)) {
+      this.state.unlockedThemes.push(theme);
+      this.saveUnlockedThemes();
+      this.refreshThemeCards();
+      setTimeout(() => this.showToast(`${icon} Theme Unlocked!`, `${name} theme is now available!`, icon), 600);
+    }
+  });
+},
+
 
     rotateQuote() {
         const text = document.getElementById('quote-text');

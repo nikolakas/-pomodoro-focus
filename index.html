@@ -278,23 +278,33 @@
 
                     <h3 class="settings-section-title">Appearance</h3>
                     <div class="setting-row theme-preview-row">
-    <div class="theme-previews">
-        <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
-            <div class="theme-preview-swatch theme-swatch-normal">
-                <span>🍅</span>
-                <div class="theme-swatch-bar"></div>
-            </div>
-            <span class="theme-preview-label">Normal</span>
-        </div>
-        <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
-            <div class="theme-preview-swatch theme-swatch-starwars">
-                <span>⚔️</span>
-                <div class="theme-swatch-bar sw"></div>
-            </div>
-            <span class="theme-preview-label">Star Wars</span>
-        </div>
+  <div class="theme-previews" id="theme-previews-grid">
+    <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
+      <div class="theme-preview-swatch theme-swatch-normal"><span>🍅</span></div>
+      <span class="theme-preview-label">Normal</span>
     </div>
+    <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
+      <div class="theme-preview-swatch theme-swatch-starwars"><span>⚔️</span></div>
+      <span class="theme-preview-label">Star Wars</span>
+    </div>
+    <div class="theme-preview-card theme-locked" id="theme-preview-cyberpunk" onclick="app.setThemePreview('cyberpunk')">
+      <div class="theme-preview-swatch theme-swatch-cyberpunk"><span class="theme-lock-icon">🔒</span></div>
+      <span class="theme-preview-label">Cyberpunk</span>
+      <span class="theme-unlock-label">Lvl 5</span>
+    </div>
+    <div class="theme-preview-card theme-locked" id="theme-preview-lofi" onclick="app.setThemePreview('lofi')">
+      <div class="theme-preview-swatch theme-swatch-lofi"><span class="theme-lock-icon">🔒</span></div>
+      <span class="theme-preview-label">Lo-fi</span>
+      <span class="theme-unlock-label">Lvl 10</span>
+    </div>
+    <div class="theme-preview-card theme-locked" id="theme-preview-matrix" onclick="app.setThemePreview('matrix')">
+      <div class="theme-preview-swatch theme-swatch-matrix"><span class="theme-lock-icon">🔒</span></div>
+      <span class="theme-preview-label">Matrix</span>
+      <span class="theme-unlock-label">Lvl 15</span>
+    </div>
+  </div>
 </div>
+
                     <div class="setting-row">
                         <label>Accent Color</label>
                         <div class="color-picker" id="color-picker">
@@ -643,6 +653,7 @@
     </div>
   </div>
 </div>
+<canvas id="matrix-rain" style="display:none;"></canvas>
 
 </body>
 </html>
