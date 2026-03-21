@@ -1120,7 +1120,6 @@ if (savedDate !== todayStr) {
         }
 
 this.state.sessionsToday = parseInt(localStorage.getItem('pomodoro-today') || 0);
-this.state.totalSessions = parseInt(localStorage.getItem('pomodoro-total') || 0);
 this.state.minutesToday = parseInt(localStorage.getItem('pomodoro-minutes-today') || 0);
 this.state.totalMinutes = parseInt(localStorage.getItem('pomodoro-total-minutes') || 0);
 this.state.xp = parseInt(localStorage.getItem('pomodoro-xp') || 0);
