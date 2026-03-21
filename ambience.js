@@ -728,7 +728,7 @@ let idx = 0;
   //  PLAY / STOP / LOOP
   // ============================================
 
- function play(sceneKey) {
+function play(sceneKey) {
     if (!SCENES[sceneKey] || activeScenes[sceneKey]) return;
     getCtx();
     if (ctx.state === 'suspended') ctx.resume();
