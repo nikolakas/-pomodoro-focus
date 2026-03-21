@@ -1180,6 +1180,16 @@ if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔
     },
 
     renderStats() {
+		 // Empty state check
+    const emptyState = document.getElementById('stats-empty-state');
+    const statsGrid = document.getElementById('stats-overview-grid');
+    if (this.state.totalSessions === 0) {
+        if (emptyState) emptyState.style.display = 'flex';
+        if (statsGrid) statsGrid.style.opacity = '0.3';
+    } else {
+        if (emptyState) emptyState.style.display = 'none';
+        if (statsGrid) statsGrid.style.opacity = '1';
+    }
         const statToday = document.getElementById('stat-today');
         const statTotal = document.getElementById('stat-total');
         const statWeek = document.getElementById('stat-week');
