@@ -206,7 +206,7 @@ bindEvents() {
   });
 
  this.elements.wpBtns.forEach(btn => btn.addEventListener('click', () => this.setWallpaper(btn.dataset.wp)));
-  });
+
 
   if (this.elements.wpUpload) {
     this.elements.wpUpload.addEventListener('change', e => this.handleImageUpload(e));
