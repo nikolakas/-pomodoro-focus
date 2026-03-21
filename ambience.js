@@ -753,15 +753,15 @@ let idx = 0;
     activeScenes[sceneKey].push({ disconnect: () => { sg.disconnect(); delete sceneGains[sceneKey]; } });
   }
 
-  function stop(sceneKey) {
+function stop(sceneKey) {
     if (activeScenes[sceneKey]) {
-      activeScenes[sceneKey].forEach(n => {
-        try { if (n.stop) n.stop(); } catch {}
-        try { if (n.disconnect) n.disconnect(); } catch {}
-      });
-      delete activeScenes[sceneKey];
+        activeScenes[sceneKey].forEach(n => {
+            try { if (n.stop) n.stop(); } catch(e) {}
+            try { if (n.disconnect) n.disconnect(); } catch(e) {}
+        });
+        delete activeScenes[sceneKey];
     }
-  }
+}
 
   function stopAll() {
     Object.keys(activeScenes).forEach(k => stop(k));
