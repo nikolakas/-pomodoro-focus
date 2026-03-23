@@ -393,7 +393,6 @@ if (rqMod) rqMod.style.display = 'none';
     });
   }
   // Zoom with scroll wheel
-canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (MAP_W / rect.width);
@@ -2138,7 +2137,7 @@ initOnboarding() {
 };
 
 window.app = app;
-window.ExplorerModule = ExplorerModule;
-document.addEventListener('DOMContentLoaded', () => ExplorerModule.init());
+
+document.addEventListener('DOMContentLoaded', () => app.init());
 
 

@@ -458,15 +458,14 @@ function unlockCountry(dest) {
   if (!state.unlockedCountries.includes(dest.id)) state.unlockedCountries.push(dest.id);
   state.activeFlight = null;
   saveState();
-
-    document.getElementById('explorer-flight-overlay').style.display = 'none';
-    drawMap();
-    renderDestinations();
-    updateTopbar();
-    showArrivalModal(dest, getDistance(COUNTRIES.find(c=>c.id===state.origin), dest), true);
-    if (window.app?.addXp) window.app.addXp(Math.floor(getDistance(COUNTRIES.find(c=>c.id===state.origin), dest) / 100));
-    if (window.app?.showToast) window.app.showToast(`🎉 ${dest.name} Unlocked!`, `You've arrived at ${dest.flag} ${dest.name}!`, dest.flag);
-  }
+  document.getElementById('explorer-flight-overlay').style.display = 'none';
+  drawMap();
+  renderDestinations();
+  updateTopbar();
+  showArrivalModal(dest, getDistance(COUNTRIES.find(c=>c.id===state.origin), dest), true);
+  if (window.app?.addXp) window.app.addXp(Math.floor(getDistance(COUNTRIES.find(c=>c.id===state.origin), dest) / 100));
+  if (window.app?.showToast) window.app.showToast(`🎉 ${dest.name} Unlocked!`, `You've arrived at ${dest.flag} ${dest.name}!`, dest.flag);
+}
 
   // ── Arrival Modal ──
   function showArrivalModal(dest, dist, isNew) {
@@ -579,19 +578,14 @@ document.getElementById('btn-change-origin')?.addEventListener('click', () => {
     if (window.app?.showToast) window.app.showToast('✈️ Currently Flying!', 'Abort your current flight before changing origin.', '🔒');
     return;
   }
-    if (state.originChangesUsed === 1) {
-
+  if (state.originChangesUsed === 1) {
     state.originChangesUsed = 2;
     saveState();
     stopLiveTracking();
     document.getElementById('explorer-origin-picker').style.display = 'flex';
     document.getElementById('explorer-main').style.display = 'none';
     setTimeout(() => {
-      if (window.app?.showToast) window.app.showToast(
-        '⚠️ Last Free Change!',
-        'Next origin change will delete ALL unlocked countries.',
-        '⚠️'
-      );
+      if (window.app?.showToast) window.app.showToast('⚠️ Last Free Change!', 'Next origin change will delete ALL unlocked countries.', '⚠️');
     }, 400);
   } else if (state.originChangesUsed >= 2) {
     const confirmed = confirm('⚠️ WARNING: This will permanently DELETE all your unlocked countries and reset flight progress.\n\nAre you sure?');
@@ -608,9 +602,8 @@ document.getElementById('btn-change-origin')?.addEventListener('click', () => {
     document.getElementById('explorer-origin-picker').style.display = 'flex';
     document.getElementById('explorer-main').style.display = 'none';
   }
+});
 
-
-    });
 
     document.querySelectorAll('.explorer-dest-tab').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -651,7 +644,7 @@ canvas.addEventListener('wheel', e => {
   state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-newScale), state.viewTransform.offsetY));
   drawMap();
 }, { passive: false });
-
+    
 
 // Pan
 canvas.addEventListener('mousedown', e => {
@@ -698,9 +691,12 @@ canvas.addEventListener('mousemove', e => {
   } else {
     tooltip.style.display = 'none';
   }
+
 });
 
-canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none';
+
+ });
 
 
 
@@ -725,7 +721,7 @@ document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
   updateTopbar();
   if (window.app?.showToast) window.app.showToast('🛑 Flight Aborted', 'Pick a new destination or change origin.', '✈️');
 });
-  }
+ }
 
   function init() {
     loadState();
@@ -747,5 +743,6 @@ document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
 })();
 
 window.ExplorerModule = ExplorerModule;
-document.addEventListener('DOMContentLoaded', () => ExplorerModule.init());
+document.addEventListener('DOMContentLoaded', function() { ExplorerModule.init(); });
+
 
