@@ -525,6 +525,10 @@ switchTab(target) {
     if (target === 'notes') {
         this.initNotebook();
     }
+    if (target === 'explorer') {
+  if (window.ExplorerModule) window.ExplorerModule.onTabOpen();
+}
+
 },
 
     // ===================================

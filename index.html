@@ -10,6 +10,7 @@
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#ff6b6b">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+    <link rel="stylesheet" href="explorer.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -42,6 +43,8 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Notes
                 </button>
+                <button class="tab" data-tab="explorer">🌍 Explorer</button>
+
             </nav>
         </header>
 
@@ -511,6 +514,103 @@
         </div>
     </div>
 </main>
+   <!-- Explorer -->
+    <div class="tab-content" id="panel-explorer">
+  <!-- Origin Picker (shown on first use) -->
+  <div id="explorer-origin-picker" class="explorer-origin-screen" style="display:none;">
+    <div class="explorer-origin-card glass-card">
+      <div class="explorer-origin-globe">🌍</div>
+      <h2>Where do you study from?</h2>
+      <p>Pick your home country — this is where your journey begins.</p>
+      <select id="explorer-origin-select" class="explorer-select"></select>
+      <button class="btn btn-primary" id="btn-set-origin">Start Exploring ✈️</button>
+    </div>
+  </div>
+
+  <!-- Main Explorer UI -->
+  <div id="explorer-main" style="display:none;">
+    <!-- Top bar -->
+    <div class="explorer-topbar glass-card">
+      <div class="explorer-topbar-left">
+        <span class="explorer-origin-flag" id="explorer-origin-flag">🇮🇹</span>
+        <div>
+          <div class="explorer-origin-name" id="explorer-origin-name">Italy</div>
+          <div class="explorer-km-label">Total km studied: <strong id="explorer-total-km">0 km</strong></div>
+        </div>
+      </div>
+      <div class="explorer-topbar-right">
+        <div class="explorer-stat">
+          <span id="explorer-countries-count">0</span>
+          <label>Countries</label>
+        </div>
+        <div class="explorer-stat">
+          <span id="explorer-continents-count">0</span>
+          <label>Continents</label>
+        </div>
+        <button class="btn explorer-change-origin-btn" id="btn-change-origin">Change Origin</button>
+      </div>
+    </div>
+
+    <!-- Map Canvas -->
+    <div class="explorer-map-wrap">
+      <canvas id="explorer-map" width="900" height="450"></canvas>
+      <div class="explorer-flight-overlay" id="explorer-flight-overlay" style="display:none;">
+        <div class="explorer-flight-card glass-card">
+          <div class="flight-flag" id="flight-flag">✈️</div>
+          <div class="flight-info">
+            <div class="flight-route" id="flight-route">Italy → Greece</div>
+            <div class="flight-distance" id="flight-distance">1,052 km</div>
+          </div>
+          <div class="flight-progress-bar">
+            <div class="flight-progress-fill" id="flight-progress-fill"></div>
+            <span class="flight-plane-icon" id="flight-plane-icon">✈️</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Destination Picker -->
+    <div class="explorer-destinations glass-card" id="explorer-destinations">
+      <div class="explorer-dest-header">
+        <h3>✈️ Choose Your Next Destination</h3>
+        <div class="explorer-dest-subtitle" id="explorer-dest-subtitle">Select your current origin first</div>
+      </div>
+      <div class="explorer-dest-tabs">
+        <button class="explorer-dest-tab active" data-filter="reachable">Reachable Now</button>
+        <button class="explorer-dest-tab" data-filter="all">All Countries</button>
+        <button class="explorer-dest-tab" data-filter="unlocked">Unlocked 🏆</button>
+      </div>
+      <div class="explorer-dest-grid" id="explorer-dest-grid"></div>
+    </div>
+
+    <!-- Arrival Modal -->
+    <div id="explorer-arrival-modal" class="modal" style="display:none;">
+      <div class="modal-content glass-card explorer-arrival-card">
+        <div class="arrival-confetti" id="arrival-confetti"></div>
+        <div class="arrival-flag" id="arrival-flag">🇬🇷</div>
+        <h2 class="arrival-title" id="arrival-title">Welcome to Greece!</h2>
+        <div class="arrival-stats-row">
+          <div class="arrival-stat"><span id="arrival-distance">1,052</span><label>km flown</label></div>
+          <div class="arrival-stat"><span id="arrival-time">25</span><label>min studied</label></div>
+          <div class="arrival-stat"><span id="arrival-xp">+25</span><label>XP earned</label></div>
+        </div>
+        <div class="arrival-fact glass-card" id="arrival-fact">
+          <span class="arrival-fact-label">📖 Did you know?</span>
+          <p id="arrival-fact-text">Greece has over 6,000 islands.</p>
+        </div>
+        <div class="arrival-info-row">
+          <span>🏛️ Capital: <strong id="arrival-capital">Athens</strong></span>
+          <span>👥 Population: <strong id="arrival-population">10.7M</strong></span>
+        </div>
+        <div class="arrival-actions">
+          <button class="btn btn-primary" id="btn-arrival-set-origin">Fly from here next 🛫</button>
+          <button class="btn" id="btn-arrival-close">Back to Map</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
     <!-- Shortcut Modal -->
     <div id="shortcut-modal" class="modal" style="display:none;">
@@ -654,6 +754,7 @@
   </div>
 </div>
 <canvas id="matrix-rain" style="display:none;"></canvas>
+<script src="explorer.js"></script>
 
 </body>
 </html>
