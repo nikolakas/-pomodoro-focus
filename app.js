@@ -569,7 +569,8 @@ switchTab(target) {
         this.initNotebook();
     }
 if (target === 'explorer') {
-  if (window.ExplorerModule) window.ExplorerModule.onTabOpen()
+if (window.ExplorerModule) window.ExplorerModule.onTabOpen();
+
 }
 
 },
