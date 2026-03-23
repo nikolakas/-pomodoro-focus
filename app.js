@@ -392,6 +392,49 @@ if (rqMod) rqMod.style.display = 'none';
       if (modal) modal.style.display = 'none';
     });
   }
+  // Zoom with scroll wheel
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (MAP_W / rect.width);
+  const my = (e.clientY - rect.top)  * (MAP_H / rect.height);
+  const delta = e.deltaY < 0 ? 1.15 : 0.87;
+  const newScale = Math.min(8, Math.max(1, state.viewTransform.scale * delta));
+  state.viewTransform.offsetX = mx - newScale * (mx - state.viewTransform.offsetX) / state.viewTransform.scale;
+  state.viewTransform.offsetY = my - newScale * (my - state.viewTransform.offsetY) / state.viewTransform.scale;
+  state.viewTransform.scale = newScale;
+  const maxX=0, minX=canvas.width*(1-newScale), maxY=0, minY=canvas.height*(1-newScale);
+  state.viewTransform.offsetX = Math.min(maxX, Math.max(minX, state.viewTransform.offsetX));
+  state.viewTransform.offsetY = Math.min(maxY, Math.max(minY, state.viewTransform.offsetY));
+  drawMap();
+}, { passive: false });
+
+// Pan with mouse drag
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  state._isDragging = true;
+  state._dragStart = { x: e.clientX - state.viewTransform.offsetX, y: e.clientY - state.viewTransform.offsetY };
+  canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('mousemove', e => {
+  if (!state._isDragging) return;
+  state.viewTransform.offsetX = e.clientX - state._dragStart.x;
+  state.viewTransform.offsetY = e.clientY - state._dragStart.y;
+  const s = state.viewTransform.scale;
+  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-s),  state.viewTransform.offsetX));
+  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-s), state.viewTransform.offsetY));
+  drawMap();
+});
+canvas.addEventListener('mouseup',    () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseleave', () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.style.cursor = 'grab';
+
+// Reset zoom button
+document.getElementById('btn-reset-zoom')?.addEventListener('click', () => {
+  state.viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
+  drawMap();
+});
+
 },
 
 

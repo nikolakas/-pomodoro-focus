@@ -94,9 +94,15 @@ const ExplorerModule = (() => {
   let state = {
     origin: null,
     unlockedCountries: [],
-    activeFlight: null, // { destId, kmNeeded }
-    currentFilter: 'all',
-    liveInterval: null,
+    activeFlight: null,  // { destId, kmNeeded }
+originChangesUsed: 0,
+
+currentFilter: 'all',
+liveInterval: null,
+viewTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+_isDragging: false,
+_dragStart: { x: 0, y: 0 },
+
   };
 
   // ── Helpers ──
@@ -152,8 +158,12 @@ const ExplorerModule = (() => {
   function loadState() {
     const s = localStorage.getItem('pomodoro-explorer');
     if (s) { const d = JSON.parse(s); state
-.origin = d.origin || null; state.unlockedCountries = d.unlockedCountries || []; state.activeFlight = d.activeFlight || null; } }
-  function saveState() { localStorage.setItem('pomodoro-explorer', JSON.stringify({ origin: state.origin, unlockedCountries: state.unlockedCountries, activeFlight: state.activeFlight })); }
+.origin = d.origin || null; state.unlockedCountries = d.unlockedCountries || []; state.activeFlight = d.activeFlight || null;
+state.originChangesUsed = d.originChangesUsed || 0;
+ } }
+  function saveState() { localStorage.setItem('pomodoro-explorer', JSON.stringify({ origin: state.origin, unlockedCountries: state.unlockedCountries, activeFlight: state.activeFlight,
+originChangesUsed: state.originChangesUsed || 0
+ })); }
 
   // ── Map Image ──
   let mapImage = null;
@@ -173,7 +183,15 @@ const ExplorerModule = (() => {
     const canvas = document.getElementById('explorer-map');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, MAP_W, MAP_H);
+   ctx.setTransform(1,0,0,1,0,0);
+ctx.clearRect(0, 0, MAP_W, MAP_H);
+ctx.setTransform(
+  state.viewTransform.scale, 0, 0,
+  state.viewTransform.scale,
+  state.viewTransform.offsetX,
+  state.viewTransform.offsetY
+);
+ 
 
     // Background
     if (mapImage) {
@@ -436,8 +454,7 @@ const ExplorerModule = (() => {
   }
 
   function unlockCountry(dest) {
-    if (!state.unlockedCountries.includes(dest.id)) state.unlockedCountries.push(dest.id);
-    state.activeFlight = null;
+      state.activeFlight = null;
     saveState();
     document.getElementById('explorer-flight-overlay').style.display = 'none';
     drawMap();
@@ -469,8 +486,7 @@ const ExplorerModule = (() => {
     document.getElementById('btn-arrival-set-origin').onclick = () => {
       state.origin = dest.id;
       state.activeFlight = null;
-      if (!state.unlockedCountries.includes(dest.id)) state.unlockedCountries.push(dest.id);
-      saveState();
+        saveState();
       modal.style.display = 'none';
       showMainUI();
     };
@@ -518,18 +534,54 @@ const ExplorerModule = (() => {
   }
 
   function bindEvents() {
-    document.getElementById('btn-set-origin')?.addEventListener('click', () => {
-      const sel = document.getElementById('explorer-origin-select');
-      if (!sel) return;
-      state.origin = sel.value;
-      if (!state.unlockedCountries.includes(state.origin)) state.unlockedCountries.push(state.origin);
-      saveState(); showMainUI();
-    });
+ document.getElementById('btn-set-origin')?.addEventListener('click', () => {
+  const sel = document.getElementById('explorer-origin-select');
+  if (!sel) return;
+  state.origin = sel.value;
+  state.originChangesUsed = 1;
+  saveState();
+  showMainUI();
+  setTimeout(() => {
+    if (window.app?.showToast) window.app.showToast(
+      '📍 Origin Set!',
+      'You can change your origin ONE more time free. After that, it resets ALL progress.',
+      '⚠️'
+    );
+  }, 800);
+});
 
-    document.getElementById('btn-change-origin')?.addEventListener('click', () => {
-      stopLiveTracking();
-      document.getElementById('explorer-origin-picker').style.display = 'flex';
-      document.getElementById('explorer-main').style.display = 'none';
+
+document.getElementById('btn-change-origin')?.addEventListener('click', () => {
+  if (state.originChangesUsed === 1) {
+    state.originChangesUsed = 2;
+    saveState();
+    stopLiveTracking();
+    document.getElementById('explorer-origin-picker').style.display = 'flex';
+    document.getElementById('explorer-main').style.display = 'none';
+    setTimeout(() => {
+      if (window.app?.showToast) window.app.showToast(
+        '⚠️ Last Free Change!',
+        'Next origin change will delete ALL unlocked countries.',
+        '⚠️'
+      );
+    }, 400);
+  } else if (state.originChangesUsed >= 2) {
+    const confirmed = confirm('⚠️ WARNING: This will permanently DELETE all your unlocked countries and reset flight progress.\n\nAre you sure?');
+    if (!confirmed) return;
+    state.unlockedCountries = [];
+    state.activeFlight = null;
+    saveState();
+    stopLiveTracking();
+    document.getElementById('explorer-flight-overlay').style.display = 'none';
+    document.getElementById('explorer-origin-picker').style.display = 'flex';
+    document.getElementById('explorer-main').style.display = 'none';
+  } else {
+    stopLiveTracking();
+    document.getElementById('explorer-origin-picker').style.display = 'flex';
+    document.getElementById('explorer-main').style.display = 'none';
+  }
+
+
     });
 
     document.querySelectorAll('.explorer-dest-tab').forEach(btn => {
@@ -546,11 +598,57 @@ const ExplorerModule = (() => {
       canvas.addEventListener('click', e => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = MAP_W / rect.width, scaleY = MAP_H / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX, my = (e.clientY - rect.top) * scaleY;
+        const rawX = (e.clientX - rect.left) * scaleX;
+const rawY = (e.clientY - rect.top) * scaleY;
+const mx = (rawX - state.viewTransform.offsetX) / state.viewTransform.scale;
+const my = (rawY - state.viewTransform.offsetY) / state.viewTransform.scale;
+
         let closest = null, minD = 20;
         COUNTRIES.forEach(c => { if (c.id === state.origin) return; const p = project(c.lat,c.lng); const d = Math.sqrt((p.x-mx)**2+(p.y-my)**2); if (d < minD) { minD = d; closest = c; } });
         if (closest) selectDestination(closest.id);
-      });
+        });
+        // Zoom
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (MAP_W / rect.width);
+  const my = (e.clientY - rect.top)  * (MAP_H / rect.height);
+  const delta = e.deltaY < 0 ? 1.15 : 0.87;
+  const newScale = Math.min(8, Math.max(1, state.viewTransform.scale * delta));
+  state.viewTransform.offsetX = mx - newScale * (mx - state.viewTransform.offsetX) / state.viewTransform.scale;
+  state.viewTransform.offsetY = my - newScale * (my - state.viewTransform.offsetY) / state.viewTransform.scale;
+  state.viewTransform.scale = newScale;
+  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-newScale), state.viewTransform.offsetX));
+  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-newScale), state.viewTransform.offsetY));
+  drawMap();
+}, { passive: false });
+
+// Pan
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  state._isDragging = true;
+  state._dragStart = { x: e.clientX - state.viewTransform.offsetX, y: e.clientY - state.viewTransform.offsetY };
+  canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('mousemove', e => {
+  if (!state._isDragging) return;
+  state.viewTransform.offsetX = e.clientX - state._dragStart.x;
+  state.viewTransform.offsetY = e.clientY - state._dragStart.y;
+  const s = state.viewTransform.scale;
+  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-s),  state.viewTransform.offsetX));
+  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-s), state.viewTransform.offsetY));
+  drawMap();
+});
+canvas.addEventListener('mouseup',    () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('mouseleave', () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
+canvas.style.cursor = 'grab';
+
+document.getElementById('btn-reset-zoom')?.addEventListener('click', () => {
+  state.viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
+  drawMap();
+});
+
+
     }
   }
 
