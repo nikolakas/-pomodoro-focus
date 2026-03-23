@@ -568,8 +568,8 @@ switchTab(target) {
     if (target === 'notes') {
         this.initNotebook();
     }
-    if (target === 'explorer') {
-  if (window.ExplorerModule) window.ExplorerModule.onTabOpen();
+if (target === 'explorer') {
+  if (window.ExplorerModule) window.ExplorerModule.onTabOpen()
 }
 
 },
@@ -2137,5 +2137,7 @@ initOnboarding() {
 };
 
 window.app = app;
-document.addEventListener('DOMContentLoaded', () => app.init());
+window.ExplorerModule = ExplorerModule;
+document.addEventListener('DOMContentLoaded', () => ExplorerModule.init());
+
 
