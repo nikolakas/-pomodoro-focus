@@ -241,17 +241,17 @@ ctx.setTransform(
       const isReachable = origin && dist <= completedKm && !isUnlocked && !isOrigin;
       const isActive = state.activeFlight?.destId === c.id;
 
-      let r = 5, col = 'rgba(255,255,255,0.2)';
-      if (isOrigin)   { r = 10; col = '#ff6b6b'; }
-      else if (isUnlocked) { r = 8;  col = '#64ff96'; }
-      else if (isActive)   { r = 9;  col = '#ffca28'; }
-      else if (isReachable){ r = 7;  col = 'rgba(78,205,196,0.8)'; }
+    const sc = state.viewTransform.scale;
+    let r = 5 / sc, col = 'rgba(255,255,255,0.2)';
+    if (isOrigin)        { r = 10 / sc; col = '#ff6b6b'; }
+    else if (isUnlocked) { r =  8 / sc; col = '#64ff96'; }
+    else if (isActive)   { r =  9 / sc; col = '#ffca28'; }
+    else if (isReachable){ r =  7 / sc; col = 'rgba(78,205,196,0.8)'; }
 
-      if (isOrigin || isUnlocked || isReachable || isActive) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r+5, 0, Math.PI*2);
-        ctx.fillStyle = isOrigin ? 'rgba(255,107,107,0.2)' : isUnlocked ? 'rgba(100,255,150,0.15)' : isActive ? 'rgba(255,202,40,0.2)' : 'rgba(78,205,196,0.1)';
-        ctx.fill();
+    if (isOrigin || isUnlocked || isReachable || isActive) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r + 5 / sc, 0, Math.PI*2);
+
       }
 
       ctx.beginPath();
@@ -260,7 +260,8 @@ ctx.setTransform(
       ctx.fill();
 
       if (isOrigin || isUnlocked || isActive) {
-        ctx.font = `${isOrigin ? 'bold ' : ''}9px Inter,sans-serif`;
+      ctx.font = `${isOrigin ? 'bold ' : ''}${Math.round(9 / sc)}px Inter,sans-serif`;
+
         ctx.textAlign = 'center';
         ctx.fillStyle = col;
         ctx.fillText(c.flag, p.x, p.y - r - 3);
@@ -555,8 +556,8 @@ function bindEvents() {
   tooltip.style.cssText = 'position:fixed;display:none;background:rgba(10,22,40,0.95);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:0.75rem;color:#fff;pointer-events:none;z-index:9999;white-space:nowrap;';
   document.body.appendChild(tooltip);
 
-  document.getElementById('btn-set-origin')
-?.addEventListener('click', () => {
+document.getElementById('btn-set-origin')?.addEventListener('click', () => {
+
   const sel = document.getElementById('explorer-origin-select');
   if (!sel) return;
   state.origin = sel.value;
@@ -659,20 +660,21 @@ canvas.addEventListener('mousedown', e => {
   state._dragStart = { x: e.clientX - state.viewTransform.offsetX, y: e.clientY - state.viewTransform.offsetY };
   canvas.style.cursor = 'grabbing';
 });
-canvas.addEventListener('mousemove', e => {
-  if (!state._isDragging) return;
-  state.viewTransform.offsetX = e.clientX - state._dragStart.x;
-  state.viewTransform.offsetY = e.clientY - state._dragStart.y;
-  const s = state.viewTransform.scale;
-  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-s),  state.viewTransform.offsetX));
-  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-s), state.viewTransform.offsetY));
-  drawMap();
-});
+
 canvas.addEventListener('mouseup',    () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
 canvas.addEventListener('mouseleave', () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
 canvas.style.cursor = 'grab';
 canvas.addEventListener('mousemove', e => {
-  if (state._isDragging) { tooltip.style.display = 'none'; return; }
+  if (state._isDragging) {
+    tooltip.style.display = 'none';
+    state.viewTransform.offsetX = e.clientX - state._dragStart.x;
+    state.viewTransform.offsetY = e.clientY - state._dragStart.y;
+    const s = state.viewTransform.scale;
+    state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-s),  state.viewTransform.offsetX));
+    state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-s), state.viewTransform.offsetY));
+    drawMap();
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   const rawX = (e.clientX - rect.left) * (MAP_W / rect.width);
   const rawY = (e.clientY - rect.top)  * (MAP_H / rect.height);
@@ -689,7 +691,7 @@ canvas.addEventListener('mousemove', e => {
     const isUnlocked = state.unlockedCountries.includes(hovered.id);
     const isActive   = state.activeFlight?.destId === hovered.id;
     const status = isOrigin ? '📍 Origin' : isUnlocked ? '✅ Visited' : isActive ? '✈️ Flying here' : '🔒 Locked';
-    tooltip.innerHTML = `<strong>${hovered.flag} ${hovered.name}</strong> <span style="opacity:0.7;margin-left:6px;">${status}</span>`;
+    tooltip.innerHTML = '<strong>' + hovered.flag + ' ' + hovered.name + '</strong><span style="opacity:0.7;margin-left:6px;">' + status + '</span>';
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 14) + 'px';
     tooltip.style.top  = (e.clientY - 10) + 'px';
@@ -697,6 +699,7 @@ canvas.addEventListener('mousemove', e => {
     tooltip.style.display = 'none';
   }
 });
+
 canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
 
