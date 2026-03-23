@@ -388,6 +388,55 @@ ctx.strokeStyle = col; ctx.globalAlpha = 0.3; ctx.stroke();
       grid.appendChild(card);
     });
   }
+function makeOverlayDraggable() {
+  const overlay = document.getElementById('explorer-flight-overlay');
+  if (!overlay) return;
+
+  // Make it positioned absolutely so it can move freely
+  overlay.style.position = 'fixed';
+  overlay.style.cursor = 'grab';
+  overlay.style.userSelect = 'none';
+
+  let isDragging = false, startX, startY, origLeft, origTop;
+
+  function getPos() {
+    const rect = overlay.getBoundingClientRect();
+    return { left: rect.left, top: rect.top };
+  }
+
+  function onStart(clientX, clientY) {
+    isDragging = true;
+    const pos = getPos();
+    overlay.style.left = pos.left + 'px';
+    overlay.style.top  = pos.top  + 'px';
+    overlay.style.right  = 'unset';
+    overlay.style.bottom = 'unset';
+    startX = clientX; startY = clientY;
+    origLeft = pos.left; origTop = pos.top;
+    overlay.style.cursor = 'grabbing';
+  }
+
+  function onMove(clientX, clientY) {
+    if (!isDragging) return;
+    const dx = clientX - startX, dy = clientY - startY;
+    const newLeft = Math.max(0, Math.min(window.innerWidth  - overlay.offsetWidth,  origLeft + dx));
+    const newTop  = Math.max(0, Math.min(window.innerHeight - overlay.offsetHeight, origTop  + dy));
+    overlay.style.left = newLeft + 'px';
+    overlay.style.top  = newTop  + 'px';
+  }
+
+  function onEnd() { isDragging = false; overlay.style.cursor = 'grab'; }
+
+  // Mouse
+  overlay.addEventListener('mousedown',  e => { onStart(e.clientX, e.clientY); e.preventDefault(); });
+  document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+  document.addEventListener('mouseup',   onEnd);
+
+  // Touch (mobile)
+  overlay.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: true });
+  document.addEventListener('touchmove',  e => { if (!isDragging) return; e.preventDefault(); const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive: false });
+  document.addEventListener('touchend',   onEnd);
+}
 
   function selectDestination(id) {
     const dest = COUNTRIES.find(c => c.id === id);
@@ -410,23 +459,27 @@ ctx.strokeStyle = col; ctx.globalAlpha = 0.3; ctx.stroke();
 
     const subtitle = document.getElementById('explorer-dest-subtitle');
     if (subtitle) {
-      if (needsStop && stop && !state.unlockedCountries.includes(stop.id)) {
-        subtitle.innerHTML = `
-          <span>⚠️ Too far for direct flight! Suggested stop: ${stop.flag} <strong>${stop.name}</strong> first</span>
-          <button class="btn btn-primary" id="btn-confirm-fly" style="margin-left:8px;height:30px;padding:0 12px;font-size:0.8rem;border-radius:8px;">
-            Fly to ${stop.flag} ${stop.name} first
-          </button>
-        `;
-        document.getElementById('btn-confirm-fly')?.addEventListener('click', () => confirmFlight(stop));
-      } else {
-        subtitle.innerHTML = `
-          <span>${origin.flag} → ${dest.flag} <strong>${dest.name}</strong> — ${dist.toLocaleString()} km — Study ${formatStudyTime(dist)} total</span>
-          <button class="btn btn-primary" id="btn-confirm-fly" style="margin-left:8px;height:30px;padding:0 12px;font-size:0.8rem;border-radius:8px;">
-            ✈️ Set Destination
-          </button>
-        `;
-        document.getElementById('btn-confirm-fly')?.addEventListener('click', () => confirmFlight(dest));
-      }
+      if (needsStop) {
+  if (stop && !state.unlockedCountries.includes(stop.id)) {
+    // Show "fly to stop first" button
+    subtitle.innerHTML = `...Fly to ${stop.flag} ${stop.name} first...`;
+    document.getElementById('btn-confirm-fly')?.addEventListener('click', () => confirmFlight(stop));
+  } else if (stop && state.unlockedCountries.includes(stop.id)) {
+    // Stop already visited — now allow direct flight via that stop
+    subtitle.innerHTML = `
+      <span>${origin.flag} → ${dest.flag} <strong>${dest.name}</strong> via ${stop.flag} — ${dist.toLocaleString()} km</span>
+      <button class="btn btn-primary" id="btn-confirm-fly" ...>✈️ Set Destination</button>
+    `;
+    document.getElementById('btn-confirm-fly')?.addEventListener('click', () => confirmFlight(dest));
+  } else {
+    // No valid intermediate stop found — block it
+    subtitle.innerHTML = `<span>❌ No reachable stop found to reach ${dest.flag} ${dest.name}. Unlock closer countries first.</span>`;
+  }
+} else {
+  // Direct flight, no stop needed
+  subtitle.innerHTML = `...`;
+  document.getElementById('btn-confirm-fly')?.addEventListener('click', () => confirmFlight(dest));
+}
     }
   }
 
@@ -553,6 +606,7 @@ function bindEvents() {
   tooltip.id = 'map-tooltip';
   tooltip.style.cssText = 'position:fixed;display:none;background:rgba(10,22,40,0.95);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:0.75rem;color:#fff;pointer-events:none;z-index:9999;white-space:nowrap;';
   document.body.appendChild(tooltip);
+makeOverlayDraggable();
 
 document.getElementById('btn-set-origin')?.addEventListener('click', () => {
 
@@ -629,7 +683,7 @@ const my = (rawY - state.viewTransform.offsetY) / state.viewTransform.scale;
         });
         // Zoom
 canvas.addEventListener('wheel', e => {
-  if (!e.ctrlKey) return; // only zoom with Ctrl held
+ 
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (MAP_W / rect.width);
@@ -738,6 +792,9 @@ document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
   document.head.appendChild(style);
 
   return { init, onTabOpen, state, COUNTRIES };
+      // Scroll wheel zoom
+    
+
 })();
 
 window.ExplorerModule = ExplorerModule;
