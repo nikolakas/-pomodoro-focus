@@ -1,4 +1,4 @@
-const ExplorerModule = (() => {
+const ExplorerModule = (function() {
 
   const COUNTRIES = [
     { id:'italy',         name:'Italy',           flag:'🇮🇹', capital:'Rome',         pop:'60.4M', continent:'Europe',   lat:41.9,  lng:12.5,   fact:'Italy has more UNESCO World Heritage Sites than any other country.' },
@@ -157,8 +157,7 @@ _dragStart: { x: 0, y: 0 },
   // ── Persist ──
   function loadState() {
     const s = localStorage.getItem('pomodoro-explorer');
-    if (s) { const d = JSON.parse(s); state
-.origin = d.origin || null; state.unlockedCountries = d.unlockedCountries || []; state.activeFlight = d.activeFlight || null;
+    if (s) { const d = JSON.parse(s); state.origin = d.origin || null; state.unlockedCountries = d.unlockedCountries || []; state.activeFlight = d.activeFlight || null;
 state.originChangesUsed = d.originChangesUsed || 0;
  } }
   function saveState() { localStorage.setItem('pomodoro-explorer', JSON.stringify({ origin: state.origin, unlockedCountries: state.unlockedCountries, activeFlight: state.activeFlight,
@@ -251,7 +250,7 @@ ctx.setTransform(
     if (isOrigin || isUnlocked || isReachable || isActive) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, r + 5 / sc, 0, Math.PI*2);
-
+ctx.strokeStyle = col; ctx.globalAlpha = 0.3; ctx.stroke();
       }
 
       ctx.beginPath();
@@ -694,13 +693,12 @@ canvas.addEventListener('mousemove', e => {
 
 });
 
-canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none';
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
- });
+    }  // ← ADD THIS LINE — closes if (canvas) {
 
+    document.getElementById('btn-zoom-in')?.addEventListener('click',  () => applyZoom(1.4));
 
-
-document.getElementById('btn-zoom-in')?.addEventListener('click',  () => applyZoom(1.4));
 document.getElementById('btn-zoom-out')?.addEventListener('click', () => applyZoom(0.7));
 document.getElementById('btn-reset-zoom')?.addEventListener('click', () => {
   state.viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
