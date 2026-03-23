@@ -534,9 +534,29 @@ function unlockCountry(dest) {
       startLiveTracking();
     }
   }
+function applyZoom(factor) {
+  const cx = MAP_W / 2, cy = MAP_H / 2;
+  const newScale = Math.min(8, Math.max(1, state.viewTransform.scale * factor));
+  state.viewTransform.offsetX = cx - newScale * (cx - state.viewTransform.offsetX) / state.viewTransform.scale;
+  state.viewTransform.offsetY = cy - newScale * (cy - state.viewTransform.offsetY) / state.viewTransform.scale;
+  state.viewTransform.scale = newScale;
+  const c = document.getElementById('explorer-map');
+  if (c) {
+    state.viewTransform.offsetX = Math.min(0, Math.max(c.width*(1-newScale),  state.viewTransform.offsetX));
+    state.viewTransform.offsetY = Math.min(0, Math.max(c.height*(1-newScale), state.viewTransform.offsetY));
+  }
+  drawMap();
+}
 
-  function bindEvents() {
- document.getElementById('btn-set-origin')?.addEventListener('click', () => {
+function bindEvents() {
+  // Create tooltip
+  const tooltip = document.createElement('div');
+  tooltip.id = 'map-tooltip';
+  tooltip.style.cssText = 'position:fixed;display:none;background:rgba(10,22,40,0.95);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:0.75rem;color:#fff;pointer-events:none;z-index:9999;white-space:nowrap;';
+  document.body.appendChild(tooltip);
+
+  document.getElementById('btn-set-origin')
+?.addEventListener('click', () => {
   const sel = document.getElementById('explorer-origin-select');
   if (!sel) return;
   state.origin = sel.value;
@@ -558,7 +578,7 @@ document.getElementById('btn-change-origin')?.addEventListener('click', () => {
     if (window.app?.showToast) window.app.showToast('✈️ Currently Flying!', 'Abort your current flight before changing origin.', '🔒');
     return;
   }
-  if (state.originChangesUsed === 1) {
+    if (state.originChangesUsed === 1) {
 
     state.originChangesUsed = 2;
     saveState();
@@ -651,18 +671,36 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseup',    () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
 canvas.addEventListener('mouseleave', () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
 canvas.style.cursor = 'grab';
+canvas.addEventListener('mousemove', e => {
+  if (state._isDragging) { tooltip.style.display = 'none'; return; }
+  const rect = canvas.getBoundingClientRect();
+  const rawX = (e.clientX - rect.left) * (MAP_W / rect.width);
+  const rawY = (e.clientY - rect.top)  * (MAP_H / rect.height);
+  const mx = (rawX - state.viewTransform.offsetX) / state.viewTransform.scale;
+  const my = (rawY - state.viewTransform.offsetY) / state.viewTransform.scale;
+  let hovered = null, minD = 18;
+  COUNTRIES.forEach(c => {
+    const p = project(c.lat, c.lng);
+    const d = Math.sqrt((p.x - mx) ** 2 + (p.y - my) ** 2);
+    if (d < minD) { minD = d; hovered = c; }
+  });
+  if (hovered) {
+    const isOrigin   = hovered.id === state.origin;
+    const isUnlocked = state.unlockedCountries.includes(hovered.id);
+    const isActive   = state.activeFlight?.destId === hovered.id;
+    const status = isOrigin ? '📍 Origin' : isUnlocked ? '✅ Visited' : isActive ? '✈️ Flying here' : '🔒 Locked';
+    tooltip.innerHTML = `<strong>${hovered.flag} ${hovered.name}</strong> <span style="opacity:0.7;margin-left:6px;">${status}</span>`;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-function applyZoom(factor) {
-  const cx = MAP_W / 2, cy = MAP_H / 2;
-  const newScale = Math.min(8, Math.max(1, state.viewTransform.scale * factor));
-  state.viewTransform.offsetX = cx - newScale * (cx - state.viewTransform.offsetX) / state.viewTransform.scale;
-  state.viewTransform.offsetY = cy - newScale * (cy - state.viewTransform.offsetY) / state.viewTransform.scale;
-  state.viewTransform.scale = newScale;
-  const canvas = document.getElementById('explorer-map');
-  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-newScale),  state.viewTransform.offsetX));
-  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-newScale), state.viewTransform.offsetY));
-  drawMap();
-}
+
+
 document.getElementById('btn-zoom-in')?.addEventListener('click',  () => applyZoom(1.4));
 document.getElementById('btn-zoom-out')?.addEventListener('click', () => applyZoom(0.7));
 document.getElementById('btn-reset-zoom')?.addEventListener('click', () => {
@@ -684,10 +722,6 @@ document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
   updateTopbar();
   if (window.app?.showToast) window.app.showToast('🛑 Flight Aborted', 'Pick a new destination or change origin.', '✈️');
 });
-
-
-
-    }
   }
 
   function init() {
