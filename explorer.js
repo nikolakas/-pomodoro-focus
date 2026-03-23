@@ -453,9 +453,11 @@ ctx.setTransform(
     if (window.app) window.app.showToast('✈️ Destination Set!', `Flying to ${dest.name}. Study to move the plane!`, '✈️');
   }
 
-  function unlockCountry(dest) {
-      state.activeFlight = null;
-    saveState();
+function unlockCountry(dest) {
+  if (!state.unlockedCountries.includes(dest.id)) state.unlockedCountries.push(dest.id);
+  state.activeFlight = null;
+  saveState();
+
     document.getElementById('explorer-flight-overlay').style.display = 'none';
     drawMap();
     renderDestinations();
@@ -552,7 +554,12 @@ ctx.setTransform(
 
 
 document.getElementById('btn-change-origin')?.addEventListener('click', () => {
+  if (state.activeFlight) {
+    if (window.app?.showToast) window.app.showToast('✈️ Currently Flying!', 'Abort your current flight before changing origin.', '🔒');
+    return;
+  }
   if (state.originChangesUsed === 1) {
+
     state.originChangesUsed = 2;
     saveState();
     stopLiveTracking();
@@ -609,6 +616,7 @@ const my = (rawY - state.viewTransform.offsetY) / state.viewTransform.scale;
         });
         // Zoom
 canvas.addEventListener('wheel', e => {
+  if (!e.ctrlKey) return; // only zoom with Ctrl held
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (MAP_W / rect.width);
@@ -622,6 +630,7 @@ canvas.addEventListener('wheel', e => {
   state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-newScale), state.viewTransform.offsetY));
   drawMap();
 }, { passive: false });
+
 
 // Pan
 canvas.addEventListener('mousedown', e => {
@@ -643,10 +652,39 @@ canvas.addEventListener('mouseup',    () => { state._isDragging = false; canvas.
 canvas.addEventListener('mouseleave', () => { state._isDragging = false; canvas.style.cursor = 'grab'; });
 canvas.style.cursor = 'grab';
 
+function applyZoom(factor) {
+  const cx = MAP_W / 2, cy = MAP_H / 2;
+  const newScale = Math.min(8, Math.max(1, state.viewTransform.scale * factor));
+  state.viewTransform.offsetX = cx - newScale * (cx - state.viewTransform.offsetX) / state.viewTransform.scale;
+  state.viewTransform.offsetY = cy - newScale * (cy - state.viewTransform.offsetY) / state.viewTransform.scale;
+  state.viewTransform.scale = newScale;
+  const canvas = document.getElementById('explorer-map');
+  state.viewTransform.offsetX = Math.min(0, Math.max(canvas.width*(1-newScale),  state.viewTransform.offsetX));
+  state.viewTransform.offsetY = Math.min(0, Math.max(canvas.height*(1-newScale), state.viewTransform.offsetY));
+  drawMap();
+}
+document.getElementById('btn-zoom-in')?.addEventListener('click',  () => applyZoom(1.4));
+document.getElementById('btn-zoom-out')?.addEventListener('click', () => applyZoom(0.7));
 document.getElementById('btn-reset-zoom')?.addEventListener('click', () => {
   state.viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
   drawMap();
 });
+
+document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
+  if (!state.activeFlight) return;
+  const dest = COUNTRIES.find(c => c.id === state.activeFlight?.destId);
+  const confirmed = confirm(`🛑 Abort flight to ${dest?.flag} ${dest?.name}?\n\nYour study km is kept, flight destination is cleared.`);
+  if (!confirmed) return;
+  state.activeFlight = null;
+  saveState();
+  stopLiveTracking();
+  document.getElementById('explorer-flight-overlay').style.display = 'none';
+  drawMap();
+  renderDestinations();
+  updateTopbar();
+  if (window.app?.showToast) window.app.showToast('🛑 Flight Aborted', 'Pick a new destination or change origin.', '✈️');
+});
+
 
 
     }

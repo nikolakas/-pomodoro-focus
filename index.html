@@ -554,7 +554,12 @@
     <!-- Map Canvas -->
     <div class="explorer-map-wrap">
 <canvas id="explorer-map" width="900" height="450"></canvas>
-<button id="btn-reset-zoom" style="position:absolute;top:8px;right:8px;z-index:10;padding:4px 10px;border-radius:8px;font-size:0.75rem;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;cursor:pointer;">⟲ Reset Zoom</button>
+<div style="position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:4px;align-items:center;">
+  <button id="btn-zoom-in"    style="width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1rem;cursor:pointer;line-height:1;">+</button>
+  <button id="btn-zoom-out"   style="width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1rem;cursor:pointer;line-height:1;">−</button>
+  <button id="btn-reset-zoom" style="padding:0 8px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:0.75rem;cursor:pointer;">⟲</button>
+</div>
+
 
       <div class="explorer-flight-overlay" id="explorer-flight-overlay" style="display:none;">
         <div class="explorer-flight-card glass-card">
@@ -569,6 +574,10 @@
           </div>
         </div>
       </div>
+      <button id="btn-abort-flight" style="margin-top:8px;width:100%;padding:6px;border-radius:8px;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.4);color:#ff6b6b;font-size:0.75rem;cursor:pointer;">
+  🛑 Abort Flight
+</button>
+
     </div>
 
     <!-- Destination Picker -->
