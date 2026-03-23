@@ -746,4 +746,6 @@ document.getElementById('btn-abort-flight')?.addEventListener('click', () => {
   return { init, onTabOpen, state, COUNTRIES };
 })();
 
+window.ExplorerModule = ExplorerModule;
 document.addEventListener('DOMContentLoaded', () => ExplorerModule.init());
+

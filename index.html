@@ -43,7 +43,8 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Notes
                 </button>
-                <button class="tab" data-tab="explorer">🌍 Explorer</button>
+              <button class="tab" data-tab="explorer" role="tab" aria-selected="false" id="tab-explorer">🌍 Explorer</button>
+
 
             </nav>
         </header>
@@ -514,9 +515,10 @@
         </div>
     </div>
 </main>
-   <!-- Explorer -->
-    <div class="tab-content" id="panel-explorer">
-  <!-- Origin Picker (shown on first use) -->
+ <!-- Explorer -->
+<main class="tab-content" id="panel-explorer" role="tabpanel" aria-labelledby="tab-explorer">
+
+  <!-- Origin Picker -->
   <div id="explorer-origin-picker" class="explorer-origin-screen" style="display:none;">
     <div class="explorer-origin-card glass-card">
       <div class="explorer-origin-globe">🌍</div>
@@ -529,6 +531,11 @@
 
   <!-- Main Explorer UI -->
   <div id="explorer-main" style="display:none;">
+    <!-- your existing explorer-main content stays here exactly as it is -->
+  </div>
+
+</main>
+
     <!-- Top bar -->
     <div class="explorer-topbar glass-card">
       <div class="explorer-topbar-left">
