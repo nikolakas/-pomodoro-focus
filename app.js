@@ -80,34 +80,44 @@ currentSubtasks: [],
 		this.initFirebase();
     },
 
-    async initFirebase() {
-        const btnAuth = document.getElementById('btn-auth');
-        const authName = document.getElementById('auth-name');
-        const authAvatar = document.getElementById('auth-avatar');
+async initFirebase() {
+    const btnAuth = document.getElementById('btn-auth');
+    const authName = document.getElementById('auth-name');
+    const authAvatar = document.getElementById('auth-avatar');
 
-        if (
-            !window.firebaseAuth ||
-            !window.firebaseDb ||
-            !window.firestoreDoc ||
-            !window.firestoreOnSnapshot
-        ) {
-            if (btnAuth) btnAuth.style.display = 'none';
-            return;
-        }
+    if (
+        !window.firebaseAuth ||
+        !window.firebaseDb ||
+        !window.firestoreDoc ||
+        !window.firestoreOnSnapshot ||
+        !window.onAuthStateChanged ||
+        !window.GoogleAuthProvider ||
+        !window.signInWithPopup ||
+        !window.signOutFb
+    ) {
+        if (btnAuth) btnAuth.style.display = 'none';
+        return;
+    }
 
-        const user = window.firebaseAuth.currentUser;
+    if (this.authStateUnsub) this.authStateUnsub();
 
+    this.authStateUnsub = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
         if (user) {
-            if (btnAuth) btnAuth.textContent = 'Sign out';
-            if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
-
-            if (authAvatar && user.photoURL) {
-                authAvatar.src = user.photoURL;
-                authAvatar.style.display = 'block';
+            if (btnAuth) {
+                btnAuth.textContent = 'Sign out';
+                btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
             }
 
-            if (btnAuth && window.signOutFb) {
-                btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
+            if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
+
+            if (authAvatar) {
+                if (user.photoURL) {
+                    authAvatar.src = user.photoURL;
+                    authAvatar.style.display = 'block';
+                } else {
+                    authAvatar.src = '';
+                    authAvatar.style.display = 'none';
+                }
             }
 
             await this.loadFromFirestore(user.uid);
@@ -115,7 +125,6 @@ currentSubtasks: [],
             if (this.userUnsub) this.userUnsub();
 
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
-
             this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
                 if (!snap.exists()) return;
 
@@ -139,26 +148,32 @@ currentSubtasks: [],
                 this.renderInsights();
             });
         } else {
-    if (btnAuth) {
-        btnAuth.textContent = 'Sign in with Google';
-        btnAuth.onclick = async () => {
-            try {
-                const provider = new window.GoogleAuthProvider();
-                await window.signInWithPopup(window.firebaseAuth, provider);
-            } catch (err) {
-                console.error('Google sign-in failed:', err);
+            if (this.userUnsub) {
+                this.userUnsub();
+                this.userUnsub = null;
             }
-        };
-    }
 
-    if (authName) authName.textContent = '';
-    if (authAvatar) {
-        authAvatar.src = '';
-        authAvatar.style.display = 'none';
-    }
-}
-    },
+            if (btnAuth) {
+                btnAuth.textContent = 'Sign in with Google';
+                btnAuth.onclick = async () => {
+                    try {
+                        const provider = new window.GoogleAuthProvider();
+                        await window.signInWithPopup(window.firebaseAuth, provider);
+                    } catch (err) {
+                        console.error('Google sign-in failed:', err);
+                    }
+                };
+            }
 
+            if (authName) authName.textContent = '';
+
+            if (authAvatar) {
+                authAvatar.src = '';
+                authAvatar.style.display = 'none';
+            }
+        }
+    });
+},
 async saveToFirestore(uid) {
     if (!uid) return;
     const ref = window.firestoreDoc(window.firebaseDb, 'users', uid);
