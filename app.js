@@ -763,7 +763,8 @@ toggleTimer() {
 
     this.saveSessionState();
 
-    this.state.timer = setInterval(() => {
+        this.state.sessionStartTime = Date.now();
+		this.state.timer = setInterval(() => {
         this.state.timeLeft--;
         this.saveSessionState();
 
@@ -779,7 +780,17 @@ toggleTimer() {
 },
 
     stopTimer() {
-    this.state.isRunning = false;
+        if (this.state.isRunning && this.state.mode === 'work' && this.state.sessionStartTime && this.state.timeLeft > 0) {
+			      const elapsedSeconds = Math.floor((Date.now() - this.state.sessionStartTime) / 1000);
+			      if (elapsedSeconds >= 30) {
+					          const elapsedMinutes = elapsedSeconds / 60;
+					          this.recordSession(elapsedMinutes, 'focus');
+					          const xpEarned = Math.max(1, Math.floor((elapsedMinutes / this.state.settings.work) * 15));
+					          this.addXp(xpEarned);
+					        }
+			      this.state.sessionStartTime = null;
+			    }
+		this.state.isRunning = false;
     clearInterval(this.state.timer);
     this.saveSessionState();
     this.elements.container.classList.remove('running');
