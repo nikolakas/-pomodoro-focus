@@ -639,24 +639,13 @@ switchTab(target) {
         }
     },
 
-    toggleTimer() {
-        if (this.state.isRunning) {
-            this.stopTimer();
-        } else {
-            if (this.state.mode === 'work' && !this.state.currentIntention) {
-                const mod = document.getElementById('intention-modal');
-                if (mod) {
-                    mod.style.display = 'flex';
-                    const inp = document.getElementById('intention-input');
-                    if (inp) inp.focus();
-                } else {
-                    this.startTimer();
-                }
-            } else {
-                this.startTimer();
-            }
-        }
-    },
+toggleTimer() {
+    if (this.state.isRunning) {
+        this.stopTimer();
+    } else {
+        this.startTimer();
+    }
+},
 
     startTimer() {
         if (this.state.timeLeft <= 0) return;
