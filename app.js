@@ -809,7 +809,8 @@ toggleTimer() {
 
     skipSession() {
         this.stopTimer();
-        this.state.timeLeft = 0;
+        this.state.elapsedFocusMinutes = (this.state.settings.work * 60 - this.state.timeLeft) / 60;
+		this.state.timeLeft = 0;
         this.onTimerComplete();
     },
 
@@ -825,8 +826,9 @@ toggleTimer() {
             this.saveStats();
 	            const user = window.firebaseAuth?.currentUser; if (user) this.saveToFirestore(user.uid);
             const completedIntention = this.state.currentIntention;
-            this.recordSession(this.state.settings.work, 'focus');
+            this.recordSession(this.state.elapsedFocusMinutes != null ? this.state.elapsedFocusMinutes : this.state.settings.work, 'focus');
 
+			        this.state.elapsedFocusMinutes = null;
             this.elements.container.classList.add('celebrating');
             this.elements.container.classList.add('timer-pulse');
             setTimeout(() => {
