@@ -47,13 +47,8 @@ const app = {
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
       currentIntention: null,
 currentSubtasks: [],
-activeNoteFilter: null,
-sessionStartTime: null,
-unlockedThemes: ['normal', 'starwars'],
-        minutesToday: 0,
-        totalMinutes: 0,
+        activeNoteFilter: null
     },
-
 
     elements: {},
 
@@ -63,8 +58,6 @@ unlockedThemes: ['normal', 'starwars'],
     init() {
         this.cacheDOM();
         this.loadSettings();
-        this.loadUnlockedThemes();
-
         this.loadStats();
         this.loadCustomWallpapers();
         this.updateTheme();
@@ -83,8 +76,74 @@ unlockedThemes: ['normal', 'starwars'],
         setInterval(() => this.rotateQuote(), 60000);
         this.rotateQuote();
 		setTimeout(() => this.initOnboarding(), 800);
-    },
 
+		this.initFirebase();
+    },
+initFirebase() {
+    if (!window.onAuthStateChanged) return;
+
+    window.onAuthStateChanged(window.firebaseAuth, async (user) => {
+        const btnAuth = document.getElementById('btn-auth');
+        const authName = document.getElementById('auth-name');
+        const authAvatar = document.getElementById('auth-avatar');
+
+        if (user) {
+            if (btnAuth) btnAuth.textContent = 'Sign out';
+            if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
+            if (authAvatar && user.photoURL) {
+                authAvatar.src = user.photoURL;
+                authAvatar.style.display = 'block';
+            }
+            if (btnAuth) btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
+            await this.loadFromFirestore(user.uid);
+        } else {
+            if (btnAuth) btnAuth.textContent = 'Sign in with Google';
+            if (authName) authName.textContent = '';
+            if (authAvatar) authAvatar.style.display = 'none';
+            if (btnAuth) {
+                btnAuth.onclick = () => {
+                    const provider = new window.GoogleAuthProvider();
+                    window.signInWithPopup(window.firebaseAuth, provider);
+                };
+            }
+        }
+    });
+},
+
+async saveToFirestore(uid) {
+    if (!uid) return;
+    const ref = window.firestoreDoc(window.firebaseDb, 'users', uid);
+    await window.firestoreSetDoc(ref, {
+        history: this.state.history || [],
+        xp: this.state.xp || 0,
+        level: this.state.level || 1,
+        sessionsToday: this.state.sessionsToday || 0,
+        totalSessions: this.state.totalSessions || 0,
+        settings: this.state.settings || {},
+        lastSaved: new Date().toISOString()
+    });
+},
+
+async loadFromFirestore(uid) {
+    if (!uid) return;
+    const ref = window.firestoreDoc(window.firebaseDb, 'users', uid);
+    const snap = await window.firestoreGetDoc(ref);
+    if (snap.exists()) {
+        const data = snap.data();
+        this.state.history = data.history || [];
+        this.state.xp = data.xp || 0;
+        this.state.level = data.level || 1;
+        this.state.sessionsToday = data.sessionsToday || 0;
+        this.state.totalSessions = data.totalSessions || 0;
+        if (data.settings) this.state.settings = { ...this.state.settings, ...data.settings };
+        this.saveStats();
+        this.saveSettings();
+        this.renderStats();
+        this.renderNotes();
+        this.renderHeatmap();
+        this.renderInsights();
+    }
+},
     cacheDOM() {
         this.elements = {
             time: document.getElementById('timer-time'),
@@ -131,7 +190,7 @@ ambientVolInput: null,
             moodCards: document.querySelectorAll('.mood-card'),
             breatheWidget: document.getElementById('breathing-widget'),
             breatheText: document.getElementById('breathing-text'),
-            breatheCircle: document.getElementById('breathing-circle'),
+            breatheCircle: document.getElementById('breathing-ring'),
             btnToggleBreathe: document.getElementById('btn-toggle-breathe')
         };
     },
@@ -139,15 +198,15 @@ ambientVolInput: null,
 bindEvents() {
   // Core Timer Controls
   if (this.elements.btnStart) {
-this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
+    this.elements.btnStart.addEventListener('click', this.toggleTimer);
   }
 
   if (this.elements.btnReset) {
-this.elements.btnReset.addEventListener('click', () => this.resetTimer());
+    this.elements.btnReset.addEventListener('click', this.resetTimer);
   }
 
   if (this.elements.btnSkip) {
-this.elements.btnSkip.addEventListener('click', () => this.skipSession());
+    this.elements.btnSkip.addEventListener('click', this.skipSession);
   }
 
   if (this.elements.btnZen) {
@@ -228,9 +287,8 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
 
   // General Settings Inputs
-  const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
- inputs.forEach(input => input.addEventListener('change', () => this.saveSettings()));
-
+const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
+inputs.forEach(input => input.addEventListener('change', () => this.saveSettings()));
 
   // Notes
   const btnAddNote = document.getElementById('btn-add-note');
@@ -352,9 +410,6 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
 
       const intMod = document.getElementById('intention-modal');
       if (intMod) intMod.style.display = 'none';
-      const rqMod = document.getElementById('ragequit-modal');
-if (rqMod) rqMod.style.display = 'none';
-
     }
 
     if (e.code === 'Space') {
@@ -392,8 +447,7 @@ if (rqMod) rqMod.style.display = 'none';
       if (modal) modal.style.display = 'none';
     });
   }
- }, 
-
+},
 
 
     bindSteppers() {
@@ -526,11 +580,6 @@ switchTab(target) {
     if (target === 'notes') {
         this.initNotebook();
     }
-if (target === 'explorer') {
-if (window.ExplorerModule) window.ExplorerModule.onTabOpen();
-
-}
-
 },
 
     // ===================================
@@ -584,9 +633,7 @@ if (window.ExplorerModule) window.ExplorerModule.onTabOpen();
 
     startTimer() {
         if (this.state.timeLeft <= 0) return;
-  this.state.isRunning = true;
-this.state.sessionStartTime = Date.now();
-
+        this.state.isRunning = true;
 		// Show intention reminder
 const reminder = document.getElementById('intention-reminder');
 if (reminder) {
@@ -633,52 +680,10 @@ this.renderSubtaskTracker();
 if (reminder) reminder.style.display = 'none';
     },
 
-resetTimer() {
-  if (this.state.isRunning && this.state.mode === 'work') {
-    const total = this.state.settings.work * 60;
-    const pct = Math.round(((total - this.state.timeLeft) / total) * 100);
-    if (pct >= 20) {
-      this.showRageQuitModal(pct, () => {
+    resetTimer() {
         this.stopTimer();
         this.setMode(this.state.mode);
-      });
-      return;
-    }
-  }
-  this.stopTimer();
-  this.setMode(this.state.mode);
-},
-showRageQuitModal(pct, onQuit) {
-  const modal = document.getElementById('ragequit-modal');
-  if (!modal) return;
-  const remaining = 100 - pct;
-  const messages = [
-    `"The last ${remaining}% is where the magic happens."`,
-    `"Champions are built in the moments they want to quit."`,
-    `"Your future self will thank you for these last ${remaining}%."`,
-    `"You've already done the hard part. Don't stop now."`,
-    `"Flow state hits after the resistance. Push through."`,
-  ];
-  const emoji = pct > 80 ? '😱' : pct > 60 ? '😤' : pct > 40 ? '😬' : '🙁';
-  document.getElementById('rq-emoji').textContent = emoji;
-  document.getElementById('rq-title').textContent = `You're ${pct}% there!`;
-  document.getElementById('rq-pct-label').textContent = `${pct}%`;
-  document.getElementById('rq-bar-fill').style.width = '0%';
-  document.getElementById('rq-message').textContent =
-    messages[Math.floor(Math.random() * messages.length)];
-  modal.style.display = 'flex';
-  setTimeout(() => {
-    document.getElementById('rq-bar-fill').style.width = `${pct}%`;
-  }, 50);
-  document.getElementById('btn-rq-keep').onclick = () => {
-    modal.style.display = 'none';
-  };
-  document.getElementById('btn-rq-quit').onclick = () => {
-    modal.style.display = 'none';
-    onQuit();
-  };
-},
-
+    },
 
     skipSession() {
         this.stopTimer();
@@ -691,17 +696,13 @@ showRageQuitModal(pct, onQuit) {
         this.playAudio(this.state.settings.sound);
 
         if (this.state.mode === 'work') {
-const elapsedMs = this.state.sessionStartTime ? Date.now() - this.state.sessionStartTime : 0;
-const elapsedMin = Math.max(1, Math.floor(elapsedMs / 60000));
-this.state.sessionsToday++;
-this.state.totalSessions++;
-this.state.minutesToday = (this.state.minutesToday || 0) + elapsedMin;
-this.state.totalMinutes = (this.state.totalMinutes || 0) + elapsedMin;
-this.addXp(elapsedMin);
-this.saveStats();
-const completedIntention = this.state.currentIntention;
-this.recordSession(elapsedMin, 'focus');
-
+            this.state.sessionsToday++;
+            this.state.totalSessions++;
+            this.addXp(15);
+            this.saveStats();
+	            const user = window.firebaseAuth?.currentUser; if (user) this.saveToFirestore(user.uid);
+            const completedIntention = this.state.currentIntention;
+            this.recordSession(this.state.settings.work, 'focus');
 
             this.elements.container.classList.add('celebrating');
             this.elements.container.classList.add('timer-pulse');
@@ -1112,27 +1113,23 @@ el.addEventListener('click', () => {
         if (this.elements.swMusicInput) this.state.settings.swMusic = this.elements.swMusicInput.checked;
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
+        const user = window.firebaseAuth?.currentUser;
+if (user) this.saveToFirestore(user.uid);
     },
 
     loadStats() {
         const todayStr = new Date().toDateString();
         const savedDate = localStorage.getItem('pomodoro_date');
 
-if (savedDate !== todayStr) {
-  this.state.sessionsToday = 0;
-  this.state.minutesToday = 0;
-  localStorage.setItem('pomodoro-date', todayStr);
-  localStorage.setItem('pomodoro-minutes-today', 0);
-
+        if (savedDate !== todayStr) {
+            this.state.sessionsToday = 0;
+            localStorage.setItem('pomodoro_date', todayStr);
         } else {
             this.state.sessionsToday = parseInt(localStorage.getItem('pomodoro_today')) || 0;
         }
 
-this.state.sessionsToday = parseInt(localStorage.getItem('pomodoro-today') || 0);
-this.state.minutesToday = parseInt(localStorage.getItem('pomodoro-minutes-today') || 0);
-this.state.totalMinutes = parseInt(localStorage.getItem('pomodoro-total-minutes') || 0);
-this.state.xp = parseInt(localStorage.getItem('pomodoro-xp') || 0);
-
+        this.state.totalSessions = parseInt(localStorage.getItem('pomodoro_total')) || 0;
+        this.state.xp = parseInt(localStorage.getItem('pomodoro_xp')) || 0;
         this.updateLevel();
 
         const h = localStorage.getItem('pomodoro_history');
@@ -1140,21 +1137,11 @@ this.state.xp = parseInt(localStorage.getItem('pomodoro-xp') || 0);
     },
 
     saveStats() {
-localStorage.setItem('pomodoro-today', this.state.sessionsToday);
-localStorage.setItem('pomodoro-total', this.state.totalSessions);
-localStorage.setItem('pomodoro-minutes-today', this.state.minutesToday || 0);
-localStorage.setItem('pomodoro-total-minutes', this.state.totalMinutes || 0);
-localStorage.setItem('pomodoro-xp', this.state.xp);
-
+        localStorage.setItem('pomodoro_today', this.state.sessionsToday);
+        localStorage.setItem('pomodoro_total', this.state.totalSessions);
+        localStorage.setItem('pomodoro_xp', this.state.xp);
         this.renderStats();
     },
-formatTime(minutes) {
-  if (!minutes || minutes < 1) return '0m';
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-},
 
     recordSession(duration, type) {
 this.state.history.push({
@@ -1202,33 +1189,37 @@ this.state.history.push({
         if (this.state.level > cl && cl > 0) {
             this.showToast('Level Up!', `You've reached Level ${this.state.level}: ${rankName}`, '⭐');
         }
-        this.checkThemeUnlocks();
-
     },
 
     // ===================================
     // THEMES & APPEARANCE
     // ===================================
-updateTheme() {
-  const theme = this.state.settings.theme;
-  const isSw = theme === 'starwars';
-  document.body.classList.remove('theme-starwars','theme-cyberpunk','theme-lofi','theme-matrix');
-  if (theme !== 'normal') document.body.classList.add(`theme-${theme}`);
-  if (this.elements.swSettings) this.elements.swSettings.style.display = isSw ? 'block' : 'none';
-  if (this.elements.btnWarp) this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
-  const sf = document.getElementById('starfield');
-  if (sf) sf.style.display = isSw ? 'block' : 'none';
-  if (isSw) this.setSaber(this.state.settings.saber);
-  else if (theme === 'normal') this.setAccent(this.state.settings.accent);
-  this.toggleMatrixRain(theme === 'matrix');
-  this.setWallpaper(this.state.settings.wallpaper);
-  document.querySelectorAll('.theme-preview-card').forEach(c => c.classList.remove('active'));
-  const activeCard = document.getElementById(`theme-preview-${theme}`);
-  if (activeCard) activeCard.classList.add('active');
-  this.updateLogo();
-  this.updateLevel();
-},
+    updateTheme() {
+        const isSw = this.state.settings.theme === 'starwars';
+        document.body.classList.toggle('theme-starwars', isSw);
+        if (this.elements.swSettings) this.elements.swSettings.style.display = isSw ? 'block' : 'none';
 
+        const tText = document.getElementById('theme-toggle-text');
+        if (tText) tText.textContent = isSw ? '🌿 Normal Mode' : '⚔️ Star Wars';
+        if (this.elements.btnWarp) this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
+
+        const sf = document.getElementById('starfield');
+        if (sf) sf.style.display = isSw ? 'block' : 'none';
+
+        if (isSw) {
+            this.setSaber(this.state.settings.saber);
+            document.body.style.setProperty('--accent', this.state.saberColors[this.state.settings.saber]);
+        } else {
+            this.setAccent(this.state.settings.accent);
+        }
+this.setWallpaper(this.state.settings.wallpaper);
+        const pNormal = document.getElementById('theme-preview-normal');
+const pSw = document.getElementById('theme-preview-starwars');
+if (pNormal) pNormal.classList.toggle('active', !isSw);
+if (pSw) pSw.classList.toggle('active', isSw);
+        this.updateLogo();
+        this.updateLevel();
+    },
 
    toggleTheme() {
     this.state.settings.theme = this.state.settings.theme === 'starwars' ? 'normal' : 'starwars';
@@ -1243,19 +1234,12 @@ if (window.AmbienceModule) {
 }
 },
 setThemePreview(theme) {
-  const lockLevels = { cyberpunk: 5, lofi: 10, matrix: 15 };
-  if (lockLevels[theme] && !this.state.unlockedThemes.includes(theme)) {
-    this.showToast('🔒 Locked!', `Reach Level ${lockLevels[theme]} to unlock ${theme}`, '🔒');
-    return;
-  }
-  document.querySelectorAll('.theme-preview-card').forEach(c => c.classList.remove('active'));
-  const active = document.getElementById(`theme-preview-${theme}`);
-  if (active) active.classList.add('active');
-  this.state.settings.theme = theme;
-  this.saveSettings();
-  this.updateTheme();
+    document.getElementById('theme-preview-normal').classList.toggle('active', theme === 'normal');
+    document.getElementById('theme-preview-starwars').classList.toggle('active', theme === 'starwars');
+    if (theme !== this.state.settings.theme) {
+        this.toggleTheme();
+    }
 },
-
 
     setAccent(colorName) {
         if (!this.state.accents[colorName]) return;
@@ -1318,94 +1302,21 @@ setThemePreview(theme) {
     // UI RENDERING
     // ===================================
     updateLogo() {
-  const theme = this.state.settings.theme;
-  const title = document.getElementById('logo-title');
-  const subtitle = document.getElementById('logo-subtitle');
-  const logoMap = {
-    starwars:  { title:'JEDI FOCUS',    sub:'May the force be with you' },
-    cyberpunk: { title:'CYBER FOCUS',   sub:'Jack in. Focus up.' },
-    lofi:      { title:'lo-fi focus',   sub:'chill · study · repeat' },
-    matrix:    { title:'MATRIX FOCUS',  sub:'There is no spoon.' },
-    normal:    { title:'Pomodoro Focus', sub:'' },
-  };
-  const l = logoMap[theme] || logoMap.normal;
-  if (title) title.textContent = l.title;
-  if (subtitle) subtitle.textContent = l.sub;
-  const titleEl = document.getElementById('notebook-cover-title');
-  const emblem = document.querySelector('.notebook-emblem');
-  if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : 'My Journal';
-  if (emblem) emblem.textContent = theme === 'starwars' ? '⚔️' : '📖';
-},
-toggleMatrixRain(active) {
-  const canvas = document.getElementById('matrix-rain');
-  if (!canvas) return;
-  if (!active) {
-    canvas.style.display = 'none';
-    if (this._matrixInterval) { clearInterval(this._matrixInterval); this._matrixInterval = null; }
-    return;
-  }
-  canvas.style.display = 'block';
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const ctx = canvas.getContext('2d');
-  const cols = Math.floor(canvas.width / 16);
-  const drops = Array(cols).fill(1);
-  if (this._matrixInterval) clearInterval(this._matrixInterval);
-  this._matrixInterval = setInterval(() => {
-    ctx.fillStyle = 'rgba(0,3,0,0.05)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#00ff41';
-    ctx.font = '14px monospace';
-    drops.forEach((y, i) => {
-      const char = String.fromCharCode(0x30A0 + Math.random() * 96);
-      ctx.fillText(char, i * 16, y * 16);
-      if (y * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-      drops[i]++;
-    });
-  }, 50);
-},
-
-loadUnlockedThemes() {
-  const saved = localStorage.getItem('pomodoro-unlocked-themes');
-  if (saved) this.state.unlockedThemes = JSON.parse(saved);
-  this.refreshThemeCards();
-},
-
-saveUnlockedThemes() {
-  localStorage.setItem('pomodoro-unlocked-themes', JSON.stringify(this.state.unlockedThemes));
-},
-
-refreshThemeCards() {
-  const iconMap = { cyberpunk:'🌆', lofi:'🎵', matrix:'💊' };
-  ['cyberpunk','lofi','matrix'].forEach(theme => {
-    const card = document.getElementById(`theme-preview-${theme}`);
-    if (!card) return;
-    if (this.state.unlockedThemes.includes(theme)) {
-      card.classList.remove('theme-locked');
-      const lockIcon = card.querySelector('.theme-lock-icon');
-      if (lockIcon) lockIcon.textContent = iconMap[theme];
-      const unlockLabel = card.querySelector('.theme-unlock-label');
-      if (unlockLabel) unlockLabel.remove();
-    }
-  });
-},
-
-checkThemeUnlocks() {
-  const unlocks = [
-    { theme:'cyberpunk', level:5,  name:'Cyberpunk', icon:'🌆' },
-    { theme:'lofi',      level:10, name:'Lo-fi',     icon:'🎵' },
-    { theme:'matrix',    level:15, name:'Matrix',    icon:'💊' },
-  ];
-  unlocks.forEach(({ theme, level, name, icon }) => {
-    if (this.state.level >= level && !this.state.unlockedThemes.includes(theme)) {
-      this.state.unlockedThemes.push(theme);
-      this.saveUnlockedThemes();
-      this.refreshThemeCards();
-      setTimeout(() => this.showToast(`${icon} Theme Unlocked!`, `${name} theme is now available!`, icon), 600);
-    }
-  });
-},
-
+        const title = document.getElementById('logo-title');
+        const subtitle = document.getElementById('logo-subtitle');
+        if (this.state.settings.theme === 'starwars') {
+            if (title) title.textContent = 'JEDI FOCUS';
+            if (subtitle) subtitle.textContent = 'May the force be with you';
+} else {
+    if (title) title.textContent = 'Pomodoro Focus';
+    if (subtitle) subtitle.textContent = '';
+}
+// Always refresh notebook regardless of theme
+const titleEl = document.getElementById('notebook-cover-title');
+const emblem = document.querySelector('.notebook-emblem');
+if (titleEl) titleEl.textContent = this.state.settings.theme === 'starwars' ? 'Jedi Archives' : 'My Journal';
+if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔️' : '📖';
+    },
 
     rotateQuote() {
         const text = document.getElementById('quote-text');
@@ -1443,19 +1354,16 @@ checkThemeUnlocks() {
         const statToday = document.getElementById('stat-today');
         const statTotal = document.getElementById('stat-total');
         const statWeek = document.getElementById('stat-week');
-if (statToday) statToday.textContent = this.formatTime(this.state.minutesToday || 0);
-if (statTotal) statTotal.textContent = this.formatTime(this.state.totalMinutes || 0);
-
+        if (statToday) statToday.textContent = this.state.sessionsToday;
+        if (statTotal) statTotal.textContent = this.state.totalSessions;
 
         const now = new Date();
         const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
         let weekTotal = 0;
         this.state.history.forEach(s => {
-  if (s.type === 'focus' && new Date(s.date) >= weekStart) weekTotal += (s.duration || 0);
-});
-
-        if (statWeek) statWeek.textContent = this.formatTime(weekTotal);
-
+            if (s.type === 'focus' && new Date(s.date) >= weekStart) weekTotal++;
+        });
+        if (statWeek) statWeek.textContent = weekTotal;
 
         const goalP = document.getElementById('goal-progress');
         if (goalP) {
@@ -1663,8 +1571,7 @@ if (s.label && labelColors[s.label]) {
             if (s.type !== 'focus') return;
             const d = new Date(s.date);
             d.setHours(0, 0, 0, 0);
-            counts[d.getTime()] = (counts[d.getTime()] || 0) + (s.duration || 0);
-
+            counts[d.getTime()] = (counts[d.getTime()] || 0) + 1;
         });
 
         for (let i = 34; i >= 0; i--) {
@@ -1673,16 +1580,14 @@ if (s.label && labelColors[s.label]) {
             const count = counts[d.getTime()] || 0;
 
             let lvl = 0;
-if (count >= 1)   lvl = 1;
-if (count >= 25)  lvl = 2;
-if (count >= 75)  lvl = 3;
-if (count >= 150) lvl = 4;
-
+            if (count > 0) lvl = 1;
+            if (count >= 3) lvl = 2;
+            if (count >= 6) lvl = 3;
+            if (count >= 8) lvl = 4;
 
             const cell = document.createElement('div');
             cell.className = `h-cell level-${lvl}`;
-            cell.title = `${d.toDateString()}: ${this.formatTime(count)}`;
-
+            cell.title = `${d.toDateString()}: ${count} sessions`;
             grid.appendChild(cell);
         }
     },
@@ -2096,7 +2001,4 @@ initOnboarding() {
 };
 
 window.app = app;
-
 document.addEventListener('DOMContentLoaded', () => app.init());
-
-
