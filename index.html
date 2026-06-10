@@ -283,27 +283,15 @@
 
     <h3 class="settings-section-title">Appearance</h3>
     <div class="setting-row theme-preview-row">
-      <div class="theme-previews">
-        <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
-          <div class="theme-preview-swatch theme-swatch-normal">
-            <span>🍅</span>
-            <div class="theme-swatch-bar"></div>
-          </div>
-          <span class="theme-preview-label">Normal</span>
-        </div>
-        <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
-          <div class="theme-preview-swatch theme-swatch-starwars">
-            <span>⚔️</span>
-            <div class="theme-swatch-bar sw"></div>
-          </div>
-          <span class="theme-preview-label">Star Wars</span>
-        </div>
-      </div>
+    <div class="theme-switch-row">
+        <button class="btn btn-secondary tooltip-btn" id="btn-theme-toggle" style="font-size:1rem; border:none; background:transparent; padding:8px;">
+            ⚔️
+            <span class="tooltip" id="theme-toggle-text">Star Wars</span>
+        </button>
+        <span class="theme-note">Tap to switch between Normal and Star Wars.</span>
     </div>
+</div>
 
-    <div class="setting-row">
-      <button class="btn btn-secondary" id="btn-theme-toggle">Toggle Theme</button>
-    </div>
 
     <div class="setting-row">
       <label>Accent Color</label>
@@ -363,6 +351,13 @@
     </div>
   </div>
 </details>
+<div class="developer-credit">
+    <span class="developer-text">Developed by Nikolas.dam</span>
+    <div class="social-links">
+        <a class="social-btn social-ig" href="https://www.instagram.com/nikolas.dam/" target="_blank" rel="noreferrer">Instagram</a>
+        <a class="social-btn social-li" href="https://www.linkedin.com/in/nikolaos-damdounis-486239300/" target="_blank" rel="noreferrer">LinkedIn</a>
+    </div>
+</div>
         </main>
 
         <!-- Stats Tab -->
