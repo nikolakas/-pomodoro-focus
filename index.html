@@ -566,7 +566,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
@@ -589,7 +589,8 @@
   window.onAuthStateChanged = onAuthStateChanged;
   window.firestoreDoc = doc;
   window.firestoreSetDoc = setDoc;
-  window.firestoreGetDoc = getDoc;
+window.firestoreGetDoc = getDoc;
+  window.firestoreOnSnapshot = onSnapshot;
 </script>
 
 <!-- End of Day Summary Modal -->
