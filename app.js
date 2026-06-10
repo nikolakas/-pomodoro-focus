@@ -99,7 +99,6 @@ if (
     if (btnAuth) {
         btnAuth.style.display = 'inline-flex';
         btnAuth.textContent = 'Sign in with Google';
-        btnAuth.onclick = null;
     }
     return;
 }
@@ -678,7 +677,7 @@ switchTab(target) {
     // ===================================
     // TIMER LOGIC
     // ===================================
-    setMode(mode, preserveTime = false) {
+setMode(mode, preserveTime = false) {
     if (this.state.isRunning) this.stopTimer();
     this.state.mode = mode;
     this.elements.modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
@@ -689,23 +688,23 @@ switchTab(target) {
     if (!preserveTime || this.state.timeLeft <= 0) {
         this.state.timeLeft = m * 60;
     }
-        this.updateTimeDisplay();
-        this.updateRing();
+
+    this.updateTimeDisplay();
+    this.updateRing();
 
     let label = 'Focus Time';
-if (mode === 'shortBreak') label = 'Short Break';
-else if (mode === 'longBreak') label = 'Long Break';
-this.elements.label.textContent = label;
+    if (mode === 'shortBreak') label = 'Short Break';
+    else if (mode === 'longBreak') label = 'Long Break';
+    this.elements.label.textContent = label;
 
-        // Auto-show/hide breathing widget
-        if (mode === 'work') {
-            if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'none';
-            this.stopBreathing();
-        } else {
-            if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'flex';
-            this.startBreathing();
-        }
-    },
+    if (mode === 'work') {
+        if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'none';
+        this.stopBreathing();
+    } else {
+        if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'flex';
+        this.startBreathing();
+    }
+},
 
 toggleTimer() {
     if (this.state.isRunning) {
@@ -727,55 +726,59 @@ toggleTimer() {
 },
 
     startTimer() {
-if (this.state.timeLeft <= 0) {
-    this.setMode(this.state.mode || 'work');
-}
-        this.state.isRunning = true;
-		// Show intention reminder
-const reminder = document.getElementById('intention-reminder');
-if (reminder) {
-    if (this.state.currentIntention) {
-        reminder.textContent = `🎯 ${this.state.currentIntention}`;
-        reminder.style.display = 'block';
-    } else {
-        reminder.style.display = 'none';
-    }
-}
-this.renderSubtaskTracker();
-        this.elements.container.classList.add('running');
-        this.elements.iconPlay.style.display = 'none';
-        this.elements.iconPause.style.display = 'block';
-
-    
-
-        const intMod = document.getElementById('intention-modal');
-        if (intMod) intMod.style.display = 'none';
-
-this.saveSessionState();
-this.state.timer = setInterval(() => {
-    this.state.timeLeft--;
-    this.saveSessionState();
-    if (!this.state.hyperspaceActive) {
-        this.updateTimeDisplay();
-        this.updateRing();
-    }
     if (this.state.timeLeft <= 0) {
-        this.onTimerComplete();
+        this.setMode(this.state.mode || 'work');
     }
-}, 1000);
-    },
+
+    this.state.isRunning = true;
+
+    const reminder = document.getElementById('intention-reminder');
+    if (reminder) {
+        if (this.state.currentIntention) {
+            reminder.textContent = `🎯 ${this.state.currentIntention}`;
+            reminder.style.display = 'block';
+        } else {
+            reminder.style.display = 'none';
+        }
+    }
+
+    this.renderSubtaskTracker();
+    this.elements.container.classList.add('running');
+    this.elements.iconPlay.style.display = 'none';
+    this.elements.iconPause.style.display = 'block';
+
+    const intMod = document.getElementById('intention-modal');
+    if (intMod) intMod.style.display = 'none';
+
+    this.saveSessionState();
+
+    this.state.timer = setInterval(() => {
+        this.state.timeLeft--;
+        this.saveSessionState();
+
+        if (!this.state.hyperspaceActive) {
+            this.updateTimeDisplay();
+            this.updateRing();
+        }
+
+        if (this.state.timeLeft <= 0) {
+            this.onTimerComplete();
+        }
+    }, 1000);
+},
 
     stopTimer() {
-        this.state.isRunning = false;
-        clearInterval(this.state.timer);
-        this.elements.container.classList.remove('running');
-        this.elements.iconPlay.style.display = 'block';
-        this.elements.iconPause.style.display = 'none';
-        const sf = document.getElementById('starfield');
-        if (sf) sf.classList.remove('hyperspace');
-		const reminder = document.getElementById('intention-reminder');
-if (reminder) reminder.style.display = 'none';
-    },
+    this.state.isRunning = false;
+    clearInterval(this.state.timer);
+    this.saveSessionState();
+    this.elements.container.classList.remove('running');
+    this.elements.iconPlay.style.display = 'block';
+    this.elements.iconPause.style.display = 'none';
+    const sf = document.getElementById('starfield');
+    if (sf) sf.classList.remove('hyperspace');
+    const reminder = document.getElementById('intention-reminder');
+    if (reminder) reminder.style.display = 'none';
+},
 
     resetTimer() {
         this.stopTimer();
@@ -860,6 +863,17 @@ saveSessionState() {
     }));
 },
 
+saveSessionState() {
+    localStorage.setItem('pomodoro_session', JSON.stringify({
+        mode: this.state.mode,
+        timeLeft: this.state.timeLeft,
+        isRunning: this.state.isRunning,
+        currentRound: this.state.currentRound,
+        currentIntention: this.state.currentIntention,
+        currentSubtasks: this.state.currentSubtasks
+    }));
+},
+
 restoreSessionState() {
     const raw = localStorage.getItem('pomodoro_session');
     if (!raw) return;
@@ -883,6 +897,7 @@ restoreSessionState() {
         }
     } catch (e) {}
 },
+
     // ===================================
     // VISUALS & EFFECTS
     // ===================================
