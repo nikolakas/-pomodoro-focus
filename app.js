@@ -783,7 +783,7 @@ toggleTimer() {
         if (this.state.isRunning && this.state.mode === 'work' && this.state.sessionStartTime && this.state.timeLeft > 0) {
 			      const elapsedSeconds = Math.floor((Date.now() - this.state.sessionStartTime) / 1000);
 			      if (elapsedSeconds >= 30) {
-					          const elapsedMinutes = elapsedSeconds / 60;
+					          const elapsedMinutes = Math.round(elapsedSeconds / 60);
 					          this.recordSession(elapsedMinutes, 'focus');
 					          const xpEarned = Math.max(1, Math.floor((elapsedMinutes / this.state.settings.work) * 15));
 					          this.addXp(xpEarned);
