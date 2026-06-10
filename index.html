@@ -10,7 +10,6 @@
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#ff6b6b">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
-    <link rel="stylesheet" href="explorer.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -30,6 +29,11 @@
                 <h1 id="logo-title">Pomodoro Focus</h1>
                 <span class="logo-subtitle" id="logo-subtitle"></span>
             </div>
+            <div class="auth-bar" id="auth-bar">
+  <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
+  <span id="auth-name" class="auth-name"></span>
+  <button class="btn btn-secondary" id="btn-auth">Sign in with Google</button>
+</div>
             <nav class="tabs" role="tablist">
                 <button class="tab active" data-tab="timer" role="tab" aria-selected="true" id="tab-timer">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -43,9 +47,6 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Notes
                 </button>
-              <button class="tab" data-tab="explorer" role="tab" aria-selected="false" id="tab-explorer">🌍 Explorer</button>
-
-
             </nav>
         </header>
 
@@ -219,155 +220,149 @@
 
             <!-- Settings -->
             <details class="settings-panel" id="settings-panel">
-                <summary class="settings-toggle">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    Settings
-                </summary>
-                <div class="settings-body">
-                    <h3 class="settings-section-title">Timer</h3>
-                    <div class="setting-row">
-                        <label for="setting-work">Focus (min)</label>
-                        <div class="stepper">
-                            <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
-                            <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
-                            <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <label for="setting-short">Short Break (min)</label>
-                        <div class="stepper">
-                            <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
-                            <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
-                            <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <label for="setting-long">Long Break (min)</label>
-                        <div class="stepper">
-                            <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
-                            <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
-                            <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <label for="setting-rounds">Rounds before long break</label>
-                        <div class="stepper">
-                            <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
-                            <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
-                            <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <label for="setting-daily-goal">Daily Goal (Sessions)</label>
-                        <div class="stepper">
-                            <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
-                            <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
-                            <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <label for="setting-sound">Completion Sound</label>
-                        <div style="display:flex; gap:8px;">
-                            <select id="setting-sound">
-                                <option value="bell">🔔 Ship Bell</option>
-                                <option value="chime">✨ Force Chime</option>
-                                <option value="digital">💎 Digital</option>
-                                <option value="zen">🧘 Zen Bowl</option>
-                                <option value="swtheme">⚔️ Force Theme</option>
-                                <option value="none">🔇 None</option>
-                            </select>
-                            <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
-                        </div>
-                    </div>
+  <summary class="settings-toggle">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </summary>
+  <div class="settings-body">
+    <h3 class="settings-section-title">Timer</h3>
+    <div class="setting-row">
+      <label for="setting-work">Focus (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
+        <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-short">Short Break (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
+        <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-long">Long Break (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
+        <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-rounds">Rounds before long break</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
+        <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-daily-goal">Daily Goal (Sessions)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
+        <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-sound">Completion Sound</label>
+      <div style="display:flex; gap:8px;">
+        <select id="setting-sound">
+          <option value="bell">🔔 Ship Bell</option>
+          <option value="chime">✨ Force Chime</option>
+          <option value="digital">💎 Digital</option>
+          <option value="zen">🧘 Zen Bowl</option>
+          <option value="swtheme">⚔️ Force Theme</option>
+          <option value="none">🔇 None</option>
+        </select>
+        <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
+      </div>
+    </div>
 
-                    <h3 class="settings-section-title">Appearance</h3>
-                    <div class="setting-row theme-preview-row">
-  <div class="theme-previews" id="theme-previews-grid">
-    <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
-      <div class="theme-preview-swatch theme-swatch-normal"><span>🍅</span></div>
-      <span class="theme-preview-label">Normal</span>
+    <h3 class="settings-section-title">Appearance</h3>
+    <div class="setting-row theme-preview-row">
+      <div class="theme-previews">
+        <div class="theme-preview-card active" id="theme-preview-normal" onclick="app.setThemePreview('normal')">
+          <div class="theme-preview-swatch theme-swatch-normal">
+            <span>🍅</span>
+            <div class="theme-swatch-bar"></div>
+          </div>
+          <span class="theme-preview-label">Normal</span>
+        </div>
+        <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
+          <div class="theme-preview-swatch theme-swatch-starwars">
+            <span>⚔️</span>
+            <div class="theme-swatch-bar sw"></div>
+          </div>
+          <span class="theme-preview-label">Star Wars</span>
+        </div>
+      </div>
     </div>
-    <div class="theme-preview-card" id="theme-preview-starwars" onclick="app.setThemePreview('starwars')">
-      <div class="theme-preview-swatch theme-swatch-starwars"><span>⚔️</span></div>
-      <span class="theme-preview-label">Star Wars</span>
+
+    <div class="setting-row">
+      <button class="btn btn-secondary" id="btn-theme-toggle">Toggle Theme</button>
     </div>
-    <div class="theme-preview-card theme-locked" id="theme-preview-cyberpunk" onclick="app.setThemePreview('cyberpunk')">
-      <div class="theme-preview-swatch theme-swatch-cyberpunk"><span class="theme-lock-icon">🔒</span></div>
-      <span class="theme-preview-label">Cyberpunk</span>
-      <span class="theme-unlock-label">Lvl 5</span>
+
+    <div class="setting-row">
+      <label>Accent Color</label>
+      <div class="color-picker" id="color-picker">
+        <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
+        <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
+        <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
+        <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
+        <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
+      </div>
     </div>
-    <div class="theme-preview-card theme-locked" id="theme-preview-lofi" onclick="app.setThemePreview('lofi')">
-      <div class="theme-preview-swatch theme-swatch-lofi"><span class="theme-lock-icon">🔒</span></div>
-      <span class="theme-preview-label">Lo-fi</span>
-      <span class="theme-unlock-label">Lvl 10</span>
+
+    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+      <label>Background</label>
+      <div class="wallpaper-picker-new" id="wallpaper-picker">
+        <button class="wp-thumb active" data-wp="default">
+          <div class="wp-thumb-img wp-thumb-default">🌙</div>
+          <span class="wp-thumb-label">None</span>
+        </button>
+        <button class="wp-thumb" data-wp="preset_forest">
+          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
+          <span class="wp-thumb-label">Forest</span>
+        </button>
+        <button class="wp-thumb" data-wp="preset_space">
+          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
+          <span class="wp-thumb-label">Space</span>
+        </button>
+        <label class="wp-thumb wp-custom-label">
+          <div class="wp-thumb-img wp-thumb-upload">＋</div>
+          <span class="wp-thumb-label">Upload</span>
+          <input type="file" id="wallpaper-upload" accept="image/*" hidden>
+        </label>
+      </div>
+      <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
     </div>
-    <div class="theme-preview-card theme-locked" id="theme-preview-matrix" onclick="app.setThemePreview('matrix')">
-      <div class="theme-preview-swatch theme-swatch-matrix"><span class="theme-lock-icon">🔒</span></div>
-      <span class="theme-preview-label">Matrix</span>
-      <span class="theme-unlock-label">Lvl 15</span>
+
+    <div class="sw-settings" id="sw-settings" style="display:none;">
+      <h3 class="settings-section-title">Lightsaber Color</h3>
+      <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
+        <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
+        <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
+        <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
+        <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
+        <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
+      </div>
+      <div class="setting-row">
+        <label for="setting-sw-music">Binary Sunset Auto-Play</label>
+        <input type="checkbox" id="setting-sw-music" checked>
+      </div>
+      <div class="setting-row">
+        <label>Binary Sunset</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width:auto; padding:0 12px; border-radius:12px; font-size:0.8rem; height:32px;">▶ Play Binary Sunset</button>
+          <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width:80px;">
+        </div>
+      </div>
     </div>
   </div>
-</div>
-
-                    <div class="setting-row">
-                        <label>Accent Color</label>
-                        <div class="color-picker" id="color-picker">
-                            <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
-                            <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
-                            <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
-                            <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
-                            <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
-                        </div>
-                    </div>
-                   <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-    <label>Background</label>
-    <div class="wallpaper-picker-new" id="wallpaper-picker">
-    <button class="wp-thumb active" data-wp="default">
-        <div class="wp-thumb-img wp-thumb-default">🌙</div>
-        <span class="wp-thumb-label">None</span>
-    </button>
-    <button class="wp-thumb" data-wp="preset_forest">
-        <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
-        <span class="wp-thumb-label">Forest</span>
-    </button>
-    <button class="wp-thumb" data-wp="preset_space">
-        <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
-        <span class="wp-thumb-label">Space</span>
-    </button>
-    <label class="wp-thumb wp-custom-label">
-        <div class="wp-thumb-img wp-thumb-upload">＋</div>
-        <span class="wp-thumb-label">Upload</span>
-        <input type="file" id="wallpaper-upload" accept="image/*" hidden>
-    </label>
-</div>
-    <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
-</div>
-
-                    <!-- Star Wars specific (hidden by default) -->
-                    <div class="sw-settings" id="sw-settings" style="display:none;">
-                        <h3 class="settings-section-title">Lightsaber Color</h3>
-                        <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
-                            <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
-                            <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
-                            <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
-                            <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
-                            <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
-                        </div>
-                        <div class="setting-row">
-                            <label for="setting-sw-music">Binary Sunset Auto-Play</label>
-                            <input type="checkbox" id="setting-sw-music" checked>
-                        </div>
-                        <div class="setting-row">
-                            <label>Binary Sunset</label>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width: auto; padding: 0 12px; border-radius: 12px; font-size: 0.8rem; height: 32px;">▶ Play Binary Sunset</button>
-                                <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width: 80px;">
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </details>
+</details>
         </main>
 
         <!-- Stats Tab -->
@@ -515,264 +510,156 @@
         </div>
     </div>
 </main>
- <!-- Explorer -->
-<main class="tab-content" id="panel-explorer" role="tabpanel" aria-labelledby="tab-explorer">
 
-  <!-- Origin Picker -->
-  <div id="explorer-origin-picker" class="explorer-origin-screen" style="display:none;">
-    <div class="explorer-origin-card glass-card">
-      <div class="explorer-origin-globe">🌍</div>
-      <h2>Where do you study from?</h2>
-      <p>Pick your home country — this is where your journey begins.</p>
-      <select id="explorer-origin-select" class="explorer-select"></select>
-      <button class="btn btn-primary" id="btn-set-origin">Start Exploring ✈️</button>
+  <!-- Shortcut Modal -->
+<div id="shortcut-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card">
+    <h3 style="margin-top:0; margin-bottom:1rem;">⌨️ Keyboard Shortcuts</h3>
+    <div class="shortcut-list" style="display:flex; flex-direction:column; gap:8px;">
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Space</kbd></span><span>Play / Pause</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>I</kbd></span><span>Set Intention</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>N</kbd></span><span>Skip Session</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Z</kbd></span><span>Zen Mode</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>W</kbd></span><span>Hyperspace Warp (SW Theme)</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>?</kbd></span><span>Show this menu</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Esc</kbd></span><span>Close menu</span></div>
     </div>
-  </div>
-
-  <!-- Main Explorer UI -->
-  <div id="explorer-main" style="display:none;">
-    <!-- your existing explorer-main content stays here exactly as it is -->
-  </div>
-
-</main>
-
-    <!-- Top bar -->
-    <div class="explorer-topbar glass-card">
-      <div class="explorer-topbar-left">
-        <span class="explorer-origin-flag" id="explorer-origin-flag">🇮🇹</span>
-        <div>
-          <div class="explorer-origin-name" id="explorer-origin-name">Italy</div>
-          <div class="explorer-km-label">Total km studied: <strong id="explorer-total-km">0 km</strong></div>
-        </div>
-      </div>
-      <div class="explorer-topbar-right">
-        <div class="explorer-stat">
-          <span id="explorer-countries-count">0</span>
-          <label>Countries</label>
-        </div>
-        <div class="explorer-stat">
-          <span id="explorer-continents-count">0</span>
-          <label>Continents</label>
-        </div>
-        <button class="btn explorer-change-origin-btn" id="btn-change-origin">Change Origin</button>
-      </div>
-    </div>
-
-    <!-- Map Canvas -->
-    <div class="explorer-map-wrap">
-<canvas id="explorer-map" width="900" height="450"></canvas>
-<div style="position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:4px;align-items:center;">
-  <button id="btn-zoom-in"    style="width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1rem;cursor:pointer;line-height:1;">+</button>
-  <button id="btn-zoom-out"   style="width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1rem;cursor:pointer;line-height:1;">−</button>
-  <button id="btn-reset-zoom" style="padding:0 8px;height:28px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:0.75rem;cursor:pointer;">⟲</button>
-</div>
-
-
-      <div class="explorer-flight-overlay" id="explorer-flight-overlay" style="display:none;">
-        <div class="explorer-flight-card glass-card">
-          <div class="flight-flag" id="flight-flag">✈️</div>
-          <div class="flight-info">
-            <div class="flight-route" id="flight-route">Italy → Greece</div>
-            <div class="flight-distance" id="flight-distance">1,052 km</div>
-          </div>
-          <div class="flight-progress-bar">
-            <div class="flight-progress-fill" id="flight-progress-fill"></div>
-            <span class="flight-plane-icon" id="flight-plane-icon">✈️</span>
-          </div>
-        </div>
-      </div>
-      <button id="btn-abort-flight" style="margin-top:8px;width:100%;padding:6px;border-radius:8px;background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.4);color:#ff6b6b;font-size:0.75rem;cursor:pointer;">
-  🛑 Abort Flight
-</button>
-
-    </div>
-
-    <!-- Destination Picker -->
-    <div class="explorer-destinations glass-card" id="explorer-destinations">
-      <div class="explorer-dest-header">
-        <h3>✈️ Choose Your Next Destination</h3>
-        <div class="explorer-dest-subtitle" id="explorer-dest-subtitle">Select your current origin first</div>
-      </div>
-      <div class="explorer-dest-tabs">
-        <button class="explorer-dest-tab active" data-filter="reachable">Reachable Now</button>
-        <button class="explorer-dest-tab" data-filter="all">All Countries</button>
-        <button class="explorer-dest-tab" data-filter="unlocked">Unlocked 🏆</button>
-      </div>
-      <div class="explorer-dest-grid" id="explorer-dest-grid"></div>
-    </div>
-
-    <!-- Arrival Modal -->
-    <div id="explorer-arrival-modal" class="modal" style="display:none;">
-      <div class="modal-content glass-card explorer-arrival-card">
-        <div class="arrival-confetti" id="arrival-confetti"></div>
-        <div class="arrival-flag" id="arrival-flag">🇬🇷</div>
-        <h2 class="arrival-title" id="arrival-title">Welcome to Greece!</h2>
-        <div class="arrival-stats-row">
-          <div class="arrival-stat"><span id="arrival-distance">1,052</span><label>km flown</label></div>
-          <div class="arrival-stat"><span id="arrival-time">25</span><label>min studied</label></div>
-          <div class="arrival-stat"><span id="arrival-xp">+25</span><label>XP earned</label></div>
-        </div>
-        <div class="arrival-fact glass-card" id="arrival-fact">
-          <span class="arrival-fact-label">📖 Did you know?</span>
-          <p id="arrival-fact-text">Greece has over 6,000 islands.</p>
-        </div>
-        <div class="arrival-info-row">
-          <span>🏛️ Capital: <strong id="arrival-capital">Athens</strong></span>
-          <span>👥 Population: <strong id="arrival-population">10.7M</strong></span>
-        </div>
-        <div class="arrival-actions">
-          <button class="btn btn-primary" id="btn-arrival-set-origin">Fly from here next 🛫</button>
-          <button class="btn" id="btn-arrival-close">Back to Map</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
-    <!-- Shortcut Modal -->
-    <div id="shortcut-modal" class="modal" style="display:none;">
-        <div class="modal-content glass-card">
-            <h3 style="margin-top:0; margin-bottom:1rem;">⌨️ Keyboard Shortcuts</h3>
-            <div class="shortcut-list" style="display:flex; flex-direction:column; gap:8px;">
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Space</kbd></span><span>Play / Pause</span></div>
-				<div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>I</kbd></span><span>Set Intention</span></div>
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>N</kbd></span><span>Skip Session</span></div>
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Z</kbd></span><span>Zen Mode</span></div>
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>W</kbd></span><span>Hyperspace Warp (SW Theme)</span></div>
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>?</kbd></span><span>Show this menu</span></div>
-                <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Esc</kbd></span><span>Close menu</span></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Intention Modal -->
+<!-- Intention Modal -->
 <div id="intention-modal" class="modal" style="display:none;">
-    <div class="modal-content glass-card intention-modal-card">
-        <h3 class="intention-modal-title">🎯 What are you focusing on?</h3>
-        <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input">
-        <div class="subtasks-section">
-            <div class="subtasks-label">Subtasks <span style="color:var(--text-muted); font-weight:400;">(optional)</span></div>
-            <div class="subtask-list" id="subtask-list">
-                <div class="subtask-row">
-                    <span class="subtask-dot">◦</span>
-                    <input type="text" class="subtask-input" placeholder="Subtask 1..." maxlength="60">
-                </div>
-                <div class="subtask-row">
-                    <span class="subtask-dot">◦</span>
-                    <input type="text" class="subtask-input" placeholder="Subtask 2..." maxlength="60">
-                </div>
-                <div class="subtask-row">
-                    <span class="subtask-dot">◦</span>
-                    <input type="text" class="subtask-input" placeholder="Subtask 3..." maxlength="60">
-                </div>
-            </div>
-            <div class="subtasks-label" style="margin-top:12px;">Session Type</div>
-            <div class="label-picker" id="label-picker">
-                <button class="label-btn active" data-label="work" style="--lc:#a78bfa">Deep Work</button>
-                <button class="label-btn" data-label="study" style="--lc:#38bdf8">Study</button>
-                <button class="label-btn" data-label="creative" style="--lc:#fb923c">Creative</button>
-                <button class="label-btn" data-label="admin" style="--lc:#94a3b8">Admin</button>
-                <button class="label-btn" data-label="other" style="--lc:#4ecdc4">Other</button>
-            </div>
+  <div class="modal-content glass-card intention-modal-card">
+    <h3 class="intention-modal-title">🎯 What are you focusing on?</h3>
+    <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input">
+    <div class="subtasks-section">
+      <div class="subtasks-label">Subtasks <span style="color:var(--text-muted); font-weight:400;">(optional)</span></div>
+      <div class="subtask-list" id="subtask-list">
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 1..." maxlength="60">
         </div>
-        <div style="display:flex; justify-content:center; gap:10px; margin-top:1rem;">
-            <button class="btn btn-secondary" id="btn-skip-intention" style="border-radius:20px; width:auto; padding:0 20px;">Skip</button>
-            <button class="btn btn-primary" id="btn-start-intention" style="border-radius:20px; width:auto; height:48px; padding:0 20px; font-size:1rem;">Start Focus</button>
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 2..." maxlength="60">
         </div>
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 3..." maxlength="60">
+        </div>
+      </div>
+      <div class="subtasks-label" style="margin-top:12px;">Session Type</div>
+      <div class="label-picker" id="label-picker">
+        <button class="label-btn active" data-label="work" style="--lc:#a78bfa">Deep Work</button>
+        <button class="label-btn" data-label="study" style="--lc:#38bdf8">Study</button>
+        <button class="label-btn" data-label="creative" style="--lc:#fb923c">Creative</button>
+        <button class="label-btn" data-label="admin" style="--lc:#94a3b8">Admin</button>
+        <button class="label-btn" data-label="other" style="--lc:#4ecdc4">Other</button>
+      </div>
     </div>
+    <div style="display:flex; justify-content:center; gap:10px; margin-top:1rem;">
+      <button class="btn btn-secondary" id="btn-skip-intention" style="border-radius:20px; width:auto; padding:0 20px;">Skip</button>
+      <button class="btn btn-primary" id="btn-start-intention" style="border-radius:20px; width:auto; height:48px; padding:0 20px; font-size:1rem;">Start Focus</button>
+    </div>
+  </div>
 </div>
 
-    <!-- Achievement Toast -->
-    <div class="toast-container" id="toast-container"></div>
+<!-- Achievement Toast -->
+<div class="toast-container" id="toast-container"></div>
 
-    <script src="ambience.js"></script>
-    <script src="app.js"></script>
-	<!-- End of Day Summary Modal -->
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
+    authDomain: "pomodoro-focus-f105a.firebaseapp.com",
+    projectId: "pomodoro-focus-f105a",
+    storageBucket: "pomodoro-focus-f105a.firebasestorage.app",
+    messagingSenderId: "146119283270",
+    appId: "1:146119283270:web:f03ea370c7dcb995f0b047"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const db = getFirestore(firebaseApp);
+
+  window.firebaseAuth = auth;
+  window.firebaseDb = db;
+  window.GoogleAuthProvider = GoogleAuthProvider;
+  window.signInWithPopup = signInWithPopup;
+  window.signOutFb = signOut;
+  window.onAuthStateChanged = onAuthStateChanged;
+  window.firestoreDoc = doc;
+  window.firestoreSetDoc = setDoc;
+  window.firestoreGetDoc = getDoc;
+</script>
+
+<!-- End of Day Summary Modal -->
 <div id="eod-modal" class="modal" style="display:none;">
-    <div class="modal-content glass-card eod-modal-content">
-        <div class="eod-header">
-            <span class="eod-icon">🌙</span>
-            <h2>Day Complete</h2>
-            <p class="eod-subtitle" id="eod-subtitle">Great work today!</p>
-        </div>
-        <div class="eod-stats">
-            <div class="eod-stat">
-                <span class="eod-stat-val" id="eod-sessions">0</span>
-                <span class="eod-stat-label">Sessions</span>
-            </div>
-            <div class="eod-stat">
-                <span class="eod-stat-val" id="eod-minutes">0m</span>
-                <span class="eod-stat-label">Focus Time</span>
-            </div>
-            <div class="eod-stat">
-                <span class="eod-stat-val" id="eod-xp">+0</span>
-                <span class="eod-stat-label">XP Earned</span>
-            </div>
-            <div class="eod-stat">
-                <span class="eod-stat-val" id="eod-hour">—</span>
-                <span class="eod-stat-label">Best Hour</span>
-            </div>
-        </div>
-        <div class="eod-bar-wrap">
-            <div class="eod-bar-label">
-                <span>Daily Goal</span>
-                <span id="eod-goal-text">0 / 8</span>
-            </div>
-            <div class="eod-bar-bg">
-                <div class="eod-bar-fill" id="eod-bar-fill"></div>
-            </div>
-        </div>
-        <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
-            Keep Going 💪
-        </button>
+  <div class="modal-content glass-card eod-modal-content">
+    <div class="eod-header">
+      <span class="eod-icon">🌙</span>
+      <h2>Day Complete</h2>
+      <p class="eod-subtitle" id="eod-subtitle">Great work today!</p>
     </div>
+    <div class="eod-stats">
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-sessions">0</span>
+        <span class="eod-stat-label">Sessions</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-minutes">0m</span>
+        <span class="eod-stat-label">Focus Time</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-xp">+0</span>
+        <span class="eod-stat-label">XP Earned</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-hour">—</span>
+        <span class="eod-stat-label">Best Hour</span>
+      </div>
+    </div>
+    <div class="eod-bar-wrap">
+      <div class="eod-bar-label">
+        <span>Daily Goal</span>
+        <span id="eod-goal-text">0 / 8</span>
+      </div>
+      <div class="eod-bar-bg">
+        <div class="eod-bar-fill" id="eod-bar-fill"></div>
+      </div>
+    </div>
+    <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
+      Keep Going 💪
+    </button>
+  </div>
 </div>
+
 <!-- Onboarding Overlay -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
-    <div class="onboarding-card glass-card">
-        <div class="onboarding-step" id="onboarding-step">
-            <div class="onboarding-icon" id="onboarding-icon">🍅</div>
-            <h3 class="onboarding-title" id="onboarding-title">Welcome to Pomodoro Focus</h3>
-            <p class="onboarding-desc" id="onboarding-desc">The Pomodoro technique helps you focus in short, powerful bursts. Work 25 minutes, then take a 5-minute break. Simple. Effective.</p>
-        </div>
-        <div class="onboarding-dots" id="onboarding-dots">
-            <span class="ob-dot active"></span>
-            <span class="ob-dot"></span>
-            <span class="ob-dot"></span>
-            <span class="ob-dot"></span>
-        </div>
-        <div class="onboarding-actions">
-            <button class="btn-ob-skip" id="btn-ob-skip">Skip</button>
-            <button class="btn-ob-next btn-primary btn" id="btn-ob-next">Next →</button>
-        </div>
+  <div class="onboarding-card glass-card">
+    <div class="onboarding-step" id="onboarding-step">
+      <div class="onboarding-icon" id="onboarding-icon">🍅</div>
+      <h3 class="onboarding-title" id="onboarding-title">Welcome to Pomodoro Focus</h3>
+      <p class="onboarding-desc" id="onboarding-desc">The Pomodoro technique helps you focus in short, powerful bursts. Work 25 minutes, then take a 5-minute break. Simple. Effective.</p>
     </div>
-</div>
-<!-- Rage Quit Modal -->
-<div id="ragequit-modal" class="modal" style="display:none;">
-  <div class="modal-content glass-card ragequit-card">
-    <div class="rq-emoji" id="rq-emoji">😤</div>
-    <h3 class="rq-title" id="rq-title">You were 73% there!</h3>
-    <p class="rq-subtitle">Quit now and lose your shot at <strong id="rq-xp">15 XP</strong></p>
-    <div class="rq-progress-wrap">
-      <div class="rq-bar-bg">
-        <div class="rq-bar-fill" id="rq-bar-fill"></div>
-      </div>
-      <div class="rq-bar-labels">
-        <span>0%</span>
-        <span id="rq-pct-label">73%</span>
-        <span>100%</span>
-      </div>
+    <div class="onboarding-dots" id="onboarding-dots">
+      <span class="ob-dot active"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
     </div>
-    <div class="rq-message" id="rq-message">"The last 27% is where the magic happens."</div>
-    <div class="rq-actions">
-      <button class="btn rq-quit-btn" id="btn-rq-quit">Quit Anyway 😞</button>
-      <button class="btn btn-primary rq-keep-btn" id="btn-rq-keep">Keep Going 💪</button>
+    <div class="onboarding-actions">
+      <button class="btn-ob-skip" id="btn-ob-skip">Skip</button>
+      <button class="btn-ob-next btn-primary btn" id="btn-ob-next">Next →</button>
     </div>
   </div>
 </div>
-<canvas id="matrix-rain" style="display:none;"></canvas>
-<script src="explorer.js"></script>
 
+<script src="ambience.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
