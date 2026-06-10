@@ -79,7 +79,13 @@ currentSubtasks: [],
 
 		this.initFirebase();
     },
-if (user) {
+    initFirebase() {
+        if (!window.firebaseAuth) return;
+        const btnAuth = document.getElementById('btn-auth');
+        const authName = document.getElementById('auth-name');
+        const authAvatar = document.getElementById('auth-avatar');
+        window.firebaseAuth.onAuthStateChanged(async (user) => {
+            if (user) {
     if (btnAuth) btnAuth.textContent = 'Sign out';
     if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
     if (authAvatar && user.photoURL) {
@@ -113,6 +119,8 @@ if (user) {
 } else {
     ...
 }
+        });
+    },
 
 async saveToFirestore(uid) {
     if (!uid) return;
@@ -224,15 +232,15 @@ ambientVolInput: null,
 bindEvents() {
   // Core Timer Controls
   if (this.elements.btnStart) {
-    this.elements.btnStart.addEventListener('click', this.toggleTimer);
+    this.elements.btnStart.addEventListener('click', this.toggleTimer.bind(this));
   }
 
   if (this.elements.btnReset) {
-    this.elements.btnReset.addEventListener('click', this.resetTimer);
+    this.elements.btnReset.addEventListener('click', this.resetTimer.bind(this));
   }
 
   if (this.elements.btnSkip) {
-    this.elements.btnSkip.addEventListener('click', this.skipSession);
+    this.elements.btnSkip.addEventListener('click', this.skipSession.bind(this));
   }
 
   if (this.elements.btnZen) {
@@ -255,7 +263,7 @@ bindEvents() {
   }
 
   if (this.elements.btnWarp) {
-    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump);
+    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump.bind(this));
   }
 
   // Mode Switching
@@ -320,7 +328,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   // Notes
   const btnAddNote = document.getElementById('btn-add-note');
   if (btnAddNote) {
-    btnAddNote.addEventListener('click', this.addNote);
+    btnAddNote.addEventListener('click', this.addNote.bind(this));
   }
 
   const noteInput = document.getElementById('note-input');
@@ -1018,10 +1026,12 @@ el.addEventListener('click', () => {
     // ===================================
     showToast(title, desc, icon = '✅') {
         const c = document.getElementById('toast-container');
+		        if (!c) return;
         const t = document.createElement('div');
         t.className = 'toast';
         t.innerHTML = `
             <div class="toast-icon">${icon}</div>
+			
             <div class="toast-content">
                 <div class="toast-title">${title}</div>
                 <div class="toast-desc">${desc}</div>
@@ -1038,6 +1048,7 @@ el.addEventListener('click', () => {
         const quotes = ["Locked in.", "Flow achieved.", "One more?", "Deep work done.", "Focus unlocked."];
         const quote = quotes[Math.floor(Math.random() * quotes.length)];
         const c = document.getElementById('toast-container');
+		        if (!c) return;
         const t = document.createElement('div');
         t.className = 'toast toast-recap';
         t.innerHTML = `
@@ -1167,7 +1178,7 @@ this.state.history.push({
     duration: duration,
     type: type,
     intention: type === 'focus' ? this.state.currentIntention : null,
-    label: type === 'focus' ? this._sessionLabel || null : null
+    label: type === 'focus' ? this.sessionLabel || null : null
 });
         if (type === 'focus') this.state.currentIntention = null;
         const inp = document.getElementById('intention-input');
@@ -1264,7 +1275,6 @@ setThemePreview(theme) {
     this.state.settings.theme = theme;
     this.saveSettings();
     this.updateTheme();
-}
 },
 
     setAccent(colorName) {
