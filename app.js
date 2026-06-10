@@ -678,13 +678,24 @@ switchTab(target) {
 toggleTimer() {
     if (this.state.isRunning) {
         this.stopTimer();
-    } else {
-        this.startTimer();
+        return;
     }
+
+    if (this.state.mode === 'work' && !this.state.currentIntention) {
+        const mod = document.getElementById('intention-modal');
+        if (mod) {
+            mod.style.display = 'flex';
+            const inp = document.getElementById('intention-input');
+            if (inp) inp.focus();
+            return;
+        }
+    }
+
+    this.startTimer();
 },
 
     startTimer() {
-     if (this.state.timeLeft <= 0) {
+if (this.state.timeLeft <= 0) {
     this.setMode(this.state.mode || 'work');
 }
         this.state.isRunning = true;
