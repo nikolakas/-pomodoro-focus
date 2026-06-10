@@ -86,19 +86,23 @@ async initFirebase() {
     const authName = document.getElementById('auth-name');
     const authAvatar = document.getElementById('auth-avatar');
 
-    if (
-        !window.firebaseAuth ||
-        !window.firebaseDb ||
-        !window.firestoreDoc ||
-        !window.firestoreOnSnapshot ||
-        !window.onAuthStateChanged ||
-        !window.GoogleAuthProvider ||
-        !window.signInWithPopup ||
-        !window.signOutFb
-    ) {
-        if (btnAuth) btnAuth.style.display = 'none';
-        return;
+if (
+    !window.firebaseAuth ||
+    !window.firebaseDb ||
+    !window.firestoreDoc ||
+    !window.firestoreOnSnapshot ||
+    !window.onAuthStateChanged ||
+    !window.GoogleAuthProvider ||
+    !window.signInWithPopup ||
+    !window.signOutFb
+) {
+    if (btnAuth) {
+        btnAuth.style.display = 'inline-flex';
+        btnAuth.textContent = 'Sign in with Google';
+        btnAuth.onclick = null;
     }
+    return;
+}
 
     if (this.authStateUnsub) this.authStateUnsub();
 
@@ -688,10 +692,10 @@ switchTab(target) {
         this.updateTimeDisplay();
         this.updateRing();
 
-        let label = 'Focus Time';
-        if (mode === 'shortBreak') label = 'Short Break';
-        else if (mode === 'longBreak') label = 'Long Break';
-        this.elements.label.textContent = label;
+    let label = 'Focus Time';
+if (mode === 'shortBreak') label = 'Short Break';
+else if (mode === 'longBreak') label = 'Long Break';
+this.elements.label.textContent = label;
 
         // Auto-show/hide breathing widget
         if (mode === 'work') {
@@ -882,12 +886,12 @@ restoreSessionState() {
     // ===================================
     // VISUALS & EFFECTS
     // ===================================
-    updateTimeDisplay() {
-        const m = Math.floor(this.state.timeLeft / 60);
-        const s = this.state.timeLeft % 60;
-        this.elements.time.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        document.title = `${this.elements.time.textContent} - Pomodoro`;
-    },
+updateTimeDisplay() {
+    const m = Math.floor(this.state.timeLeft / 60);
+    const s = this.state.timeLeft % 60;
+    this.elements.time.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    document.title = `${this.elements.time.textContent} - Pomodoro`;
+},
 
     updateRing() {
         const total = (this.state.mode === 'work' ? this.state.settings.work :
