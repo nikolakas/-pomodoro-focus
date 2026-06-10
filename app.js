@@ -47,7 +47,7 @@ const app = {
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
       currentIntention: null,
 currentSubtasks: [],
-        activeNoteFilter: null
+        activeNoteFilter: null,         sessionLabel: 'work'
     },
 
     elements: {},
@@ -225,7 +225,7 @@ ambientVolInput: null,
             breatheWidget: document.getElementById('breathing-widget'),
             breatheText: document.getElementById('breathing-text'),
             breatheCircle: document.getElementById('breathing-ring'),
-            btnToggleBreathe: document.getElementById('btn-toggle-breathe')
+            btnToggleBreathe: document.getElementById('btn-toggle-breathe'),             eodModal: document.getElementById('eod-modal'),             eodSessions: document.getElementById('eod-sessions'),             eodMinutes: document.getElementById('eod-minutes'),             eodXp: document.getElementById('eod-xp'),             eodHour: document.getElementById('eod-hour'),             eodGoalText: document.getElementById('eod-goal-text'),             eodSubtitle: document.getElementById('eod-subtitle'),             eodBarFill: document.getElementById('eod-bar-fill')
         };
     },
 
@@ -406,7 +406,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       btn.addEventListener('click', () => {
         document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.sessionLabel = btn.dataset.label || 'work';
+        this.state.sessionLabel = btn.dataset.label || 'work';
       });
     });
 
@@ -659,6 +659,13 @@ toggleTimer() {
      if (this.state.timeLeft <= 0) {
     this.setMode(this.state.mode || 'work');
 }
+		        // Ensure AudioContext is alive (must happen on user gesture)
+        if (!this.toneCtx) {
+            this.toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.toneCtx.state === 'suspended') {
+            this.toneCtx.resume();
+        }
         this.state.isRunning = true;
 		// Show intention reminder
 const reminder = document.getElementById('intention-reminder');
@@ -1178,7 +1185,7 @@ this.state.history.push({
     duration: duration,
     type: type,
     intention: type === 'focus' ? this.state.currentIntention : null,
-    label: type === 'focus' ? this.sessionLabel || null : null
+    label: type === 'focus' ? this.state.sessionLabel || null : null
 });
         if (type === 'focus') this.state.currentIntention = null;
         const inp = document.getElementById('intention-input');
@@ -1915,21 +1922,21 @@ deleteHistoryItem(date) {
         : ["Every session counts.", "You started. That matters.", "Small steps, big results."];
     const subtitle = subtitles[Math.floor(Math.random() * subtitles.length)];
 
-    document.getElementById('eod-sessions').textContent = todaySessions.length;
-    document.getElementById('eod-minutes').textContent = `${totalMins}m`;
-    document.getElementById('eod-xp').textContent = `+${xpToday}`;
-    document.getElementById('eod-hour').textContent = bestHourStr;
-    document.getElementById('eod-goal-text').textContent = `${todaySessions.length} / ${goal}`;
-    document.getElementById('eod-subtitle').textContent = subtitle;
+    if (this.elements.eodSessions) this.elements.eodSessions.textContent = todaySessions.length;
+    if (this.elements.eodMinutes) this.elements.eodMinutes.textContent = `${totalMins}m`;
+    if (this.elements.eodXp) this.elements.eodXp.textContent = `+${xpToday}`;
+    if (this.elements.eodHour) this.elements.eodHour.textContent = bestHourStr;
+    if (this.elements.eodGoalText) this.elements.eodGoalText.textContent = `${todaySessions.length} / ${goal}`;
+    if (this.elements.eodSubtitle) this.elements.eodSubtitle.textContent = subtitle;
 
     // Animate bar after short delay so transition fires
-    const fill = document.getElementById('eod-bar-fill');
+    const fill = this.elements.eodBarFill;
     if (fill) {
         fill.style.width = '0%';
         setTimeout(() => { fill.style.width = `${goalPct}%`; }, 100);
     }
 
-    document.getElementById('eod-modal').style.display = 'flex';
+    if (this.elements.eodModal) this.elements.eodModal.style.display = 'flex';
 },
 initOnboarding() {
     const seen = localStorage.getItem('pomodoro_onboarded');
