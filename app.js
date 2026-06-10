@@ -808,9 +808,9 @@ toggleTimer() {
     },
 
     skipSession() {
-        this.stopTimer();
-        this.state.elapsedFocusMinutes = (this.state.settings.work * 60 - this.state.timeLeft) / 60;
+        this.state.elapsedFocusMinutes = Math.round((this.state.settings.work * 60 - this.state.timeLeft) / 60);
 		this.state.timeLeft = 0;
+		        this.stopTimer();
         this.onTimerComplete();
     },
 
