@@ -86,22 +86,33 @@ async initFirebase() {
     const authName = document.getElementById('auth-name');
     const authAvatar = document.getElementById('auth-avatar');
 
-if (
-    !window.firebaseAuth ||
-    !window.firebaseDb ||
-    !window.firestoreDoc ||
-    !window.firestoreOnSnapshot ||
-    !window.onAuthStateChanged ||
-    !window.GoogleAuthProvider ||
-    !window.signInWithPopup ||
-    !window.signOutFb
-) {
     if (btnAuth) {
         btnAuth.style.display = 'inline-flex';
         btnAuth.textContent = 'Sign in with Google';
+        btnAuth.onclick = async () => {
+            try {
+                if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) {
+                    console.error('Firebase auth not ready');
+                    return;
+                }
+                const provider = new window.GoogleAuthProvider();
+                await window.signInWithPopup(window.firebaseAuth, provider);
+            } catch (err) {
+                console.error('Google sign-in failed:', err);
+            }
+        };
     }
-    return;
-}
+
+    if (
+        !window.firebaseAuth ||
+        !window.firebaseDb ||
+        !window.firestoreDoc ||
+        !window.firestoreOnSnapshot ||
+        !window.onAuthStateChanged ||
+        !window.signOutFb
+    ) {
+        return;
+    }
 
     if (this.authStateUnsub) this.authStateUnsub();
 
@@ -143,7 +154,6 @@ if (
                     ...this.state.settings,
                     ...(remote.settings || {})
                 };
-
                 this.saveStats();
                 this.saveSettings();
                 this.renderStats();
@@ -161,6 +171,7 @@ if (
                 btnAuth.textContent = 'Sign in with Google';
                 btnAuth.onclick = async () => {
                     try {
+                        if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
                         const provider = new window.GoogleAuthProvider();
                         await window.signInWithPopup(window.firebaseAuth, provider);
                     } catch (err) {
