@@ -75,9 +75,10 @@ currentSubtasks: [],
 
         setInterval(() => this.rotateQuote(), 60000);
         this.rotateQuote();
-		setTimeout(() => this.initOnboarding(), 800);
+	setTimeout(() => this.initOnboarding(), 800);
 
-		setTimeout(() => this.initFirebase(), 300);
+this.restoreSessionState();
+setTimeout(() => this.initFirebase(), 300);
     },
 
 async initFirebase() {
@@ -673,15 +674,17 @@ switchTab(target) {
     // ===================================
     // TIMER LOGIC
     // ===================================
-    setMode(mode) {
-        if (this.state.isRunning) this.stopTimer();
-        this.state.mode = mode;
-        this.elements.modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+    setMode(mode, preserveTime = false) {
+    if (this.state.isRunning) this.stopTimer();
+    this.state.mode = mode;
+    this.elements.modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
 
-        const m = mode === 'work' ? this.state.settings.work :
-                  mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long;
+    const m = mode === 'work' ? this.state.settings.work :
+              mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long;
 
+    if (!preserveTime || this.state.timeLeft <= 0) {
         this.state.timeLeft = m * 60;
+    }
         this.updateTimeDisplay();
         this.updateRing();
 
@@ -739,23 +742,23 @@ this.renderSubtaskTracker();
         this.elements.iconPlay.style.display = 'none';
         this.elements.iconPause.style.display = 'block';
 
-        if (this.state.settings.theme === 'starwars' && this.state.mode === 'work') {
-            this.triggerHyperspaceStarfield();
-        }
+    
 
         const intMod = document.getElementById('intention-modal');
         if (intMod) intMod.style.display = 'none';
 
-        this.state.timer = setInterval(() => {
-            this.state.timeLeft--;
-            if (!this.state.hyperspaceActive) {
-                this.updateTimeDisplay();
-                this.updateRing();
-            }
-            if (this.state.timeLeft <= 0) {
-                this.onTimerComplete();
-            }
-        }, 1000);
+this.saveSessionState();
+this.state.timer = setInterval(() => {
+    this.state.timeLeft--;
+    this.saveSessionState();
+    if (!this.state.hyperspaceActive) {
+        this.updateTimeDisplay();
+        this.updateRing();
+    }
+    if (this.state.timeLeft <= 0) {
+        this.onTimerComplete();
+    }
+}, 1000);
     },
 
     stopTimer() {
@@ -783,6 +786,7 @@ if (reminder) reminder.style.display = 'none';
 
     onTimerComplete() {
         this.stopTimer();
+        localStorage.removeItem('pomodoro_session');
         this.playAudio(this.state.settings.sound);
 
         if (this.state.mode === 'work') {
@@ -841,7 +845,40 @@ if (this.state.mode !== 'work' && hour >= 20 && this.state.sessionsToday >= 2) {
     setTimeout(() => this.showEndOfDaySummary(), 2500);
 }
     },
+saveSessionState() {
+    localStorage.setItem('pomodoro_session', JSON.stringify({
+        mode: this.state.mode,
+        timeLeft: this.state.timeLeft,
+        isRunning: this.state.isRunning,
+        currentRound: this.state.currentRound,
+        currentIntention: this.state.currentIntention,
+        currentSubtasks: this.state.currentSubtasks
+    }));
+},
 
+restoreSessionState() {
+    const raw = localStorage.getItem('pomodoro_session');
+    if (!raw) return;
+
+    try {
+        const s = JSON.parse(raw);
+        if (!s || !s.mode) return;
+
+        this.state.mode = s.mode;
+        this.state.currentRound = s.currentRound || this.state.currentRound;
+        this.state.currentIntention = s.currentIntention || null;
+        this.state.currentSubtasks = s.currentSubtasks || [];
+
+        this.setMode(s.mode, true);
+
+        if (typeof s.timeLeft === 'number' && s.timeLeft > 0) {
+            this.state.timeLeft = s.timeLeft;
+            this.updateTimeDisplay();
+            this.updateRing();
+            if (s.isRunning) this.startTimer();
+        }
+    } catch (e) {}
+},
     // ===================================
     // VISUALS & EFFECTS
     // ===================================
