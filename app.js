@@ -204,7 +204,8 @@ async loadFromFirestore(uid) {
     this.renderNotes();
     this.renderHeatmap();
     this.renderInsights();
-}
+},
+
     cacheDOM() {
         this.elements = {
             time: document.getElementById('timer-time'),
@@ -290,7 +291,7 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
 
   if (this.elements.btnWarp) {
-    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump.bind(this));
+    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump);
   }
 
   // Mode Switching
@@ -433,7 +434,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       btn.addEventListener('click', () => {
         document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this._sessionLabel = btn.dataset.label || 'work';
+        this.sessionLabel = btn.dataset.label || 'work';
       });
     });
 
@@ -851,7 +852,7 @@ if (this.state.mode !== 'work' && hour >= 20 && this.state.sessionsToday >= 2) {
         el.className = 'subtask-tracker-item' + (task.done ? ' done' : '');
         el.innerHTML = `
             <div class="subtask-check">${task.done ? '✓' : ''}</div>
-                        <span>${task.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+            <span>${task.text.replace(/</g,'&lt;')}</span>
         `;
 el.addEventListener('click', () => {
     this.state.currentSubtasks[idx].done = !this.state.currentSubtasks[idx].done;
@@ -1299,7 +1300,6 @@ setThemePreview(theme) {
     this.state.settings.theme = theme;
     this.saveSettings();
     this.updateTheme();
-}
 },
 
     setAccent(colorName) {
@@ -1941,11 +1941,11 @@ deleteHistoryItem(date) {
     const subtitle = subtitles[Math.floor(Math.random() * subtitles.length)];
 
     document.getElementById('eod-sessions').textContent = todaySessions.length;
-    document.getElementById('eod-minutes')?.textContent = `${totalMins}m`;
-    document.getElementById('eod-xp')?.textContent = `+${xpToday}`;
-    document.getElementById('eod-hour')?.textContent = bestHourStr;
-    document.getElementById('eod-goal-text')?.textContent = `${todaySessions.length} / ${goal}`;
-    document.getElementById('eod-subtitle')?.textContent = subtitle;
+    document.getElementById('eod-minutes').textContent = `${totalMins}m`;
+    document.getElementById('eod-xp').textContent = `+${xpToday}`;
+    document.getElementById('eod-hour').textContent = bestHourStr;
+    document.getElementById('eod-goal-text').textContent = `${todaySessions.length} / ${goal}`;
+    document.getElementById('eod-subtitle').textContent = subtitle;
 
     // Animate bar after short delay so transition fires
     const fill = document.getElementById('eod-bar-fill');
@@ -1954,7 +1954,7 @@ deleteHistoryItem(date) {
         setTimeout(() => { fill.style.width = `${goalPct}%`; }, 100);
     }
 
-    document.getElementById('eod-modal')?.style && (document.getElementById('eod-modal').style.display = 'flex');
+    document.getElementById('eod-modal').style.display = 'flex';
 },
 initOnboarding() {
     const seen = localStorage.getItem('pomodoro_onboarded');
