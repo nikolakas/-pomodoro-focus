@@ -126,24 +126,47 @@ async saveToFirestore(uid) {
 
 async loadFromFirestore(uid) {
     if (!uid) return;
+
     const ref = window.firestoreDoc(window.firebaseDb, 'users', uid);
     const snap = await window.firestoreGetDoc(ref);
-    if (snap.exists()) {
-        const data = snap.data();
-        this.state.history = data.history || [];
-        this.state.xp = data.xp || 0;
-        this.state.level = data.level || 1;
-        this.state.sessionsToday = data.sessionsToday || 0;
-        this.state.totalSessions = data.totalSessions || 0;
-        if (data.settings) this.state.settings = { ...this.state.settings, ...data.settings };
-        this.saveStats();
-        this.saveSettings();
-        this.renderStats();
-        this.renderNotes();
-        this.renderHeatmap();
-        this.renderInsights();
-    }
-},
+    const remote = snap.exists() ? snap.data() : {};
+
+    const localHistory = JSON.parse(localStorage.getItem('pomodoro_history') || '[]');
+    const localToday = parseInt(localStorage.getItem('pomodoro_today') || '0', 10);
+    const localTotal = parseInt(localStorage.getItem('pomodoro_total') || '0', 10);
+    const localXp = parseInt(localStorage.getItem('pomodoro_xp') || '0', 10);
+
+    const mergedHistory = [
+        ...(remote.history || []),
+        ...localHistory
+    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const merged = {
+        history: mergedHistory,
+        xp: Math.max(remote.xp || 0, localXp),
+        level: Math.max(remote.level || 1, this.state.level || 1),
+        sessionsToday: Math.max(remote.sessionsToday || 0, localToday),
+        totalSessions: Math.max(remote.totalSessions || 0, localTotal),
+        settings: { ...this.state.settings, ...(remote.settings || {}) },
+        lastSynced: new Date().toISOString()
+    };
+
+    await window.firestoreSetDoc(ref, merged);
+
+    this.state.history = merged.history;
+    this.state.xp = merged.xp;
+    this.state.level = merged.level;
+    this.state.sessionsToday = merged.sessionsToday;
+    this.state.totalSessions = merged.totalSessions;
+    this.state.settings = { ...this.state.settings, ...(merged.settings || {}) };
+
+    this.saveStats();
+    this.saveSettings();
+    this.renderStats();
+    this.renderNotes();
+    this.renderHeatmap();
+    this.renderInsights();
+}
     cacheDOM() {
         this.elements = {
             time: document.getElementById('timer-time'),
@@ -259,9 +282,10 @@ bindEvents() {
   }
 
   // Appearance
-  if (this.elements.themeBtn) {
-    this.elements.themeBtn.addEventListener('click', this.toggleTheme);
-  }
+  const themeBtn = document.getElementById('btn-theme-toggle');
+if (themeBtn) {
+    themeBtn.addEventListener('click', () => this.toggleTheme());
+}
 
   this.elements.colorBtns.forEach(btn => {
     btn.addEventListener('click', e => this.setAccent(e.target.dataset.color));
@@ -1213,10 +1237,6 @@ this.state.history.push({
             this.setAccent(this.state.settings.accent);
         }
 this.setWallpaper(this.state.settings.wallpaper);
-        const pNormal = document.getElementById('theme-preview-normal');
-const pSw = document.getElementById('theme-preview-starwars');
-if (pNormal) pNormal.classList.toggle('active', !isSw);
-if (pSw) pSw.classList.toggle('active', isSw);
         this.updateLogo();
         this.updateLevel();
     },
@@ -1225,20 +1245,32 @@ if (pSw) pSw.classList.toggle('active', isSw);
     this.state.settings.theme = this.state.settings.theme === 'starwars' ? 'normal' : 'starwars';
     this.saveSettings();
     this.updateTheme();
-if (window.AmbienceModule) {
-  if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
-    window.AmbienceModule.play('binary_sunset');
-  } else {
-    window.AmbienceModule.stop('binary_sunset');
-  }
-}
-},
-setThemePreview(theme) {
-    document.getElementById('theme-preview-normal').classList.toggle('active', theme === 'normal');
-    document.getElementById('theme-preview-starwars').classList.toggle('active', theme === 'starwars');
-    if (theme !== this.state.settings.theme) {
-        this.toggleTheme();
+
+    const btn = document.getElementById('btn-theme-toggle');
+    const label = document.getElementById('theme-toggle-text');
+
+    if (btn && label) {
+        if (this.state.settings.theme === 'starwars') {
+            btn.innerHTML = '🌌 <span class="tooltip" id="theme-toggle-text">Normal Mode</span>';
+        } else {
+            btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Star Wars</span>';
+        }
     }
+
+    if (window.AmbienceModule) {
+        if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
+            window.AmbienceModule.play('binary_sunset');
+        } else {
+            window.AmbienceModule.stop('binary_sunset');
+        }
+    }
+},
+
+setThemePreview(theme) {
+    this.state.settings.theme = theme;
+    this.saveSettings();
+    this.updateTheme();
+}
 },
 
     setAccent(colorName) {
