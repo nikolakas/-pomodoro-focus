@@ -1183,3 +1183,42 @@ body.minimal-mode #btn-minimal { transform: rotate(180deg); color: var(--accent)
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--bg-secondary); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+
+/* ===== MARIANNA PINK THEME ===== */
+body.theme-pink {
+        --bg-primary: #2d0a1a;
+        --bg-secondary: #3d1525;
+        --bg-card: rgba(80,20,50,0.75);
+        --text-primary: #ffe0ee;
+        --text-secondary: #f9a8c9;
+        --text-muted: #c06080;
+        --accent: #ff6eb4;
+        --accent-glow: rgba(255,110,180,0.5);
+        --accent-glow-intense: rgba(255,110,180,0.85);
+    }
+
+body.theme-pink .timer-ring-progress {
+        stroke: #ff6eb4;
+        filter: drop-shadow(0 0 12px rgba(255,110,180,0.8));
+    }
+
+body.theme-pink #btn-start {
+        background: linear-gradient(135deg, #ff6eb4, #e91e8c) !important;
+        box-shadow: 0 0 30px rgba(255,110,180,0.6) !important;
+    }
+
+body.theme-pink .level-bar-fill {
+        background: linear-gradient(90deg, #ff6eb4, #e91e8c);
+    }
+
+body.theme-pink .tab.active {
+        color: #ff6eb4;
+        border-bottom-color: #ff6eb4;
+    }
+
+body.theme-pink .marianna-banner {
+        display: flex; align-items: center; justify-content: center;
+        gap: 6px; color: #ff6eb4; font-size: 0.78rem;
+        opacity: 0.9; letter-spacing: 0.04em; padding: 4px 0;
+    }
