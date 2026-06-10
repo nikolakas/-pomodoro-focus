@@ -648,7 +648,9 @@ toggleTimer() {
 },
 
     startTimer() {
-        if (this.state.timeLeft <= 0) return;
+     if (this.state.timeLeft <= 0) {
+    this.setMode(this.state.mode || 'work');
+}
         this.state.isRunning = true;
 		// Show intention reminder
 const reminder = document.getElementById('intention-reminder');
