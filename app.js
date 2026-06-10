@@ -77,7 +77,7 @@ currentSubtasks: [],
         this.rotateQuote();
 		setTimeout(() => this.initOnboarding(), 800);
 
-		this.initFirebase();
+		setTimeout(() => this.initFirebase(), 300);
     },
 
 async initFirebase() {
