@@ -79,36 +79,40 @@ currentSubtasks: [],
 
 		this.initFirebase();
     },
-initFirebase() {
-    if (!window.onAuthStateChanged) return;
+if (user) {
+    if (btnAuth) btnAuth.textContent = 'Sign out';
+    if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
+    if (authAvatar && user.photoURL) {
+        authAvatar.src = user.photoURL;
+        authAvatar.style.display = 'block';
+    }
+    if (btnAuth) btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
 
-    window.onAuthStateChanged(window.firebaseAuth, async (user) => {
-        const btnAuth = document.getElementById('btn-auth');
-        const authName = document.getElementById('auth-name');
-        const authAvatar = document.getElementById('auth-avatar');
+    await this.loadFromFirestore(user.uid);
 
-        if (user) {
-            if (btnAuth) btnAuth.textContent = 'Sign out';
-            if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
-            if (authAvatar && user.photoURL) {
-                authAvatar.src = user.photoURL;
-                authAvatar.style.display = 'block';
-            }
-            if (btnAuth) btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
-            await this.loadFromFirestore(user.uid);
-        } else {
-            if (btnAuth) btnAuth.textContent = 'Sign in with Google';
-            if (authName) authName.textContent = '';
-            if (authAvatar) authAvatar.style.display = 'none';
-            if (btnAuth) {
-                btnAuth.onclick = () => {
-                    const provider = new window.GoogleAuthProvider();
-                    window.signInWithPopup(window.firebaseAuth, provider);
-                };
-            }
-        }
+    if (this.userUnsub) this.userUnsub();
+    const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
+    this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
+        if (!snap.exists()) return;
+        const remote = snap.data();
+
+        this.state.history = remote.history || [];
+        this.state.xp = remote.xp || 0;
+        this.state.level = remote.level || 1;
+        this.state.sessionsToday = remote.sessionsToday || 0;
+        this.state.totalSessions = remote.totalSessions || 0;
+        this.state.settings = { ...this.state.settings, ...(remote.settings || {}) };
+
+        this.saveStats();
+        this.saveSettings();
+        this.renderStats();
+        this.renderNotes();
+        this.renderHeatmap();
+        this.renderInsights();
     });
-},
+} else {
+    ...
+}
 
 async saveToFirestore(uid) {
     if (!uid) return;
@@ -126,7 +130,6 @@ async saveToFirestore(uid) {
 
 async loadFromFirestore(uid) {
     if (!uid) return;
-
     const ref = window.firestoreDoc(window.firebaseDb, 'users', uid);
     const snap = await window.firestoreGetDoc(ref);
     const remote = snap.exists() ? snap.data() : {};
