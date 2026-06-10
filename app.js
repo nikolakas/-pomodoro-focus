@@ -2179,3 +2179,69 @@ initOnboarding() {
 
 window.app = app;
 document.addEventListener('DOMContentLoaded', () => app.init());
+
+
+// ===== MARIANNA PINK THEME EXTENSION =====
+(function patchPinkTheme() {
+	  const _origUpdateTheme = app.updateTheme.bind(app);
+	  const _origToggleTheme = app.toggleTheme.bind(app);
+	  const _origUpdateLogo = app.updateLogo.bind(app);
+
+   app.updateTheme = function() {
+	       const isPink = this.state.settings.theme === 'pink';
+	       document.body.classList.toggle('theme-pink', isPink);
+	       if (isPink) {
+			         document.body.classList.remove('theme-starwars');
+			         document.body.style.setProperty('--accent', '#ff6eb4');
+			         const meta = document.querySelector('meta[name=theme-color]');
+			         if (meta) meta.content = '#ff6eb4';
+			         this.updateLogo();
+			       } else {
+			         _origUpdateTheme();
+			       }
+	     };
+
+   app.toggleTheme = function() {
+	       const t = this.state.settings.theme;
+	       if (t === 'normal') this.state.settings.theme = 'starwars';
+	       else if (t === 'starwars') this.state.settings.theme = 'pink';
+	       else this.state.settings.theme = 'normal';
+	       this.saveSettings();
+	       this.updateTheme();
+	     };
+
+   app.updateLogo = function() {
+	       if (this.state.settings.theme === 'pink') {
+			         const logo = document.getElementById('app-logo-title');
+			         const sub = document.getElementById('app-logo-sub');
+			         if (logo) logo.textContent = 'Pomodoro';
+			         if (sub) sub.textContent = 'for Marianna';
+			         this.renderMariannaBanner();
+			       } else {
+			         _origUpdateLogo();
+			         this.renderMariannaBanner();
+			       }
+	     };
+
+   app.renderMariannaBanner = function() {
+	       const isPink = this.state.settings.theme === 'pink';
+	       let banner = document.getElementById('marianna-banner');
+	       if (isPink) {
+			         if (!banner) {
+						         banner = document.createElement('div');
+						         banner.id = 'marianna-banner';
+						         banner.className = 'marianna-banner';
+						         const timerArea = document.getElementById('timer-container');
+						         if (timerArea && timerArea.parentNode) {
+									           timerArea.parentNode.insertBefore(banner, timerArea.nextSibling);
+									         }
+						       }
+			         banner.innerHTML = '<span style="font-size:1.1em">&#x1F497;</span> <span>For Marianna</span> <span style="font-size:1.1em">&#x1F497;</span>';
+			         banner.style.display = 'flex';
+			       } else {
+			         if (banner) banner.style.display = 'none';
+			       }
+	     };
+
+   document.addEventListener('DOMContentLoaded', () => app.renderMariannaBanner(), {once: true});
+	})();
