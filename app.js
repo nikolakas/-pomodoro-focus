@@ -139,14 +139,24 @@ currentSubtasks: [],
                 this.renderInsights();
             });
         } else {
-            if (btnAuth) btnAuth.textContent = 'Sign in with Google';
-            if (authName) authName.textContent = '';
-
-            if (authAvatar) {
-                authAvatar.src = '';
-                authAvatar.style.display = 'none';
+    if (btnAuth) {
+        btnAuth.textContent = 'Sign in with Google';
+        btnAuth.onclick = async () => {
+            try {
+                const provider = new window.GoogleAuthProvider();
+                await window.signInWithPopup(window.firebaseAuth, provider);
+            } catch (err) {
+                console.error('Google sign-in failed:', err);
             }
-        }
+        };
+    }
+
+    if (authName) authName.textContent = '';
+    if (authAvatar) {
+        authAvatar.src = '';
+        authAvatar.style.display = 'none';
+    }
+}
     },
 
 async saveToFirestore(uid) {
