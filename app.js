@@ -78,7 +78,7 @@ currentSubtasks: [],
 	setTimeout(() => this.initOnboarding(), 800);
 
 this.restoreSessionState();
-setTimeout(() => this.initFirebase(), 300);
+if (window.firebaseAuth) { this.initFirebase(); } else { window.addEventListener('firebase-ready', () => this.initFirebase(), { once: true }); }
     },
 
 async initFirebase() {
