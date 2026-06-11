@@ -1203,7 +1203,7 @@ body.theme-pink .timer-ring-progress {
         filter: drop-shadow(0 0 12px rgba(255,110,180,0.8));
     }
 
-#btn-start {
+body.theme-pink #btn-start {
         background: linear-gradient(135deg, #ff6eb4, #e91e8c) !important;
         box-shadow: 0 0 30px rgba(255,110,180,0.6) !important;
     }
