@@ -795,7 +795,7 @@ toggleTimer() {
     clearInterval(this.state.timer);
     this.saveSessionState();
     this.elements.container.classList.remove('running');
-    this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running');
+    this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
     this.elements.iconPause.style.display = 'none';
     const sf = document.getElementById('starfield');
     if (sf) sf.classList.remove('hyperspace');
@@ -2222,7 +2222,7 @@ initOnboarding() {
 };
 
 window.app = app;
-document.addEventListener('DOMContentLoaded', () => app.init());
+document.addEventListener('DOMContentLoaded', () => { app.init(); setTimeout(() => { const b = document.getElementById('btn-start'); if (b) b.classList.add('heart-mode'); }, 100); });
 
 
 // ===== MARIANNA PINK THEME EXTENSION =====
