@@ -55,7 +55,7 @@ currentSubtasks: [],
     // ===================================
     // INITIALIZATION
     // ===================================
-    init() {
+    init() { document.head.insertAdjacentHTML('beforeend','<style>#btn-start svg{display:none!important}</style>');
         this.cacheDOM();
         this.loadSettings();
         this.loadStats();
@@ -756,7 +756,7 @@ toggleTimer() {
     this.renderSubtaskTracker();
     this.elements.container.classList.add('running');
 		    this.showMotivationPop();
-    this.elements.iconPlay.style.display = 'none';
+    this.elements.iconPlay.style.display = 'none'; this.elements.btnStart.classList.add('running');
     this.elements.iconPause.style.display = 'block';
 
     const intMod = document.getElementById('intention-modal');
@@ -795,7 +795,7 @@ toggleTimer() {
     clearInterval(this.state.timer);
     this.saveSessionState();
     this.elements.container.classList.remove('running');
-    this.elements.iconPlay.style.display = 'block';
+    this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running');
     this.elements.iconPause.style.display = 'none';
     const sf = document.getElementById('starfield');
     if (sf) sf.classList.remove('hyperspace');
