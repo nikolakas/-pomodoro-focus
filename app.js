@@ -756,8 +756,8 @@ toggleTimer() {
     this.renderSubtaskTracker();
     this.elements.container.classList.add('running');
 		    this.showMotivationPop();
-    this.elements.iconPlay.style.display = 'none'; this.elements.btnStart.classList.add('running');
-    this.elements.iconPause.style.display = 'block';
+    if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'none'; this.elements.btnStart.classList.add('running');
+    if (this.elements.iconPause) this.elements.iconPause.style.display = 'block';
 
     const intMod = document.getElementById('intention-modal');
     if (intMod) intMod.style.display = 'none';
@@ -795,8 +795,8 @@ toggleTimer() {
     clearInterval(this.state.timer);
     this.saveSessionState();
     this.elements.container.classList.remove('running');
-    this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
-    this.elements.iconPause.style.display = 'none';
+    if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
+    if (this.elements.iconPause) this.elements.iconPause.style.display = 'none';
     const sf = document.getElementById('starfield');
     if (sf) sf.classList.remove('hyperspace');
     const reminder = document.getElementById('intention-reminder');
