@@ -755,6 +755,7 @@ toggleTimer() {
 
     this.renderSubtaskTracker();
     this.elements.container.classList.add('running');
+		    this.showMotivationPop();
     this.elements.iconPlay.style.display = 'none';
     this.elements.iconPause.style.display = 'block';
 
@@ -836,6 +837,7 @@ toggleTimer() {
                 this.elements.container.classList.remove('timer-pulse');
             }, 2000);
             this.createConfetti();
+			        this.createHearts();
 // Auto-open journal with session prompt
 setTimeout(() => {
     const journalPrompts = [
@@ -1002,7 +1004,27 @@ el.addEventListener('click', () => {
             }
         }, 1200);
     },
-
+  showMotivationPop() {
+	      if (this.state.mode !== 'work') return;
+	      const msgs = ['You got this!', 'Lock in!', 'Focus mode ON', 'Deep work time', 'You are amazing!', 'In the zone!'];
+	      const el = document.createElement('div');
+	      el.className = 'motivation-pop';
+	      el.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+	      document.body.appendChild(el);
+	      setTimeout(() => el.remove(), 2800);
+	    },
+	  createHearts() {
+		      for (let i = 0; i < 22; i++) {
+				        const h = document.createElement('div');
+				        h.className = 'heart-particle';
+				        h.style.left = Math.random() * 100 + 'vw';
+				        h.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+				        h.style.animationDelay = (Math.random() * 1.2) + 's';
+				        h.style.fontSize = (16 + Math.random() * 24) + 'px';
+				        document.body.appendChild(h);
+				        setTimeout(() => h.remove(), 4000);
+				      }
+		    },
     createConfetti() {
         const colors = [this.state.accents[this.state.settings.accent], '#ffffff', '#ffca28', '#4ecdc4'];
         for (let i = 0; i < 30; i++) {
@@ -1144,7 +1166,29 @@ el.addEventListener('click', () => {
                 o.start(t + i * 0.25); o.stop(t + i * 0.25 + 1.3);
             });
 
-        } else if (type === 'sw_theme') {
+              } else if (type === 'cute') {
+        const cuteNotes = [523, 659, 784, 1047, 1319];
+        cuteNotes.forEach((freq, i) => {
+          const oc = tCtx.createOscillator(), gc = tCtx.createGain();
+          oc.type = 'sine';
+          oc.frequency.value = freq;
+          gc.gain.setValueAtTime(0, t + i * 0.12);
+          gc.gain.linearRampToValueAtTime(0.22, t + i * 0.12 + 0.04);
+          gc.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.5);
+          oc.connect(gc).connect(tCtx.destination);
+          oc.start(t + i * 0.12);
+          oc.stop(t + i * 0.12 + 0.55);
+        });
+        const popc = tCtx.createOscillator(), pgc = tCtx.createGain();
+        popc.type = 'sine';
+        popc.frequency.setValueAtTime(1800, t + 0.7);
+        popc.frequency.exponentialRampToValueAtTime(400, t + 0.9);
+        pgc.gain.setValueAtTime(0.25, t + 0.7);
+        pgc.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+        popc.connect(pgc).connect(tCtx.destination);
+        popc.start(t + 0.7);
+        popc.stop(t + 1.2);
+} else if (type === 'sw_theme') {
             // Short 3-note Force theme motif
             const notes = [
                 { f: 246.94, d: 0,    l: 0.4 },
