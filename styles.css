@@ -1203,7 +1203,7 @@ body.theme-pink .timer-ring-progress {
         filter: drop-shadow(0 0 12px rgba(255,110,180,0.8));
     }
 
-body.theme-pink #btn-start {
+#btn-start {
         background: linear-gradient(135deg, #ff6eb4, #e91e8c) !important;
         box-shadow: 0 0 30px rgba(255,110,180,0.6) !important;
     }
@@ -1277,20 +1277,20 @@ body.theme-pink .marianna-banner {
 }
 
 /* ===== HEART PLAY BUTTON ===== */
-body.theme-pink #btn-start {
+#btn-start {
     font-size: 0;
 }
 
-body.theme-pink #btn-start svg { display: none !important; }
+#btn-start.heart-mode svg { display: none !important; }
 
-body.theme-pink #btn-start::before {
+#btn-start.heart-mode::before {
     content: '\2665';
     font-size: 1.5rem;
     display: inline-block;
     animation: heartbeat 1.2s ease-in-out infinite;
 }
 
-body.theme-pink .running #btn-start::before {
+.running #btn-start.heart-mode::before {
     content: '\275A\275A';
     font-size: 1.1rem;
     animation: none;
