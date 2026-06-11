@@ -55,7 +55,7 @@ currentSubtasks: [],
     // ===================================
     // INITIALIZATION
     // ===================================
-    init() { document.head.insertAdjacentHTML('beforeend','<style>#btn-start svg{display:none!important}</style>');
+    init() {
         this.cacheDOM();
         this.loadSettings();
         this.loadStats();
@@ -2287,5 +2287,109 @@ document.addEventListener('DOMContentLoaded', () => app.init());
 			       }
 	     };
 
+	
+// ===== CUTE EXTRAS: Mouse heart trail in pink mode =====
+app._mouseHeartHandler = null;
+
+app._startMouseHearts = function() {
+    if (app._mouseHeartHandler) return;
+    app._mouseHeartHandler = function(e) {
+        if (app.state.settings.theme !== 'pink') return;
+        const h = document.createElement('span');
+        h.className = 'mouse-heart';
+        h.textContent = ['♥','💗','💖','💕','✿'][Math.floor(Math.random()*5)];
+        h.style.left = e.clientX + 'px';
+        h.style.top = e.clientY + 'px';
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 900);
+    };
+    document.addEventListener('mousemove', app._mouseHeartHandler);
+};
+
+app._stopMouseHearts = function() {
+    if (app._mouseHeartHandler) {
+        document.removeEventListener('mousemove', app._mouseHeartHandler);
+        app._mouseHeartHandler = null;
+    }
+};
+
+// ===== CUTE EXTRAS: Sparkle burst on timer start (pink mode) =====
+app._sparkle = function() {
+    if (app.state.settings.theme !== 'pink') return;
+    const emojis = ['✨','🌸','💫','🌟','💕','🎀'];
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    for (let i = 0; i < 12; i++) {
+        const s = document.createElement('span');
+        s.className = 'sparkle-particle';
+        s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        const angle = (i / 12) * 2 * Math.PI;
+        const r = 60 + Math.random() * 80;
+        s.style.left = (cx + Math.cos(angle) * r) + 'px';
+        s.style.top = (cy + Math.sin(angle) * r) + 'px';
+        s.style.animationDuration = (0.5 + Math.random() * 0.5) + 's';
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 900);
+    }
+};
+
+// ===== CUTE EXTRAS: Floating bg sparkles in pink mode =====
+app._bgSparkleInterval = null;
+app._startBgSparkles = function() {
+    if (app._bgSparkleInterval) return;
+    app._bgSparkleInterval = setInterval(() => {
+        if (app.state.settings.theme !== 'pink') { app._stopBgSparkles(); return; }
+        const s = document.createElement('span');
+        s.className = 'bg-sparkle';
+        s.textContent = ['✨','🌸','💫','⭐','🌟'][Math.floor(Math.random()*5)];
+        s.style.left = Math.random() * 100 + 'vw';
+        s.style.fontSize = (12 + Math.random()*14) + 'px';
+        s.style.animationDuration = (6 + Math.random()*10) + 's';
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 16000);
+    }, 800);
+};
+
+app._stopBgSparkles = function() {
+    if (app._bgSparkleInterval) {
+        clearInterval(app._bgSparkleInterval);
+        app._bgSparkleInterval = null;
+    }
+};
+
+// ===== Patch toggleTheme to handle pink mode extras & fix btn icon =====
+const _origToggleTheme = app.toggleTheme.bind(app);
+app.toggleTheme = function() {
+    _origToggleTheme();
+    const theme = app.state.settings.theme;
+    const btn = document.getElementById('btn-theme-toggle');
+    if (theme === 'pink') {
+        if (btn) btn.innerHTML = '💗  Heart Mode ';
+        app._startMouseHearts();
+        app._startBgSparkles();
+    } else {
+        app._stopMouseHearts();
+        app._stopBgSparkles();
+        // Restore button text based on new theme
+        if (btn) {
+            btn.innerHTML = theme === 'starwars' ? '🌌  Normal ' : '⚔️  Star Wars ';
+        }
+    }
+};
+
+// ===== Patch startTimer to emit sparkle burst in pink mode =====
+const _origStart = app.startTimer.bind(app);
+app.startTimer = function() {
+    _origStart();
+    app._sparkle();
+};
+
+// If pink theme is already active on load, start extras
+if (app.state.settings.theme === 'pink') {
+    setTimeout(() => { app._startMouseHearts(); app._startBgSparkles(); }, 500);
+}
+
+// Remove old global btn-start SVG hide injection if present
+const oldStyle = document.querySelector('style[data-btnsvg]');
+if (oldStyle) oldStyle.remove();
    document.addEventListener('DOMContentLoaded', () => app.renderMariannaBanner(), {once: true});
 	})();
