@@ -723,7 +723,7 @@ toggleTimer() {
         return;
     }
 
-    if (this.state.mode === 'work' && !this.state.currentIntention) {
+    if (this.state.mode === 'work' && !this.state.currentIntention && document.getElementById('intention-modal')) {
         const mod = document.getElementById('intention-modal');
         if (mod) {
             mod.style.display = 'flex';
