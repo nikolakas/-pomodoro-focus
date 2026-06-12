@@ -175,6 +175,7 @@
     <div class="mixer-header">
         <span class="mixer-title">🎛️ Ambient Mixer</span>
         <button class="mixer-stop-all" id="btn-stop-all-ambient">Stop All</button>
+                    <button class="btn btn-sm" onclick="app.saveCurrentMix()" title="Save current mix as preset">💾 Save Mix</button>
     </div>
     <div class="mixer-grid">
         <div class="mixer-channel" data-scene="rain">
@@ -474,6 +475,11 @@
                         </div>
                     </section>
                 </div>
+                            <!-- Tag Breakdown -->
+            <div class="chart-container glass-card" style="margin-top:1rem;">
+                <div class="chart-header"><h2>Tag Breakdown</h2></div>
+                <div id="tag-breakdown-list"><p class="empty-state">No tagged sessions yet.</p></div>
+            </div>
             </div>
         </main>
 
