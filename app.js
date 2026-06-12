@@ -2259,7 +2259,7 @@ initOnboarding() {
     }
 		renderTagBreakdown() {
 		const container = document.getElementById('tag-breakdown-list');
-		if (!container) return;
+		if (!container) return;,
 		const tagCounts = {};
 		this.state.history.forEach(s => {
 			if (s.type === 'focus' && s.label) {
