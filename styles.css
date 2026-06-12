@@ -1329,3 +1329,34 @@ body.theme-pink .marianna-banner::after {
     80% { transform: translateX(-50%) scale(1); opacity: 1; }
     100% { transform: translateX(-50%) scale(0.88); opacity: 0; }
 }
+
+
+/* === TAB INDICATOR SLIDING PILL === */
+.tabs{position:relative;}
+.tab-indicator{position:absolute;top:4px;height:calc(100% - 8px);background:var(--bg-card);border-radius:8px;z-index:0;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),width 0.35s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 2px 8px rgba(0,0,0,0.25);pointer-events:none;left:0;}
+.tab{position:relative;z-index:1;}
+
+/* === ELASTIC BUTTONS === */
+.btn,.mood-card,.wp-thumb{transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.25s ease,background 0.25s ease;}
+.btn:hover,.mood-card:hover,.wp-thumb:hover{transform:scale(1.04) translateY(-2px);}
+.btn:active,.mood-card:active,.wp-thumb:active{transform:scale(0.96);transition-duration:0.1s;}
+.btn-secondary:hover{border-color:var(--accent)!important;box-shadow:0 0 12px var(--accent-glow)!important;color:var(--accent)!important;}
+
+/* === ZEN MODE SMOOTH DISSOLVE === */
+.mode-selector,.session-counter,.level-progress-container,.quote-display,.ambient-bar,.settings-panel,.focus-moods-section{transition:opacity 0.5s ease,max-height 0.6s ease,margin 0.5s ease,padding 0.5s ease;}
+body.zen-mode .mode-selector,body.zen-mode .session-counter,body.zen-mode .level-progress-container,body.zen-mode .quote-display,body.zen-mode .ambient-bar,body.zen-mode .settings-panel,body.zen-mode .focus-moods-section{display:block!important;opacity:0!important;pointer-events:none!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;}
+body.zen-mode .header{opacity:0;pointer-events:none;transform:translateY(-10px);transition:opacity 0.4s ease,transform 0.4s ease;}
+body.zen-mode .timer-container{transform:scale(1.08);}
+
+/* === PROGRESS RING GRADIENT === */
+.timer-ring-progress{stroke:url(#timer-grad);}
+.timer-ring-glow{stroke:url(#timer-grad);opacity:0.35;filter:blur(6px);}
+
+/* === TAG BREAKDOWN CARD === */
+#tag-breakdown-card{background:var(--bg-card);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.5rem;margin-top:1.5rem;}
+#tag-breakdown-card h3{font-size:0.85rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:1rem;}
+.tag-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;}
+.tag-bar-label{font-size:0.82rem;color:var(--text-secondary);min-width:80px;}
+.tag-bar-track{flex:1;background:rgba(255,255,255,0.06);border-radius:6px;height:8px;overflow:hidden;}
+.tag-bar-fill{height:100%;border-radius:6px;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+.tag-bar-pct{font-size:0.8rem;color:var(--text-muted);min-width:36px;text-align:right;}
