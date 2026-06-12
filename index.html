@@ -278,7 +278,7 @@
           <option value="chime">✨ Force Chime</option>
           <option value="digital">💎 Digital</option>
           <option value="zen">🧘 Zen Bowl</option>
-          <option value="swtheme">⚔️ Force Theme</option><option value="cute">♥ Cute</option>
+          <option value="sw_theme">⚔️ Force Theme</option><option value="cute">♥ Cute</option>
           <option value="none">🔇 None</option>
         </select>
         <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
@@ -353,6 +353,11 @@
         </div>
       </div>
     </div>
+      
+            <div class="setting-row" style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
+                <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
+                <button id="btn-reset-app" class="btn-secondary" style="background:rgba(255,80,80,0.12); color:#ff6b6b; border:1px solid rgba(255,80,80,0.25); border-radius:8px; padding:6px 14px; font-size:0.82rem; cursor:pointer;" onclick="if(confirm('Reset all local data? This cannot be undone.')){localStorage.clear(); location.reload();}">🗑 Reset App</button>
+            </div>
   </div>
 </details>
 <div class="developer-credit">
