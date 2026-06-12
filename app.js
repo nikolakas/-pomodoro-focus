@@ -1659,6 +1659,7 @@ if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔
         }
 
         this.renderCharts();
+				this.renderTagBreakdown();
         this.renderHistory();
         this.checkAchievements();
     },
@@ -2256,6 +2257,41 @@ initOnboarding() {
             }
         });
     }
+		renderTagBreakdown() {
+		const container = document.getElementById('tag-breakdown-list');
+		if (!container) return;
+		const tagCounts = {};
+		this.state.history.forEach(s => {
+			if (s.type === 'focus' && s.label) {
+				const tag = s.label.trim();
+				if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+			}
+		});
+		const entries = Object.entries(tagCounts).sort((a,b) => b[1] - a[1]);
+		if (!entries.length) {
+			container.innerHTML = '<p class="empty-state">No tagged sessions yet.</p>';
+			return;
+		}
+		const maxCount = entries[0][1];
+		container.innerHTML = entries.map(([tag, count]) => {
+			const pct = Math.round((count / maxCount) * 100);
+			return `<div class="tag-row"><span class="tag-label">${tag}</span><div class="tag-bar-wrap"><div class="tag-bar" style="width:${pct}%"></div></div><span class="tag-count">${count}</span></div>`;
+		}).join('');
+	},
+	saveCurrentMix() {
+		const name = prompt('Name this mix:');
+		if (!name || !name.trim()) return;
+		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
+		saved[name.trim()] = { ...this.state.mixerVolumes };
+		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
+		this.showToast('Mix saved!', name.trim(), '🎵');
+	},
+	deleteCustomMood(key) {
+		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
+		delete saved[key];
+		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
+		this.showToast('Mix deleted', key, '🗑️');
+	},
 };
 
 window.app = app;
