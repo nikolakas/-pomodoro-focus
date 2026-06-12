@@ -889,17 +889,6 @@ saveSessionState() {
     }));
 },
 
-saveSessionState() {
-    localStorage.setItem('pomodoro_session', JSON.stringify({
-        mode: this.state.mode,
-        timeLeft: this.state.timeLeft,
-        isRunning: this.state.isRunning,
-        currentRound: this.state.currentRound,
-        currentIntention: this.state.currentIntention,
-        currentSubtasks: this.state.currentSubtasks
-    }));
-},
-
 restoreSessionState() {
     const raw = localStorage.getItem('pomodoro_session');
     if (!raw) return;
