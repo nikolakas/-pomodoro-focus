@@ -837,7 +837,7 @@ toggleTimer() {
                 this.elements.container.classList.remove('timer-pulse');
             }, 2000);
             this.createConfetti();
-			        this.createHearts();
+			        if (this.state.settings.theme === 'pink') this.createHearts();
 // Auto-open journal with session prompt
 setTimeout(() => {
     const journalPrompts = [
@@ -1427,12 +1427,12 @@ updateTheme() {
 			this.elements.swSettings.style.display = isSw ? 'block' : 'none';
 		}
 
-		const tText = document.getElementById('theme-toggle-text');
-		if (tText) {
-			if (isSw) tText.textContent = 'Marianna Mode';
-			else if (isPink) tText.textContent = 'Normal Mode';
-			else tText.textContent = 'Star Wars';
-		}
+				const themeBtn = document.getElementById('btn-theme-toggle');
+			if (themeBtn) {
+				if (isSw) themeBtn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
+				else if (isPink) themeBtn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
+				else themeBtn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
+			}
 
 		if (this.elements.btnWarp) {
 			this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
@@ -1473,14 +1473,14 @@ updateTheme() {
 
 		if (btn) {
 			if (this.state.settings.theme === 'starwars') {
-				btn.innerHTML = 'SW <span class="tooltip" id="theme-toggle-text">Marianna Mode</span>';
+								btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
 			} else if (this.state.settings.theme === 'pink') {
-				btn.innerHTML = 'LOVE <span class="tooltip" id="theme-toggle-text">Normal Mode</span>';
+									btn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
 				this.playAudio('cute');
 				this.createHearts();
 				this.showMotivationPop();
 			} else {
-				btn.innerHTML = 'MODE <span class="tooltip" id="theme-toggle-text">Star Wars</span>';
+								btn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
 			}
 		}
 
