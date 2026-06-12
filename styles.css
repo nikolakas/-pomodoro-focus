@@ -1187,44 +1187,99 @@ body.minimal-mode #btn-minimal { transform: rotate(180deg); color: var(--accent)
 
 /* ===== MARIANNA PINK THEME ===== */
 body.theme-pink {
-        --bg-primary: #2d0a1a;
-        --bg-secondary: #3d1525;
-        --bg-card: rgba(80,20,50,0.75);
-        --text-primary: #ffe0ee;
-        --text-secondary: #f9a8c9;
-        --text-muted: #c06080;
-        --accent: #ff6eb4;
-        --accent-glow: rgba(255,110,180,0.5);
-        --accent-glow-intense: rgba(255,110,180,0.85);
-    }
+    --bg-primary: #fff1f7;
+    --bg-secondary: #ffe0ee;
+    --bg-card: rgba(255, 255, 255, 0.72);
+    --text-primary: #5f1436;
+    --text-secondary: #b83272;
+    --text-muted: #c96a98;
+    --accent: #ff6eb4;
+    --accent-glow: rgba(255, 110, 180, 0.36);
+    --accent-glow-intense: rgba(255, 110, 180, 0.7);
+    --font-display: 'Inter', sans-serif;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(255, 182, 213, 0.65), transparent 28%),
+        radial-gradient(circle at 85% 20%, rgba(255, 214, 232, 0.8), transparent 26%),
+        linear-gradient(135deg, #fff7fb, #ffd6e8 48%, #fff0f8);
+}
+
+body.theme-pink .wallpaper-layer {
+    opacity: 0.18;
+}
+
+body.theme-pink .header,
+body.theme-pink .timer-container,
+body.theme-pink .settings-panel,
+body.theme-pink .ambient-mixer,
+body.theme-pink .quote-display,
+body.theme-pink .level-progress-container {
+    border-color: rgba(255, 110, 180, 0.22);
+}
 
 body.theme-pink .timer-ring-progress {
-        stroke: #ff6eb4;
-        filter: drop-shadow(0 0 12px rgba(255,110,180,0.8));
-    }
+    stroke: #ff6eb4;
+    filter: drop-shadow(0 0 12px rgba(255, 110, 180, 0.65));
+}
 
 body.theme-pink #btn-start {
-        background: linear-gradient(135deg, #ff6eb4, #e91e8c) !important;
-        box-shadow: 0 0 30px rgba(255,110,180,0.6) !important;
-    }
+    background: linear-gradient(135deg, #ff8bc7, #ff4fa3) !important;
+    color: white;
+    box-shadow: 0 0 30px rgba(255, 110, 180, 0.55) !important;
+}
+
+body.theme-pink #btn-start::after {
+    content: '\2665';
+    font-size: 1.5rem;
+}
+
+body.theme-pink #icon-play,
+body.theme-pink #icon-pause {
+    display: none !important;
+}
 
 body.theme-pink .level-bar-fill {
-        background: linear-gradient(90deg, #ff6eb4, #e91e8c);
-    }
+    background: linear-gradient(90deg, #ff8bc7, #ff4fa3);
+}
 
-body.theme-pink .tab.active {
-        color: #ff6eb4;
-        border-bottom-color: #ff6eb4;
-    }
+body.theme-pink .tab.active,
+body.theme-pink .mode-btn.active {
+    background: rgba(255, 110, 180, 0.16);
+    color: #b83272;
+}
+
+body.theme-pink .logo h1 {
+    color: #9d1b5f;
+}
+
+body.theme-pink .logo-icon {
+    color: #ff4fa3;
+}
+
+.marianna-banner {
+    display: none;
+}
 
 body.theme-pink .marianna-banner {
-        display: flex; align-items: center; justify-content: center;
-        gap: 6px; color: #ff6eb4; font-size: 0.78rem;
-        opacity: 0.9; letter-spacing: 0.04em; padding: 4px 0;
-    }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b83272;
+    background: rgba(255, 255, 255, 0.58);
+    border: 1px solid rgba(255, 110, 180, 0.22);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(255, 110, 180, 0.18);
+}
 
+body.theme-pink .marianna-banner::before,
+body.theme-pink .marianna-banner::after {
+    content: '\2665';
+    color: #ff4fa3;
+    margin: 0 6px;
+}
 
-/* ===== HEART RAIN ANIMATION ===== */
 .heart-particle {
     position: fixed;
     top: -50px;
@@ -1236,10 +1291,10 @@ body.theme-pink .marianna-banner {
 }
 
 .heart-particle::before {
-    content: '❤';
+    content: '\2665';
     display: block;
-    color: #ff6b9d;
-    text-shadow: 0 0 10px rgba(255,107,157,0.8);
+    color: #ff6eb4;
+    text-shadow: 0 0 10px rgba(255, 110, 180, 0.8);
 }
 
 @keyframes heartFall {
@@ -1248,35 +1303,29 @@ body.theme-pink .marianna-banner {
     100% { top: 110vh; opacity: 0; transform: rotate(360deg) scale(0.5); }
 }
 
-/* ===== MOTIVATION POP ===== */
 .motivation-pop {
     position: fixed;
     top: 20%;
     left: 50%;
     transform: translateX(-50%) scale(0);
-    background: linear-gradient(135deg, rgba(255,107,157,0.95), rgba(255,62,62,0.95));
+    background: linear-gradient(135deg, rgba(255, 139, 199, 0.96), rgba(255, 79, 163, 0.96));
     color: #fff;
     padding: 16px 32px;
     border-radius: 40px;
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     z-index: 10000;
-    box-shadow: 0 8px 32px rgba(255,107,157,0.5);
+    box-shadow: 0 8px 32px rgba(255, 110, 180, 0.45);
     animation: popIn 2.8s ease forwards;
     pointer-events: none;
     white-space: nowrap;
 }
 
 @keyframes popIn {
-    0%   { transform: translateX(-50%) scale(0); opacity: 0; }
-    15%  { transform: translateX(-50%) scale(1.2); opacity: 1; }
-    25%  { transform: translateX(-50%) scale(1); opacity: 1; }
-    80%  { transform: translateX(-50%) scale(1); opacity: 1; }
-    100% { transform: translateX(-50%) scale(0.8); opacity: 0; }
-}
-
-/* ===== HEART PLAY BUTTON ===== */
-#btn-start {
-    font-size: 0;
+    0% { transform: translateX(-50%) scale(0); opacity: 0; }
+    15% { transform: translateX(-50%) scale(1.14); opacity: 1; }
+    25% { transform: translateX(-50%) scale(1); opacity: 1; }
+    80% { transform: translateX(-50%) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.88); opacity: 0; }
 }
