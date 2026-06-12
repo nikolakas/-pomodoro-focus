@@ -1356,6 +1356,12 @@ body.zen-mode .timer-container{transform:scale(1.08);}
 #tag-breakdown-card{background:var(--bg-card);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.5rem;margin-top:1.5rem;}
 #tag-breakdown-card h3{font-size:0.85rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:1rem;}
 .tag-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;}
+.tag-row{display:flex;align-items:center;gap:8px;margin-bottom:0.5rem;}
+.tag-label{font-size:0.82rem;color:var(--text-secondary);min-width:80px;}
+.tag-bar-wrap{flex:1;background:rgba(255,255,255,0.06);border-radius:6px;height:8px;overflow:hidden;}
+.tag-bar{height:100%;border-radius:6px;background:var(--accent);transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+.tag-count{font-size:0.8rem;color:var(--text-muted);min-width:24px;text-align:right;}
+.btn-sm{padding:2px 10px;font-size:0.78rem;border-radius:8px;}
 .tag-bar-label{font-size:0.82rem;color:var(--text-secondary);min-width:80px;}
 .tag-bar-track{flex:1;background:rgba(255,255,255,0.06);border-radius:6px;height:8px;overflow:hidden;}
 .tag-bar-fill{height:100%;border-radius:6px;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1);}
