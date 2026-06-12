@@ -1005,14 +1005,32 @@ el.addEventListener('click', () => {
         }, 1200);
     },
   showMotivationPop() {
-	      if (this.state.mode !== 'work') return;
-	      const msgs = ['You got this!', 'Lock in!', 'Focus mode ON', 'Deep work time', 'You are amazing!', 'In the zone!'];
-	      const el = document.createElement('div');
-	      el.className = 'motivation-pop';
-	      el.textContent = msgs[Math.floor(Math.random() * msgs.length)];
-	      document.body.appendChild(el);
-	      setTimeout(() => el.remove(), 2800);
-	    },
+		const isPink = this.state.settings.theme === 'pink';
+
+		const msgs = isPink
+			? [
+				'For my friend Marianna',
+				'You are doing amazing',
+				'Marianna mode activated',
+				'Soft focus, strong heart',
+				'You got this, Marianna'
+			]
+			: [
+				'You got this!',
+				'Lock in!',
+				'Focus mode ON',
+				'Deep work time',
+				'You are amazing!',
+				'In the zone!'
+			];
+
+		const el = document.createElement('div');
+		el.className = 'motivation-pop';
+		el.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+		document.body.appendChild(el);
+
+		setTimeout(() => el.remove(), 2800);
+	},
 	  createHearts() {
 		      for (let i = 0; i < 22; i++) {
 				        const h = document.createElement('div');
@@ -1408,53 +1426,83 @@ this.state.history.push({
     // ===================================
     // THEMES & APPEARANCE
     // ===================================
-    updateTheme() {
-        const isSw = this.state.settings.theme === 'starwars';
-        document.body.classList.toggle('theme-starwars', isSw);
-        if (this.elements.swSettings) this.elements.swSettings.style.display = isSw ? 'block' : 'none';
+updateTheme() {
+		const isSw = this.state.settings.theme === 'starwars';
+		const isPink = this.state.settings.theme === 'pink';
 
-        const tText = document.getElementById('theme-toggle-text');
-        if (tText) tText.textContent = isSw ? '🌿 Normal Mode' : '⚔️ Star Wars';
-        if (this.elements.btnWarp) this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
+		document.body.classList.toggle('theme-starwars', isSw);
+		document.body.classList.toggle('theme-pink', isPink);
+		document.body.classList.toggle('minimal-mode', isPink);
 
-        const sf = document.getElementById('starfield');
-        if (sf) sf.style.display = isSw ? 'block' : 'none';
+		if (this.elements.swSettings) {
+			this.elements.swSettings.style.display = isSw ? 'block' : 'none';
+		}
 
-        if (isSw) {
-            this.setSaber(this.state.settings.saber);
-            document.body.style.setProperty('--accent', this.state.saberColors[this.state.settings.saber]);
-        } else {
-            this.setAccent(this.state.settings.accent);
-        }
-this.setWallpaper(this.state.settings.wallpaper);
-        this.updateLogo();
-        this.updateLevel();
-    },
+		const tText = document.getElementById('theme-toggle-text');
+		if (tText) {
+			if (isSw) tText.textContent = 'Marianna Mode';
+			else if (isPink) tText.textContent = 'Normal Mode';
+			else tText.textContent = 'Star Wars';
+		}
+
+		if (this.elements.btnWarp) {
+			this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
+		}
+
+		const sf = document.getElementById('starfield');
+		if (sf) sf.style.display = isSw ? 'block' : 'none';
+
+		if (isSw) {
+			this.setSaber(this.state.settings.saber);
+			document.body.style.setProperty('--accent', this.state.saberColors[this.state.settings.saber]);
+		} else if (isPink) {
+			document.body.style.setProperty('--accent', '#ff6eb4');
+			document.body.style.setProperty('--accent-glow', 'rgba(255,110,180,0.5)');
+			document.body.style.setProperty('--accent-glow-intense', 'rgba(255,110,180,0.85)');
+		} else {
+			this.setAccent(this.state.settings.accent);
+		}
+
+		this.setWallpaper(this.state.settings.wallpaper);
+		this.updateLogo();
+		this.updateLevel();
+	},
 
    toggleTheme() {
-    this.state.settings.theme = this.state.settings.theme === 'starwars' ? 'normal' : 'starwars';
-    this.saveSettings();
-    this.updateTheme();
+		if (this.state.settings.theme === 'normal') {
+			this.state.settings.theme = 'starwars';
+		} else if (this.state.settings.theme === 'starwars') {
+			this.state.settings.theme = 'pink';
+		} else {
+			this.state.settings.theme = 'normal';
+		}
 
-    const btn = document.getElementById('btn-theme-toggle');
-    const label = document.getElementById('theme-toggle-text');
+		this.saveSettings();
+		this.updateTheme();
 
-    if (btn && label) {
-        if (this.state.settings.theme === 'starwars') {
-            btn.innerHTML = '🌌 <span class="tooltip" id="theme-toggle-text">Normal Mode</span>';
-        } else {
-            btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Star Wars</span>';
-        }
-    }
+		const btn = document.getElementById('btn-theme-toggle');
 
-    if (window.AmbienceModule) {
-        if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
-            window.AmbienceModule.play('binary_sunset');
-        } else {
-            window.AmbienceModule.stop('binary_sunset');
-        }
-    }
-},
+		if (btn) {
+			if (this.state.settings.theme === 'starwars') {
+				btn.innerHTML = 'SW <span class="tooltip" id="theme-toggle-text">Marianna Mode</span>';
+			} else if (this.state.settings.theme === 'pink') {
+				btn.innerHTML = 'LOVE <span class="tooltip" id="theme-toggle-text">Normal Mode</span>';
+				this.playAudio('cute');
+				this.createHearts();
+				this.showMotivationPop();
+			} else {
+				btn.innerHTML = 'MODE <span class="tooltip" id="theme-toggle-text">Star Wars</span>';
+			}
+		}
+
+		if (window.AmbienceModule) {
+			if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
+				window.AmbienceModule.play('binary_sunset');
+			} else {
+				window.AmbienceModule.stop('binary_sunset');
+			}
+		}
+	},
 
 setThemePreview(theme) {
     this.state.settings.theme = theme;
