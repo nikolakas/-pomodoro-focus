@@ -2256,7 +2256,7 @@ initOnboarding() {
                 grid.appendChild(el);
             }
         });
-    }
+    },
 		renderTagBreakdown() {
 		const container = document.getElementById('tag-breakdown-list');
 		if (!container) return;,
