@@ -2305,3 +2305,7 @@ initOnboarding() {
 				progressEl.setAttribute('stroke', 'url(#timer-grad)');
 				if (glowEl) glowEl.setAttribute('stroke', 'url(#timer-grad)');
 			},
+
+	};
+
+app.init();
