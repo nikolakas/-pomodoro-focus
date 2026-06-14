@@ -773,6 +773,14 @@ toggleTimer() {
 
     this.renderSubtaskTracker();
     this.elements.container.classList.add('running');
+    // Terea startup cascade animation
+    if (this.state.settings.theme === 'terea') {
+        const tereaEl = document.getElementById('terea-lights');
+        if (tereaEl) {
+            tereaEl.classList.add('starting');
+            setTimeout(() => tereaEl.classList.remove('starting'), 1500);
+        }
+    }
 		    this.showMotivationPop();
     if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'none'; this.elements.btnStart.classList.add('running');
     if (this.elements.iconPause) this.elements.iconPause.style.display = 'block';
@@ -857,6 +865,14 @@ toggleTimer() {
             }, 2000);
             this.createConfetti();
 			        if (this.state.settings.theme === 'pink') this.createHearts();
+            if (this.state.settings.theme === 'terea') {
+                this.showToast('Queen mode locked in 👑', 'That\'s what queens do. 💨', '💪');
+                const tereaLights = document.getElementById('terea-lights');
+                if (tereaLights) {
+                    tereaLights.classList.add('queen-locked');
+                    setTimeout(() => tereaLights.classList.remove('queen-locked'), 5000);
+                }
+            }
 // Auto-open journal with session prompt
 setTimeout(() => {
     const journalPrompts = [
@@ -962,6 +978,7 @@ updateTimeDisplay() {
         } else {
             this.elements.container.classList.remove('timer-warning');
         }
+        this.updateTereaLights();
     },
 
     updateSessionCounter() {
@@ -1027,9 +1044,19 @@ el.addEventListener('click', () => {
         }, 1200);
     },
   showMotivationPop() {
-		const isPink = this.state.settings.theme === 'pink';
+		const isPink  = this.state.settings.theme === 'pink';
+		const isTerea = this.state.settings.theme === 'terea';
 
-		const msgs = isPink
+		const msgs = isTerea
+			? [
+				'Gym queen mode 💨',
+				'Ανέβα, Maria! 🔥',
+				'Bouzoukia after this 🎶',
+				'Locked in like a queen 👑',
+				'Greek goddess energy ✨',
+				'Τέρεα mode activated 💨'
+			]
+			: isPink
 			? [
 				'For my friend Marianna',
 				'You are doing amazing',
@@ -1454,8 +1481,10 @@ this.state.history.push({
 
         const ranks = ['Novice', 'Apprentice', 'Adept', 'Expert', 'Master', 'Grandmaster', 'Legend'];
         const swRanks = ['Youngling', 'Padawan', 'Jedi Knight', 'Jedi Master', 'Council Member', 'Grand Master', 'Force Ghost'];
+        const tereaRanks = ['Warm Up 🏃‍♀️', 'Lifting Queen 💪', 'Cardio Goddess 🔥', 'Greek Goddess ✨', 'Bouzoukia Star 🎶', 'Queen of Queens 👑', 'Τέρεα Legend 💨'];
 
-        const rankArr = document.body.classList.contains('theme-starwars') ? swRanks : ranks;
+        const theme = this.state.settings.theme;
+        const rankArr = theme === 'starwars' ? swRanks : theme === 'terea' ? tereaRanks : ranks;
         const rankName = rankArr[Math.min(this.state.level - 1, rankArr.length - 1)];
 
         if (this.elements.lvlRank) this.elements.lvlRank.textContent = `${rankName} (Lvl ${this.state.level})`;
@@ -1474,23 +1503,26 @@ this.state.history.push({
     // THEMES & APPEARANCE
     // ===================================
 updateTheme() {
-		const isSw = this.state.settings.theme === 'starwars';
-		const isPink = this.state.settings.theme === 'pink';
+		const isSw   = this.state.settings.theme === 'starwars';
+		const isPink  = this.state.settings.theme === 'pink';
+		const isTerea = this.state.settings.theme === 'terea';
 
 		document.body.classList.toggle('theme-starwars', isSw);
-		document.body.classList.toggle('theme-pink', isPink);
-		document.body.classList.toggle('minimal-mode', isPink);
+		document.body.classList.toggle('theme-pink',     isPink);
+		document.body.classList.toggle('theme-terea',    isTerea);
+		document.body.classList.toggle('minimal-mode',   isPink || isTerea);
 
 		if (this.elements.swSettings) {
 			this.elements.swSettings.style.display = isSw ? 'block' : 'none';
 		}
 
-				const themeBtn = document.getElementById('btn-theme-toggle');
-			if (themeBtn) {
-				if (isSw) themeBtn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
-				else if (isPink) themeBtn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
-				else themeBtn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
-			}
+		const themeBtn = document.getElementById('btn-theme-toggle');
+		if (themeBtn) {
+			if (isSw)    themeBtn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
+			else if (isPink)  themeBtn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Terea Mode 💨</span>';
+			else if (isTerea) themeBtn.innerHTML = '💨 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
+			else              themeBtn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
+		}
 
 		if (this.elements.btnWarp) {
 			this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
@@ -1506,6 +1538,10 @@ updateTheme() {
 			document.body.style.setProperty('--accent', '#ff6eb4');
 			document.body.style.setProperty('--accent-glow', 'rgba(255,110,180,0.5)');
 			document.body.style.setProperty('--accent-glow-intense', 'rgba(255,110,180,0.85)');
+		} else if (isTerea) {
+			document.body.style.setProperty('--accent', '#00d4c8');
+			document.body.style.setProperty('--accent-glow', 'rgba(0,212,200,0.35)');
+			document.body.style.setProperty('--accent-glow-intense', 'rgba(0,212,200,0.75)');
 		} else {
 			this.setAccent(this.state.settings.accent);
 		}
@@ -1513,6 +1549,7 @@ updateTheme() {
 		this.setWallpaper(this.state.settings.wallpaper);
 		this.updateLogo();
 		this.updateLevel();
+		this.updateTereaLights();
 	},
 
    toggleTheme() {
@@ -1520,6 +1557,8 @@ updateTheme() {
 			this.state.settings.theme = 'starwars';
 		} else if (this.state.settings.theme === 'starwars') {
 			this.state.settings.theme = 'pink';
+		} else if (this.state.settings.theme === 'pink') {
+			this.state.settings.theme = 'terea';
 		} else {
 			this.state.settings.theme = 'normal';
 		}
@@ -1531,14 +1570,17 @@ updateTheme() {
 
 		if (btn) {
 			if (this.state.settings.theme === 'starwars') {
-								btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
+				btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
 			} else if (this.state.settings.theme === 'pink') {
-									btn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
+				btn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Terea Mode 💨</span>';
 				this.playAudio('cute');
 				this.createHearts();
 				this.showMotivationPop();
+			} else if (this.state.settings.theme === 'terea') {
+				btn.innerHTML = '💨 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
+				this.showMotivationPop();
 			} else {
-								btn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
+				btn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
 			}
 		}
 
@@ -1550,6 +1592,53 @@ updateTheme() {
 			}
 		}
 	},
+
+updateTereaLights() {
+    const lights = document.getElementById('terea-lights');
+    if (!lights) return;
+    const isTerea = this.state.settings.theme === 'terea';
+    if (!isTerea) { lights.style.display = 'none'; return; }
+    lights.style.display = 'flex';
+
+    const els = lights.querySelectorAll('.terea-light');
+    const total = (this.state.mode === 'work'
+        ? this.state.settings.workDuration
+        : this.state.mode === 'shortBreak'
+        ? this.state.settings.shortBreak
+        : this.state.settings.longBreak) * 60;
+    const p = total > 0 ? this.state.timeLeft / total : 1;
+
+    // Light 0 = top, light 3 = bottom; fill from bottom (3→0) as session starts,
+    // dim from top (0→3) as time passes.
+    els.forEach((el, i) => {
+        // light i is ON while p > i/4  (quarter thresholds from top)
+        const threshold = (3 - i) / 4;
+        if (p > threshold) {
+            el.classList.remove('dimming');
+            el.classList.add('lit');
+        } else if (p > threshold - 0.15) {
+            el.classList.remove('lit');
+            el.classList.add('dimming');
+        } else {
+            el.classList.remove('lit', 'dimming');
+        }
+    });
+
+    const label = document.getElementById('terea-label');
+    if (label) {
+        if (!this.state.isRunning && this.state.timeLeft === total) {
+            label.textContent = 'Queen Mode 💨';
+        } else if (p > 0.75) {
+            label.textContent = 'Locked In 🔒';
+        } else if (p > 0.5) {
+            label.textContent = 'Halfway There 💪';
+        } else if (p > 0.25) {
+            label.textContent = 'Almost Done 🔥';
+        } else {
+            label.textContent = 'Final Push 👑';
+        }
+    }
+},
 
 setThemePreview(theme) {
     this.state.settings.theme = theme;
@@ -1620,18 +1709,21 @@ setThemePreview(theme) {
     updateLogo() {
         const title = document.getElementById('logo-title');
         const subtitle = document.getElementById('logo-subtitle');
-        if (this.state.settings.theme === 'starwars') {
+        const theme = this.state.settings.theme;
+        if (theme === 'starwars') {
             if (title) title.textContent = 'JEDI FOCUS';
             if (subtitle) subtitle.textContent = 'May the force be with you';
-} else {
-    if (title) title.textContent = 'Pomodoro Focus';
-    if (subtitle) subtitle.textContent = '';
-}
-// Always refresh notebook regardless of theme
-const titleEl = document.getElementById('notebook-cover-title');
-const emblem = document.querySelector('.notebook-emblem');
-if (titleEl) titleEl.textContent = this.state.settings.theme === 'starwars' ? 'Jedi Archives' : 'My Journal';
-if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔️' : '📖';
+        } else if (theme === 'terea') {
+            if (title) title.textContent = 'TEREA FOCUS';
+            if (subtitle) subtitle.textContent = 'For Maria. Queen mode only. 💨';
+        } else {
+            if (title) title.textContent = 'Pomodoro Focus';
+            if (subtitle) subtitle.textContent = '';
+        }
+        const titleEl = document.getElementById('notebook-cover-title');
+        const emblem = document.querySelector('.notebook-emblem');
+        if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : theme === 'terea' ? 'Maria\'s Journal 💨' : 'My Journal';
+        if (emblem) emblem.textContent = theme === 'starwars' ? '⚔️' : theme === 'terea' ? '👑' : '📖';
     },
 
     rotateQuote() {
@@ -1639,12 +1731,24 @@ if (emblem) emblem.textContent = this.state.settings.theme === 'starwars' ? '⚔
         if (!text) return;
         text.style.opacity = 0;
         setTimeout(() => {
-            const arr = document.body.classList.contains('theme-starwars') ?
-            [
+            const theme = this.state.settings.theme;
+            const arr = theme === 'starwars' ? [
                 '"Do or do not. There is no try." — Yoda',
                 '"Your focus determines your reality." — Qui-Gon Jinn',
                 '"In a dark place we find ourselves, and a little more knowledge lights our way." — Yoda',
                 '"Mind what you have learned. Save you it can." — Yoda'
+            ] : theme === 'pink' ? [
+                '"Soft heart, strong mind."',
+                '"She believed she could, so she did."',
+                '"Bloom where you are planted."',
+                '"You are enough, always."'
+            ] : theme === 'terea' ? [
+                '"Η βασίλισσα δεν σταματά." — The queen does not stop.',
+                '"Sweat is just your body crying happy tears."',
+                '"Lift heavy, dream bigger."',
+                '"Bouzoukia πρώτα, ύπνος μετά." — Bouzoukia first, sleep later.',
+                '"A queen finishes what she starts."',
+                '"Greek goddesses train. Then they celebrate."'
             ] : [
                 '"Focus is a matter of deciding what things you\'re not going to do."',
                 '"Where your attention goes, your time goes."',

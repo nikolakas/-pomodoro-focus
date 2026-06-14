@@ -31,6 +31,90 @@ body.theme-starwars {
     --font-display: 'Orbitron', sans-serif;
 }
 
+/* ======= TEREA / MARIA THEME ======= */
+body.theme-terea {
+    --bg-primary: #060d0c; --bg-secondary: #0d1a18; --bg-card: rgba(0,200,185,0.06);
+    --text-primary: #dff6f4; --text-secondary: #68c4be; --text-muted: #3a8a84;
+    --accent: #00d4c8; --accent-glow: rgba(0,212,200,0.35); --accent-glow-intense: rgba(0,212,200,0.75);
+    --font-display: 'Orbitron', sans-serif;
+}
+/* Smoke haze ambient overlay */
+body.theme-terea::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(ellipse 70% 50% at 25% 65%, rgba(0,212,200,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 80% 25%, rgba(0,160,150,0.05) 0%, transparent 60%);
+    animation: tereaSmoke 9s ease-in-out infinite alternate;
+}
+@keyframes tereaSmoke {
+    0%   { opacity: 0.5; transform: scale(1)   translateX(0);   }
+    100% { opacity: 1;   transform: scale(1.04) translateX(8px); }
+}
+
+/* ---- Terea Lights ---- */
+.terea-lights {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 0.5rem auto;
+}
+body.theme-terea .terea-lights { display: flex; }
+
+.terea-lights-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    justify-content: center;
+}
+/* The 4 individual pill lights */
+.terea-light {
+    width: 10px; height: 44px; border-radius: 5px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(0,212,200,0.12);
+    transition: background 0.7s ease, box-shadow 0.7s ease, border-color 0.7s ease;
+}
+.terea-light.lit {
+    background: #00d4c8;
+    border-color: #00d4c8;
+    box-shadow: 0 0 10px rgba(0,212,200,0.9), 0 0 22px rgba(0,212,200,0.5), 0 0 40px rgba(0,212,200,0.2);
+}
+.terea-light.dimming {
+    background: rgba(0,212,200,0.25);
+    border-color: rgba(0,212,200,0.4);
+    box-shadow: 0 0 6px rgba(0,212,200,0.3);
+}
+/* Startup cascade — bottom to top */
+.terea-lights.starting .terea-light:nth-child(4) { animation: tereaFill 0.35s 0.0s ease both; }
+.terea-lights.starting .terea-light:nth-child(3) { animation: tereaFill 0.35s 0.3s ease both; }
+.terea-lights.starting .terea-light:nth-child(2) { animation: tereaFill 0.35s 0.6s ease both; }
+.terea-lights.starting .terea-light:nth-child(1) { animation: tereaFill 0.35s 0.9s ease both; }
+@keyframes tereaFill {
+    0%   { background: rgba(255,255,255,0.05); box-shadow: none; }
+    60%  { background: #80fff9; box-shadow: 0 0 24px rgba(0,212,200,1), 0 0 48px rgba(0,212,200,0.6); }
+    100% { background: #00d4c8; box-shadow: 0 0 10px rgba(0,212,200,0.9), 0 0 22px rgba(0,212,200,0.5); }
+}
+.terea-label {
+    font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-muted); margin-top: 4px; font-family: var(--font-display);
+    transition: color 0.5s ease;
+}
+body.theme-terea .terea-label { color: rgba(0,212,200,0.6); }
+.terea-lights.queen-locked .terea-label { color: #00d4c8; animation: tereaLabelPulse 1.5s ease-in-out 3; }
+@keyframes tereaLabelPulse { 0%,100% { opacity:0.6; } 50% { opacity:1; letter-spacing:0.18em; } }
+
+/* Terea glass cards tinted */
+body.theme-terea .glass-card { border-color: rgba(0,212,200,0.1); }
+body.theme-terea .btn-primary {
+    background: linear-gradient(135deg, rgba(0,212,200,0.9), rgba(0,160,150,0.85));
+    box-shadow: 0 4px 20px rgba(0,212,200,0.4);
+}
+body.theme-terea .mode-btn.active {
+    background: rgba(0,212,200,0.15); border-color: rgba(0,212,200,0.5); color: #00d4c8;
+}
+body.theme-terea .timer-ring-progress { stroke: #00d4c8; }
+body.theme-terea .timer-ring-glow { stroke: #00d4c8; }
+
 /* Base styles */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
