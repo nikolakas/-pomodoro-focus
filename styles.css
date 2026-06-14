@@ -1363,3 +1363,7 @@ body.zen-mode .timer-container{transform:scale(1.08);}
 .tag-bar-track{flex:1;background:rgba(255,255,255,0.06);border-radius:6px;height:8px;overflow:hidden;}
 .tag-bar-fill{height:100%;border-radius:6px;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1);}
 .tag-bar-pct{font-size:0.8rem;color:var(--text-muted);min-width:36px;text-align:right;}
+
+/* === PROGRESS RING GRADIENT === */
+.timer-ring-progress{stroke:url(#timer-grad);}
+.timer-ring-glow{stroke:url(#timer-grad);opacity:0.35;filter:blur(6px);}
