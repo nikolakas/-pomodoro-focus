@@ -331,7 +331,7 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
 
   if (this.elements.btnWarp) {
-    this.elements.btnWarp.addEventListener('click', this.triggerHyperspaceJump);
+    this.elements.btnWarp.addEventListener('click', () => this.triggerHyperspaceJump());
   }
 
   // Mode Switching
@@ -396,7 +396,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   // Notes
   const btnAddNote = document.getElementById('btn-add-note');
   if (btnAddNote) {
-    btnAddNote.addEventListener('click', this.addNote);
+    btnAddNote.addEventListener('click', () => this.addNote());
   }
 
   const noteInput = document.getElementById('note-input');
@@ -1264,10 +1264,10 @@ el.addEventListener('click', () => {
     this.elements.moodCards.forEach(c => c.classList.toggle('active', c.dataset.mood === moodKey));
 
     const presets = {
-        cozy_cafe:    { cafe: 65, jazz: 50, rain: 0, waves: 0, brown: 0, nature: 0, library: 0 },
-        rainy_day:    { rain: 75, brown: 55, cafe: 0, jazz: 0, waves: 0, nature: 0, library: 0 },
-        deep_focus:   { library: 60, nature: 40, rain: 0, waves: 0, brown: 0, cafe: 0, jazz: 0 },
-        ocean_breeze: { waves: 70, nature: 45, rain: 0, brown: 0, cafe: 0, jazz: 0, library: 0 }
+        cozycafe:    { cafe: 65, jazz: 50, rain: 0, waves: 0, brown: 0, nature: 0, library: 0 },
+        rainyday:    { rain: 75, brown: 55, cafe: 0, jazz: 0, waves: 0, nature: 0, library: 0 },
+        deepfocus:   { library: 60, nature: 40, rain: 0, waves: 0, brown: 0, cafe: 0, jazz: 0 },
+        oceanbreeze: { waves: 70, nature: 45, rain: 0, brown: 0, cafe: 0, jazz: 0, library: 0 }
     };
 
     const volumes = presets[moodKey];
