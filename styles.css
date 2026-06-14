@@ -1348,9 +1348,6 @@ body.zen-mode .mode-selector,body.zen-mode .session-counter,body.zen-mode .level
 body.zen-mode .header{opacity:0;pointer-events:none;transform:translateY(-10px);transition:opacity 0.4s ease,transform 0.4s ease;}
 body.zen-mode .timer-container{transform:scale(1.08);}
 
-/* === PROGRESS RING GRADIENT === */
-.timer-ring-progress{stroke:url(#timer-grad);}
-.timer-ring-glow{stroke:url(#timer-grad);opacity:0.35;filter:blur(6px);}
 
 /* === TAG BREAKDOWN CARD === */
 #tag-breakdown-card{background:var(--bg-card);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.5rem;margin-top:1.5rem;}
