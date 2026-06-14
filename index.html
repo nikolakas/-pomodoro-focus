@@ -73,7 +73,7 @@
                         
                     <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
                     <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
-                    <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress"/>
+                    <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress" stroke-dasharray="753.98" stroke-dashoffset="0"/>
                 </svg>
                 <div class="timer-display">
     <span class="timer-time" id="timer-time">25:00</span>
@@ -273,6 +273,10 @@
         <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
         <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
       </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-auto-start">Auto-start next phase</label>
+      <input type="checkbox" id="setting-auto-start">
     </div>
     <div class="setting-row">
       <label for="setting-sound">Completion Sound</label>

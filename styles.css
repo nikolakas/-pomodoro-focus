@@ -343,7 +343,12 @@ body.theme-starwars .level-bar-fill::after { content: ''; position: absolute; ri
 .timer-ring-glow { stroke: var(--accent); stroke-width: 16; opacity: 0; filter: url(#soft-glow); transition: opacity 0.5s; }
 body.theme-starwars .timer-ring-glow { filter: url(#saber-glow); }
 .timer-container.running .timer-ring-glow { opacity: 0.5; }
-.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; stroke-dashoffset: 0; }
+.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; stroke-dashoffset: 0; transition: stroke 0.5s ease, stroke-dashoffset 1s linear; }
+.timer-container.timer-warning .timer-ring-progress { stroke: #ef4444 !important; }
+.timer-container.timer-warning .timer-ring-glow { stroke: #ef4444 !important; opacity: 0.6 !important; }
+.timer-container.timer-warning .timer-time { color: #ef4444; transition: color 0.5s ease; }
+@keyframes warningPulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.timer-container.timer-warning .timer-ring-progress { animation: warningPulse 1s ease-in-out infinite; }
 
 .timer-display { display: flex; flex-direction: column; align-items: center; z-index: 10; }
 .timer-time { font-size: 4.5rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; letter-spacing: -2px; text-shadow: 0 4px 20px rgba(0,0,0,0.3); }

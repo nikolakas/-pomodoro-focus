@@ -16,7 +16,7 @@ const app = {
             rounds: 4, dailyGoal: 8,
             sound: 'bell', theme: 'normal',
             wallpaper: 'default', accent: 'coral',
-            saber: 'blue', swMusic: true
+            saber: 'blue', swMusic: true, autoStart: false
         },
         currentRound: 1,
         sessionsToday: 0,
@@ -43,6 +43,7 @@ const app = {
         history: [],
         breathingState: { active: false, interval: null, phase: 0 },
         hyperspaceActive: false,
+        modeTimers: { work: null, shortBreak: null, longBreak: null },
        sceneVolumes: {},
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
       currentIntention: null,
@@ -334,9 +335,24 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
     this.elements.btnWarp.addEventListener('click', () => this.triggerHyperspaceJump());
   }
 
-  // Mode Switching
+  // Mode Switching — save current mode's remaining time before switching
   this.elements.modeBtns.forEach(btn => {
-    btn.addEventListener('click', e => this.setMode(e.target.dataset.mode));
+    btn.addEventListener('click', e => {
+      const newMode = e.target.dataset.mode;
+      const prevMode = this.state.mode;
+      // Save remaining time for the mode we're leaving
+      if (newMode !== prevMode && this.state.timeLeft > 0) {
+        this.state.modeTimers[prevMode] = this.state.timeLeft;
+      }
+      const savedTime = this.state.modeTimers[newMode];
+      this.setMode(newMode);
+      // Restore saved time for the mode we're switching to
+      if (savedTime) {
+        this.state.timeLeft = savedTime;
+        this.updateTimeDisplay();
+        this.updateRing();
+      }
+    });
   });
 
   // Tabs
@@ -741,6 +757,11 @@ toggleTimer() {
         this.setMode(this.state.mode || 'work');
     }
 
+    // Request notification permission on first start
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
     this.state.isRunning = true;
 
     const reminder = document.getElementById('intention-reminder');
@@ -804,6 +825,7 @@ toggleTimer() {
 },
 
     resetTimer() {
+        this.state.modeTimers[this.state.mode] = null;
         this.stopTimer();
         this.setMode(this.state.mode);
     },
@@ -852,18 +874,24 @@ setTimeout(() => {
             // Fixed: unified 3-arg signature
             this.showSessionRecap(completedIntention, this.state.settings.work, 15);
 
-            if (this.state.currentRound % this.state.settings.rounds === 0) {
-                this.setMode('longBreak');
-            } else {
-                this.setMode('shortBreak');
-            }
+            const nextMode = (this.state.currentRound % this.state.settings.rounds === 0) ? 'longBreak' : 'shortBreak';
+            this.state.modeTimers.work = null;
+            this.state.modeTimers[nextMode] = null;
             this.state.currentRound++;
+            this.setMode(nextMode);
+            this.sendNotification('Focus session complete!', nextMode === 'longBreak' ? 'Take a long break — you earned it.' : 'Take a short break.');
+            if (this.state.settings.autoStart) setTimeout(() => this.startTimer(), 1500);
         } else {
             this.recordSession(
                 this.state.mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long,
                 'break'
             );
+            this.state.modeTimers.shortBreak = null;
+            this.state.modeTimers.longBreak = null;
+            this.state.modeTimers.work = null;
             this.setMode('work');
+            this.sendNotification('Break over!', 'Time to focus.');
+            if (this.state.settings.autoStart) setTimeout(() => this.startTimer(), 1500);
         }
        this.updateSessionCounter();
 this.checkAchievements();
@@ -926,9 +954,17 @@ updateTimeDisplay() {
     updateRing() {
         const total = (this.state.mode === 'work' ? this.state.settings.work :
                 this.state.mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long) * 60;
-        const p = this.state.timeLeft / total;
+        const p = total > 0 ? this.state.timeLeft / total : 1;
         const offset = 753.98 - (p * 753.98);
-        this.elements.progress.style.strokeDashoffset = offset;
+        this.elements.progress.setAttribute('stroke-dashoffset', offset);
+        if (this.elements.glow) this.elements.glow.setAttribute('stroke-dashoffset', offset);
+
+        // Warning pulse in the last 60 seconds of a work session
+        if (this.state.mode === 'work' && this.state.timeLeft <= 60 && this.state.isRunning) {
+            this.elements.container.classList.add('timer-warning');
+        } else {
+            this.elements.container.classList.remove('timer-warning');
+        }
     },
 
     updateSessionCounter() {
@@ -1260,6 +1296,17 @@ el.addEventListener('click', () => {
         }, 6000);
     },
 
+    sendNotification(title, body) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') {
+            new Notification(title, { body, icon: 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🍅</text></svg>' });
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(p => {
+                if (p === 'granted') new Notification(title, { body });
+            });
+        }
+    },
+
    activateMood(moodKey) {
     this.elements.moodCards.forEach(c => c.classList.toggle('active', c.dataset.mood === moodKey));
 
@@ -1321,6 +1368,8 @@ el.addEventListener('click', () => {
 
         if (this.elements.swMusicInput) this.elements.swMusicInput.checked = this.state.settings.swMusic;
         if (this.elements.ambientVolInput) this.elements.ambientVolInput.value = this.state.ambientVolume;
+        const autoStartEl = document.getElementById('setting-auto-start');
+        if (autoStartEl) autoStartEl.checked = !!this.state.settings.autoStart;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -1332,6 +1381,8 @@ el.addEventListener('click', () => {
         this.state.settings.dailyGoal = parseInt(document.getElementById('setting-daily-goal').value);
         this.state.settings.sound = document.getElementById('setting-sound').value;
         if (this.elements.swMusicInput) this.state.settings.swMusic = this.elements.swMusicInput.checked;
+        const autoStartEl = document.getElementById('setting-auto-start');
+        if (autoStartEl) this.state.settings.autoStart = autoStartEl.checked;
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
         const user = window.firebaseAuth?.currentUser;
