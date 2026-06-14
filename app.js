@@ -163,7 +163,8 @@ async initFirebase() {
                     ...(remote.settings || {})
                 };
                 this.saveStats();
-                this.saveSettings();
+                localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
+                this.updateTheme();
                 this.renderStats();
                 this.renderNotes();
                 this.renderHeatmap();
