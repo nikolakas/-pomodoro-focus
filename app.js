@@ -1508,8 +1508,8 @@ setThemePreview(theme) {
         if (metaTheme) metaTheme.content = hex;
         		this.elements.colorBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
 				this.updateRingGradient();
-rgba(255,110,180,0.85)'};
-				this.updateRingGradient();
+    },
+
     setSaber(colorName) {
         if (!this.state.saberColors[colorName]) return;
         this.state.settings.saber = colorName;
