@@ -32,13 +32,13 @@
                 <span class="logo-subtitle" id="logo-subtitle"></span>
             </div>
             
-            <div class="marianna-banner">
-                For my friend Marianna
-            </div>
+            <!-- Subtle friend banners — visible only in their theme -->
+            <span class="friend-hearts" id="marianna-hearts" aria-hidden="true"></span>
+            <span class="friend-terea-tag" id="terea-tag" aria-hidden="true">for Maria 💨</span>
             <div class="auth-bar" id="auth-bar">
   <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
   <span id="auth-name" class="auth-name"></span>
-  <button class="btn btn-secondary" id="btn-auth">Sign in with Google</button>
+  <button class="btn btn-secondary btn-signin" id="btn-auth">Sign in</button>
 </div>
             <nav class="tabs" role="tablist">
                 <button class="tab active" data-tab="timer" role="tab" aria-selected="true" id="tab-timer">
@@ -305,6 +305,10 @@
       <label for="setting-rep-counter">Rep Counter (sets done today)</label>
       <input type="checkbox" id="setting-rep-counter">
     </div>
+    <div class="setting-row" id="row-terea-lite" style="display:none;">
+      <label for="setting-terea-lite">Terea Lite (reduce smoke &amp; flash)</label>
+      <input type="checkbox" id="setting-terea-lite">
+    </div>
     <div class="setting-row">
       <label for="setting-sound">Completion Sound</label>
       <div style="display:flex; gap:8px;">
@@ -315,7 +319,6 @@
           <option value="zen">🧘 Zen Bowl</option>
           <option value="sw_theme">⚔️ Force Theme</option>
           <option value="cute">♥ Cute</option>
-          <option value="bouzoukia_riff">🪗 Bouzoukia</option>
           <option value="none">🔇 None</option>
         </select>
         <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
@@ -323,13 +326,29 @@
     </div>
 
     <h3 class="settings-section-title">Appearance</h3>
-    <div class="setting-row theme-preview-row">
+    <div class="setting-row theme-preview-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
         <label>Theme</label>
-        <div class="theme-btn-row">
-            <button class="theme-select-btn" id="theme-btn-normal" data-theme="normal">🌙 Normal</button>
-            <button class="theme-select-btn" id="theme-btn-starwars" data-theme="starwars">⚔️ Star Wars</button>
-            <button class="theme-select-btn" id="theme-btn-pink" data-theme="pink">🌸 Marianna</button>
-            <button class="theme-select-btn" id="theme-btn-terea" data-theme="terea">💨 Terea</button>
+        <div class="theme-card-strip">
+            <button class="theme-card" id="theme-btn-normal" data-theme="normal">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a1a2e,#ff6b6b)"></span>
+                <span class="theme-card-icon">🌙</span>
+                <span class="theme-card-label">Normal</span>
+            </button>
+            <button class="theme-card" id="theme-btn-starwars" data-theme="starwars">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#050505,#4fc3f7)"></span>
+                <span class="theme-card-icon">⚔️</span>
+                <span class="theme-card-label">Star Wars</span>
+            </button>
+            <button class="theme-card" id="theme-btn-pink" data-theme="pink">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a0a14,#ff6eb4)"></span>
+                <span class="theme-card-icon">🌸</span>
+                <span class="theme-card-label">Pink</span>
+            </button>
+            <button class="theme-card" id="theme-btn-terea" data-theme="terea">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#060d0c,#00d4c8)"></span>
+                <span class="theme-card-icon">💨</span>
+                <span class="theme-card-label">Terea</span>
+            </button>
         </div>
     </div>
 
@@ -393,7 +412,14 @@
       
             <div class="setting-row" style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
                 <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
-                <button id="btn-reset-app" class="btn-secondary" style="background:rgba(255,80,80,0.12); color:#ff6b6b; border:1px solid rgba(255,80,80,0.25); border-radius:8px; padding:6px 14px; font-size:0.82rem; cursor:pointer;" onclick="if(confirm('Reset all local data? This cannot be undone.')){localStorage.clear(); location.reload();}">🗑 Reset App</button>
+                <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data" onclick="if(confirm('Delete all local data? This cannot be undone.')){localStorage.clear(); location.reload();}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+                <!-- Sign out — shown when logged in -->
+                <button id="btn-signout-footer" class="btn-signout-footer" style="display:none;" title="Sign out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign out
+                </button>
             </div>
   </div>
 </details>

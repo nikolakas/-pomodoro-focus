@@ -524,124 +524,143 @@ window.AmbienceModule = (() => {
   }
 
   // ============================================
-  //  JAZZ
+  //  JAZZ — Late-night piano bar, walking bass, brush kit, sax
   // ============================================
   function buildJazz(dest) {
     const nodes = [];
     const state = { active: true };
+    const ac = getCtx();
 
-const chords = [
-    // ii-V-I in C — standard jazz turnaround
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-    [196.00, 246.94, 293.66, 349.23],   // G7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7 hold
+    // ---- Chord library (voiced for piano warmth, 4-note close voicings) ----
+    // Frequencies are in Hz, voiced 2-4 octaves above bass
+    const progression = [
+      // A section — ii-V-I in C
+      { name:'Dm9',   tones:[220.00, 261.63, 329.63, 392.00], bass:[73.42, 82.41, 92.50, 98.00] },
+      { name:'G13',   tones:[196.00, 246.94, 329.63, 415.30], bass:[98.00, 110.00, 123.47, 130.81] },
+      { name:'Cmaj9', tones:[261.63, 329.63, 392.00, 493.88], bass:[65.41, 73.42, 82.41, 92.50] },
+      { name:'Cmaj9', tones:[261.63, 329.63, 392.00, 493.88], bass:[65.41, 82.41, 87.31, 98.00] },
+      // B section — iii-VI-ii-V
+      { name:'Em7',   tones:[246.94, 293.66, 369.99, 440.00], bass:[82.41, 87.31, 98.00, 110.00] },
+      { name:'A7b9',  tones:[220.00, 277.18, 349.23, 466.16], bass:[110.00, 123.47, 130.81, 146.83] },
+      { name:'Dm7',   tones:[220.00, 261.63, 329.63, 392.00], bass:[73.42, 82.41, 92.50, 98.00] },
+      { name:'G7#5',  tones:[196.00, 246.94, 311.13, 392.00], bass:[98.00, 103.83, 116.54, 130.81] },
+      // C section — IV-bVII turnaround (Monk-style)
+      { name:'Fmaj7', tones:[261.63, 329.63, 349.23, 440.00], bass:[87.31, 98.00, 110.00, 116.54] },
+      { name:'Bb7',   tones:[233.08, 293.66, 349.23, 466.16], bass:[116.54, 123.47, 130.81, 146.83] },
+      { name:'Am7',   tones:[220.00, 261.63, 329.63, 440.00], bass:[110.00, 116.54, 130.81, 146.83] },
+      { name:'D7alt', tones:[220.00, 277.18, 311.13, 369.99], bass:[73.42, 82.41, 87.31, 92.50] },
+      // Back home
+      { name:'G13',   tones:[196.00, 246.94, 329.63, 415.30], bass:[98.00, 110.00, 116.54, 123.47] },
+      { name:'Cmaj7', tones:[261.63, 329.63, 392.00, 493.88], bass:[65.41, 73.42, 82.41, 98.00] },
+      { name:'Am7',   tones:[220.00, 261.63, 329.63, 440.00], bass:[110.00, 116.54, 123.47, 130.81] },
+      { name:'Dm9',   tones:[220.00, 261.63, 329.63, 392.00], bass:[73.42, 82.41, 87.31, 98.00] },
+    ];
+    let chordIdx = 0;
 
-    // iii-VI-ii-V — bird-style bridge
-    [164.81, 196.00, 246.94, 293.66],   // Em7
-    [220.00, 277.18, 329.63, 415.30],   // A7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-    [196.00, 246.94, 293.66, 349.23],   // G7
+    // Piano comping — soft close-voiced chords with swing feel
+    const playPianoComp = () => {
+      if (!state.active) return;
+      const prog = progression[chordIdx % progression.length];
+      const t = ac.currentTime;
 
-    // IV-III-VI-II — minor excursion
-    [174.61, 220.00, 261.63, 329.63],   // Fmaj7
-    [164.81, 196.00, 246.94, 293.66],   // Em7
-    [220.00, 261.63, 329.63, 392.00],   // Am7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-
-    // Back home
-    [196.00, 246.94, 293.66, 349.23],   // G7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7 (loop back)
-];
-let idx = 0;
-
-    const playChord = () => {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const chord = chords[idx++ % chords.length];
-      const t = ctx.currentTime;
-
-      chord.forEach((fq, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = fq;
-        const vol = 0.05 - i * 0.005;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(vol, t + 0.15);
-        g.gain.setValueAtTime(vol, t + 3.2);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 3.8);
-        o.connect(g).connect(dest); o.start(t); o.stop(t + 4);
-
-        const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-        o2.type = 'sine'; o2.frequency.value = fq * 1.003;
-        g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(vol * 0.3, t + 0.2);
-        g2.gain.setValueAtTime(vol * 0.3, t + 3.0);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 3.6);
-        o2.connect(g2).connect(dest); o2.start(t); o2.stop(t + 4);
+      // Sparse swing comping: beats 2 and 4 (swing 8ths)
+      const compBeats = [0.1, 0.85, 1.6, 2.4].filter(() => Math.random() > 0.3);
+      compBeats.forEach(beat => {
+        const noteCount = 2 + Math.floor(Math.random() * 3);
+        const voiced = prog.tones.slice(0, noteCount);
+        voiced.forEach((fq, vi) => {
+          const o = ac.createOscillator(), g = ac.createGain();
+          o.type = 'sine'; o.frequency.value = fq * (Math.random() < 0.1 ? 2 : 1);
+          // Slight detuning for piano chorus effect
+          const o2 = ac.createOscillator(), g2 = ac.createGain();
+          o2.type = 'sine'; o2.frequency.value = fq * 1.004;
+          const vol = (0.028 - vi * 0.004) * (vi === 0 ? 0.5 : 1);
+          const dur = 0.3 + Math.random() * 0.55;
+          g.gain.setValueAtTime(0, t + beat);
+          g.gain.linearRampToValueAtTime(vol, t + beat + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, t + beat + dur);
+          g2.gain.setValueAtTime(0, t + beat);
+          g2.gain.linearRampToValueAtTime(vol * 0.4, t + beat + 0.03);
+          g2.gain.exponentialRampToValueAtTime(0.001, t + beat + dur + 0.1);
+          o.connect(g).connect(dest); o2.connect(g2).connect(dest);
+          o.start(t + beat); o.stop(t + beat + dur + 0.05);
+          o2.start(t + beat); o2.stop(t + beat + dur + 0.15);
+          nodes.push(o, o2);
+        });
       });
 
-      const bassRoot = chord[0] * 0.5;
-      const bassNotes = [bassRoot, chord[1] * 0.5, chord[2] * 0.5, bassRoot * 1.06];
-      bassNotes.forEach((bf, bi) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
+      // Walking bass — 4 quarter notes with chromatic passing tones
+      prog.bass.forEach((bf, bi) => {
+        const o = ac.createOscillator(), g = ac.createGain();
         o.type = 'triangle'; o.frequency.value = bf;
-        const s = bi * 0.95;
+        const s = bi * 0.9 + (Math.random() < 0.25 ? 0.05 : 0); // slight swing delay
+        const dur = 0.65 + Math.random() * 0.15;
         g.gain.setValueAtTime(0, t + s);
-        g.gain.linearRampToValueAtTime(0.08, t + s + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.001, t + s + 0.85);
-        o.connect(g).connect(dest); o.start(t + s); o.stop(t + s + 0.9);
+        g.gain.linearRampToValueAtTime(0.09, t + s + 0.03);
+        g.gain.setValueAtTime(0.09, t + s + dur - 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, t + s + dur);
+        o.connect(g).connect(dest); o.start(t + s); o.stop(t + s + dur + 0.05);
+        nodes.push(o);
       });
 
-      if (Math.random() > 0.25) {
-        const saxNotes = [chord[2], chord[3], chord[1] * 2, chord[0] * 2];
-        const noteIdx = Math.floor(Math.random() * saxNotes.length);
-        const saxFreq = saxNotes[noteIdx] * (Math.random() > 0.5 ? 2 : 1);
-        const delay = 0.5 + Math.random() * 2.5;
-        const dur = 0.4 + Math.random() * 1.0;
-
-        const sax = ctx.createOscillator(), saxG = ctx.createGain();
-        sax.type = 'sine'; sax.frequency.value = saxFreq;
-        const vib = ctx.createOscillator(), vibG = ctx.createGain();
-        vib.type = 'sine'; vib.frequency.value = 5 + Math.random() * 2;
-        vibG.gain.value = saxFreq * 0.015;
-        vib.connect(vibG); vibG.connect(sax.frequency);
-
-        saxG.gain.setValueAtTime(0, t + delay);
-        saxG.gain.linearRampToValueAtTime(0.03, t + delay + 0.08);
-        saxG.gain.setValueAtTime(0.03, t + delay + dur - 0.1);
-        saxG.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
-
-        sax.connect(saxG).connect(dest);
-        sax.start(t + delay); sax.stop(t + delay + dur + 0.05);
-        vib.start(t + delay); vib.stop(t + delay + dur + 0.05);
+      // Saxophone melody — smooth, slightly behind the beat (jazz feel)
+      if (Math.random() > 0.2) {
+        const melodyNotes = [
+          ...prog.tones.map(f => f * 2),
+          ...prog.tones,
+          prog.tones[2] * 1.5,
+          prog.tones[1] * 1.333
+        ];
+        const count = 2 + Math.floor(Math.random() * 4);
+        let mOffset = 0.3 + Math.random() * 0.6;
+        for (let m = 0; m < count; m++) {
+          const freq = melodyNotes[Math.floor(Math.random() * melodyNotes.length)];
+          const dur = 0.25 + Math.random() * 0.8;
+          const sax = ac.createOscillator(), saxG = ac.createGain();
+          const vib = ac.createOscillator(), vibG = ac.createGain();
+          sax.type = 'sine'; sax.frequency.value = freq;
+          vib.type = 'sine'; vib.frequency.value = 4.8 + Math.random() * 1.5;
+          vibG.gain.value = freq * 0.012; // subtle vibrato depth
+          vib.connect(vibG); vibG.connect(sax.frequency);
+          const saxVol = 0.025 + Math.random() * 0.01;
+          saxG.gain.setValueAtTime(0, t + mOffset);
+          saxG.gain.linearRampToValueAtTime(saxVol, t + mOffset + 0.06);
+          saxG.gain.setValueAtTime(saxVol * 0.9, t + mOffset + dur - 0.08);
+          saxG.gain.exponentialRampToValueAtTime(0.001, t + mOffset + dur);
+          sax.connect(saxG).connect(dest);
+          sax.start(t + mOffset); sax.stop(t + mOffset + dur + 0.05);
+          vib.start(t + mOffset); vib.stop(t + mOffset + dur + 0.05);
+          nodes.push(sax, vib);
+          mOffset += dur + 0.05 + Math.random() * 0.25;
+          if (mOffset > 4.2) break;
+        }
       }
 
-      if (Math.random() > 0.35) {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = chord[Math.floor(Math.random() * chord.length)] * (2 + Math.floor(Math.random() * 2));
-        const d = 0.8 + Math.random() * 2.2;
-        g.gain.setValueAtTime(0, t + d);
-        g.gain.linearRampToValueAtTime(0.02, t + d + 0.06);
-        g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.7);
-        o.connect(g).connect(dest); o.start(t + d); o.stop(t + d + 0.8);
-      }
+      chordIdx++;
     };
 
-    playChord();
-    const iv = setInterval(playChord, 4800);
-    nodes.push({ stop: () => { clearInterval(iv); state.active = false; } });
+    playPianoComp();
+    // 4.8s per chord change — one bar at ~50bpm swing
+    const compIv = setInterval(playPianoComp, 4800);
+    nodes.push({ stop: () => { clearInterval(compIv); state.active = false; } });
 
-    const brush = createNoise('pink'), bg = createGainNode(0.005);
-    brush.connect(createFilter('bandpass', 6000, 2)).connect(bg).connect(dest);
+    // Brush snare — continuous swing feel (filtered pink noise)
+    const brush = createNoise('pink'), brushG = createGainNode(0.007);
+    brush.connect(createFilter('bandpass', 5000, 1.5)).connect(brushG).connect(dest);
     brush.start(); nodes.push(brush);
-    nodes.push(createLFO(2.2, 0.006, 0.028, bg.gain));
+    // Swing LFO — emphasis on 2 and 4 of a slow 4/4
+    nodes.push(createLFO(0.417, 0.004, 0.018, brushG.gain)); // ~50bpm
 
-    const hihat = createNoise('white'), hg = createGainNode(0.002);
-    hihat.connect(createFilter('highpass', 8000, 0.5)).connect(hg).connect(dest);
+    // Hi-hat — high-frequency shimmer with subtle swing pulse
+    const hihat = createNoise('white'), hihatG = createGainNode(0.003);
+    hihat.connect(createFilter('highpass', 9000, 0.4)).connect(hihatG).connect(dest);
     hihat.start(); nodes.push(hihat);
-    nodes.push(createLFO(3.3, 0.003, 0.012, hg.gain));
+    nodes.push(createLFO(1.67, 0.002, 0.009, hihatG.gain)); // 8th-note swing feel
+
+    // Room ambience — very subtle reverb-like noise pad
+    const room = createNoise('brown'), roomG = createGainNode(0.006);
+    room.connect(createFilter('lowpass', 300, 0.5)).connect(roomG).connect(dest);
+    room.start(); nodes.push(room);
 
     return nodes;
   }

@@ -118,12 +118,18 @@ async initFirebase() {
 
     if (this.authStateUnsub) this.authStateUnsub();
 
+    const authBarEl = document.getElementById('auth-bar');
+    const signoutFooter = document.getElementById('btn-signout-footer');
+
     this.authStateUnsub = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
         if (user) {
-            if (btnAuth) {
-                btnAuth.textContent = 'Sign out';
-                btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
+            if (authBarEl) authBarEl.classList.add('signed-in');
+            if (signoutFooter) {
+                signoutFooter.style.display = 'flex';
+                signoutFooter.onclick = () => window.signOutFb(window.firebaseAuth);
             }
+            // Keep btn-auth hidden when signed in (class handles it)
+            if (btnAuth) btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
 
             if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
 
@@ -164,13 +170,16 @@ async initFirebase() {
                 this.renderInsights();
             });
         } else {
+            if (authBarEl) authBarEl.classList.remove('signed-in');
+            if (signoutFooter) signoutFooter.style.display = 'none';
+
             if (this.userUnsub) {
                 this.userUnsub();
                 this.userUnsub = null;
             }
 
             if (btnAuth) {
-                btnAuth.textContent = 'Sign in with Google';
+                btnAuth.textContent = 'Sign in';
                 btnAuth.onclick = async () => {
                     try {
                         if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
@@ -306,7 +315,12 @@ this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
   }
 
   if (this.elements.btnReset) {
-this.elements.btnReset.addEventListener('click', () => this.resetTimer());
+    this.elements.btnReset.addEventListener('click', () => {
+      if (this.state.isRunning || this.state.timeLeft < (this.state.settings.work * 60)) {
+        if (!confirm('Reset timer? Current progress will be lost.')) return;
+      }
+      this.resetTimer();
+    });
   }
 
   if (this.elements.btnSkip) {
@@ -377,14 +391,29 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
     });
   }
 
-  // Theme buttons (4 direct selectors)
-  document.querySelectorAll('.theme-select-btn').forEach(btn => {
+  // Theme cards (4 direct selectors)
+  document.querySelectorAll('.theme-card').forEach(btn => {
     btn.addEventListener('click', e => {
       this.state.settings.theme = e.currentTarget.dataset.theme;
       this.saveSettings();
       this.updateTheme();
     });
   });
+
+  // Ember glow dot — toggle focus intensity
+  const emberEl = document.getElementById('ember-glow');
+  if (emberEl) {
+    emberEl.addEventListener('click', () => {
+      this.state.settings.focusIntensity = !this.state.settings.focusIntensity;
+      document.body.classList.toggle('focus-intense', !!this.state.settings.focusIntensity);
+      this.showToast(
+        this.state.settings.focusIntensity ? 'High Intensity 🔥' : 'Normal Mode',
+        this.state.settings.focusIntensity ? 'Stronger effects. Queen mode engaged.' : 'Effects toned down.',
+        this.state.settings.focusIntensity ? '💪' : '🌙'
+      );
+    });
+    emberEl.style.cursor = 'pointer';
+  }
 
   this.elements.colorBtns.forEach(btn => {
     btn.addEventListener('click', e => this.setAccent(e.target.dataset.color));
@@ -523,12 +552,11 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     });
   }
 
-  // Logo 3x click easter egg
+  // Tomato 🍅 icon — 3x click easter egg
   let _logoClicks = 0, _logoTimer = null;
-  const logoEl = document.getElementById('logo-title');
-  if (logoEl) {
-    logoEl.style.cursor = 'pointer';
-    logoEl.addEventListener('click', () => {
+  const logoIconEl = document.getElementById('logo-icon');
+  if (logoIconEl) {
+    logoIconEl.addEventListener('click', () => {
       _logoClicks++;
       clearTimeout(_logoTimer);
       _logoTimer = setTimeout(() => { _logoClicks = 0; }, 700);
@@ -947,8 +975,10 @@ toggleTimer() {
                 ];
                 const [title, desc] = tereaToasts[Math.floor(Math.random() * tereaToasts.length)];
                 this.showToast(title, desc, '💨');
-                this.createSmokeParticles();
-                this.flashTereaComplete();
+                if (!this.state.settings.tereaLite) {
+                    this.createSmokeParticles();
+                    this.flashTereaComplete();
+                }
                 this.playAudio('smoke_break');
                 this.checkTereaLegend();
                 const tereaLights = document.getElementById('terea-lights');
@@ -1092,7 +1122,7 @@ updateTimeDisplay() {
 updateRepCounter() {
     const el = document.getElementById('rep-counter');
     if (!el) return;
-    const show = !!this.state.settings.repCounter;
+    const show = !!this.state.settings.repCounter && !document.body.classList.contains('minimal-mode');
     el.style.display = show ? 'inline-flex' : 'none';
     if (show) el.textContent = `${this.state.sessionsToday} × 💪`;
 },
@@ -1580,6 +1610,8 @@ el.addEventListener('click', () => {
         if (autoStartEl) autoStartEl.checked = !!this.state.settings.autoStart;
         const repEl = document.getElementById('setting-rep-counter');
         if (repEl) repEl.checked = !!this.state.settings.repCounter;
+        const tereaLiteEl = document.getElementById('setting-terea-lite');
+        if (tereaLiteEl) tereaLiteEl.checked = !!this.state.settings.tereaLite;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -1595,6 +1627,8 @@ el.addEventListener('click', () => {
         if (autoStartEl) this.state.settings.autoStart = autoStartEl.checked;
         const repEl = document.getElementById('setting-rep-counter');
         if (repEl) this.state.settings.repCounter = repEl.checked;
+        const tereaLiteEl = document.getElementById('setting-terea-lite');
+        if (tereaLiteEl) this.state.settings.tereaLite = tereaLiteEl.checked;
         this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
@@ -1697,7 +1731,7 @@ updateTheme() {
 		document.body.classList.toggle('minimal-mode',   isPink || isTerea);
 
 		// Sync 4-button active state
-		document.querySelectorAll('.theme-select-btn').forEach(btn => {
+		document.querySelectorAll('.theme-card').forEach(btn => {
 			btn.classList.toggle('active', btn.dataset.theme === theme);
 		});
 
@@ -1738,6 +1772,10 @@ updateTheme() {
 		this.updateLevel();
 		this.updateTereaLights();
 		this.updateRepCounter();
+
+		// Show Terea Lite option only in Terea mode
+		const tereaLiteRow = document.getElementById('row-terea-lite');
+		if (tereaLiteRow) tereaLiteRow.style.display = isTerea ? 'flex' : 'none';
 	},
 
 checkBouzoukiaHours() {
