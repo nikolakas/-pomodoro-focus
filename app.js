@@ -2292,18 +2292,16 @@ initOnboarding() {
 		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
 		this.showToast('Mix deleted', key, '🗑️');
 	},
-		updateRingGradient() {
-					const grad = document.getElementById('timer-grad');
-					if (!grad) return;
-					const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
-						|| getComputedStyle(document.body).getPropertyValue('--accent').trim();
-					if (!accent) return;
-					const stops = grad.querySelectorAll('stop');
-					if (stops[0]) stops[0].setAttribute('stop-color', accent);
-					if (stops[1]) stops[1].setAttribute('stop-color', accent);
-					if (stops[1]) stops[1].setAttribute('stop-opacity', '0.3');
-				},
-};
-
-window.app = app;
-document.addEventListener('DOMContentLoaded', () => app.init());
+	updateRingGradient() {
+				const grad = document.getElementById('timer-grad');
+				const progressEl = document.getElementById('timer-progress');
+				const glowEl = document.getElementById('timer-glow');
+				if (!grad || !progressEl) return;
+				const accent = (getComputedStyle(document.body).getPropertyValue('--accent') || getComputedStyle(document.documentElement).getPropertyValue('--accent')).trim();
+				if (!accent) return;
+				const stops = grad.querySelectorAll('stop');
+				if (stops[0]) stops[0].setAttribute('stop-color', accent);
+				if (stops[1]) { stops[1].setAttribute('stop-color', accent); stops[1].setAttribute('stop-opacity', '0.4'); }
+				progressEl.setAttribute('stroke', 'url(#timer-grad)');
+				if (glowEl) glowEl.setAttribute('stroke', 'url(#timer-grad)');
+			},
