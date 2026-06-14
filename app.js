@@ -2302,8 +2302,10 @@ initOnboarding() {
 				const stops = grad.querySelectorAll('stop');
 				if (stops[0]) stops[0].setAttribute('stop-color', accent);
 				if (stops[1]) { stops[1].setAttribute('stop-color', accent); stops[1].setAttribute('stop-opacity', '0.4'); }
-				progressEl.setAttribute('stroke', 'url(#timer-grad)');
-				if (glowEl) glowEl.setAttribute('stroke', 'url(#timer-grad)');
+				progressEl.style.stroke = 'url(#timer-grad)';
+		progressEl.setAttribute('stroke', 'url(#timer-grad)');
+				if (glowEl) glowEl.style.stroke = 'url(#timer-grad)';
+		if (glowEl) glowEl.setAttribute('stroke', 'url(#timer-grad)');
 			},
 
 	};
