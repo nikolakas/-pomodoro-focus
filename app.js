@@ -1506,10 +1506,10 @@ setThemePreview(theme) {
         document.body.style.setProperty('--accent', hex);
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         if (metaTheme) metaTheme.content = hex;
-        this.elements.colorBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
-        this.saveSettings();
-    },
-
+        		this.elements.colorBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
+				this.updateRingGradient();
+rgba(255,110,180,0.85)'};
+				this.updateRingGradient();
     setSaber(colorName) {
         if (!this.state.saberColors[colorName]) return;
         this.state.settings.saber = colorName;
@@ -2292,6 +2292,17 @@ initOnboarding() {
 		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
 		this.showToast('Mix deleted', key, '🗑️');
 	},
+		updateRingGradient() {
+					const grad = document.getElementById('timer-grad');
+					if (!grad) return;
+					const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+						|| getComputedStyle(document.body).getPropertyValue('--accent').trim();
+					if (!accent) return;
+					const stops = grad.querySelectorAll('stop');
+					if (stops[0]) stops[0].setAttribute('stop-color', accent);
+					if (stops[1]) stops[1].setAttribute('stop-color', accent);
+					if (stops[1]) stops[1].setAttribute('stop-opacity', '0.3');
+				},
 };
 
 window.app = app;
