@@ -78,6 +78,7 @@
                 <div class="timer-display">
     <span class="timer-time" id="timer-time">25:00</span>
     <span class="timer-label" id="timer-label">Focus Time</span>
+    <span class="ember-glow" id="ember-glow"></span>
 </div>
             </div>
 
@@ -115,9 +116,13 @@
                 <span class="terea-label" id="terea-label">Queen Mode 💨</span>
             </div>
 
+            <!-- Stage light — Terea mode only -->
+            <div class="terea-stage-light" id="terea-stage-light"></div>
+
             <div class="session-counter">
                 <span class="session-dots" id="session-dots"></span>
                 <span class="session-text" id="session-text">Session 1 of 4</span>
+                <span class="rep-counter" id="rep-counter" style="display:none;"></span>
             </div>
 
             <!-- Focus Leveling System -->
@@ -235,6 +240,12 @@
             <input type="range" class="mixer-slider" data-scene="jazz" min="0" max="100" value="0">
             <span class="mixer-vol">0%</span>
         </div>
+        <div class="mixer-channel" data-scene="bouzoukia">
+            <button class="mixer-btn" data-scene="bouzoukia">🪗</button>
+            <span class="mixer-label">Bouzoukia</span>
+            <input type="range" class="mixer-slider" data-scene="bouzoukia" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
     </div>
 </div>
 
@@ -291,6 +302,10 @@
       <input type="checkbox" id="setting-auto-start">
     </div>
     <div class="setting-row">
+      <label for="setting-rep-counter">Rep Counter (sets done today)</label>
+      <input type="checkbox" id="setting-rep-counter">
+    </div>
+    <div class="setting-row">
       <label for="setting-sound">Completion Sound</label>
       <div style="display:flex; gap:8px;">
         <select id="setting-sound">
@@ -298,7 +313,9 @@
           <option value="chime">✨ Force Chime</option>
           <option value="digital">💎 Digital</option>
           <option value="zen">🧘 Zen Bowl</option>
-          <option value="sw_theme">⚔️ Force Theme</option><option value="cute">♥ Cute</option>
+          <option value="sw_theme">⚔️ Force Theme</option>
+          <option value="cute">♥ Cute</option>
+          <option value="bouzoukia_riff">🪗 Bouzoukia</option>
           <option value="none">🔇 None</option>
         </select>
         <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
@@ -307,14 +324,14 @@
 
     <h3 class="settings-section-title">Appearance</h3>
     <div class="setting-row theme-preview-row">
-    <div class="theme-switch-row">
-        <button class="btn btn-secondary tooltip-btn" id="btn-theme-toggle" style="font-size:1rem; border:none; background:transparent; padding:8px;">
-            ⚔️
-            <span class="tooltip" id="theme-toggle-text">Star Wars</span>
-        </button>
-        <span class="theme-note">Tap to cycle: Normal → Star Wars → Marianna → Terea 💨</span>
+        <label>Theme</label>
+        <div class="theme-btn-row">
+            <button class="theme-select-btn" id="theme-btn-normal" data-theme="normal">🌙 Normal</button>
+            <button class="theme-select-btn" id="theme-btn-starwars" data-theme="starwars">⚔️ Star Wars</button>
+            <button class="theme-select-btn" id="theme-btn-pink" data-theme="pink">🌸 Marianna</button>
+            <button class="theme-select-btn" id="theme-btn-terea" data-theme="terea">💨 Terea</button>
+        </div>
     </div>
-</div>
 
 
     <div class="setting-row">

@@ -427,15 +427,116 @@ body.theme-starwars .level-bar-fill::after { content: ''; position: absolute; ri
 .timer-ring-glow { stroke: var(--accent); stroke-width: 16; opacity: 0; filter: url(#soft-glow); transition: opacity 0.5s ease, stroke 0.5s ease; }
 body.theme-starwars .timer-ring-glow { filter: url(#saber-glow); }
 .timer-container.running .timer-ring-glow { opacity: 0.5; }
-.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
+.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
 @keyframes warningGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 0.9; } }
 .timer-container.timer-warning .timer-ring-progress { stroke: #ef4444 !important; }
 .timer-container.timer-warning .timer-ring-glow { stroke: #ef4444 !important; opacity: 0.5 !important; animation: warningGlow 1s ease-in-out infinite; }
 .timer-container.timer-warning .timer-time { color: #ef4444; transition: color 0.5s ease; }
 
-.timer-display { display: flex; flex-direction: column; align-items: center; z-index: 10; }
+/* Terea: hide SVG ring, show only lights */
+body.theme-terea .timer-ring { opacity: 0; pointer-events: none; }
+
+.timer-display { display: flex; flex-direction: column; align-items: center; z-index: 10; position: relative; }
 .timer-time { font-size: 4.5rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; letter-spacing: -2px; text-shadow: 0 4px 20px rgba(0,0,0,0.3); }
 .timer-label { font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px; font-weight: 500; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Ember glow dot */
+.ember-glow {
+    display: none;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #888; position: absolute; bottom: -2px; right: -14px;
+    transition: background 0.5s ease, box-shadow 0.5s ease;
+}
+body.theme-terea .ember-glow { display: block; }
+body.theme-terea .timer-container.running .ember-glow {
+    background: #ff6b35;
+    box-shadow: 0 0 6px rgba(255,100,40,0.9), 0 0 12px rgba(255,80,20,0.5);
+    animation: emberPulse 2.5s ease-in-out infinite;
+}
+@keyframes emberPulse {
+    0%,100% { background: #ff6b35; box-shadow: 0 0 4px rgba(255,100,40,0.8); }
+    50%      { background: #ff3d00; box-shadow: 0 0 10px rgba(255,60,0,1), 0 0 20px rgba(255,60,0,0.4); }
+}
+
+/* Stage light — Terea mode */
+.terea-stage-light {
+    display: none;
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 60px solid transparent;
+    border-right: 60px solid transparent;
+    border-top: 280px solid rgba(0,212,200,0.06);
+    pointer-events: none; z-index: 0;
+    filter: blur(8px);
+    animation: stageBeam 6s ease-in-out infinite alternate;
+}
+body.theme-terea .terea-stage-light { display: block; }
+@keyframes stageBeam { 0% { opacity: 0.4; } 100% { opacity: 0.9; } }
+
+/* 4-theme button row */
+.theme-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.theme-select-btn {
+    padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05); color: var(--text-secondary);
+    font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;
+}
+.theme-select-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.theme-select-btn.active {
+    background: rgba(255,255,255,0.12); border-color: var(--accent);
+    color: var(--text-primary); box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Rep counter */
+.rep-counter {
+    font-size: 0.75rem; color: var(--text-secondary);
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 2px 8px; margin-left: 8px;
+    font-weight: 600; letter-spacing: 0.04em;
+}
+
+/* Session dots → cigarette icons in Terea mode (handled via JS innerHTML) */
+
+/* Smoke particles */
+.smoke-particle {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,200,0.6) 0%, transparent 70%);
+    pointer-events: none; z-index: 20;
+    animation: smokeRise var(--dur, 2s) ease-out forwards;
+}
+@keyframes smokeRise {
+    0%   { opacity: 0.8; transform: translateY(0)   scale(1);   filter: blur(2px); }
+    100% { opacity: 0;   transform: translateY(-120px) scale(3); filter: blur(8px); }
+}
+
+/* Turquoise flash overlay */
+.terea-flash {
+    position: fixed; inset: 0; background: rgba(0,212,200,0.18);
+    pointer-events: none; z-index: 9999;
+    animation: tereaFlash 1.2s ease-out forwards;
+}
+@keyframes tereaFlash {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Bouzoukia Hours night overlay */
+body.bouzoukia-hours::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    background: rgba(0,6,12,0.18);
+    animation: nightDeepen 3s ease forwards;
+}
+@keyframes nightDeepen { from { opacity: 0; } to { opacity: 1; } }
+body.theme-terea.bouzoukia-hours .timer-ring-progress { stroke: rgba(0,212,200,0.9); }
+body.theme-terea.bouzoukia-hours .terea-light.lit {
+    box-shadow: 0 0 14px rgba(0,212,200,1), 0 0 30px rgba(0,212,200,0.7), 0 0 60px rgba(0,212,200,0.3) !important;
+}
+/* Sparkle on ring in bouzoukia hours */
+body.theme-terea.bouzoukia-hours .timer-container::after {
+    content: '✦'; position: absolute; top: 8px; right: 12px;
+    font-size: 0.8rem; color: rgba(0,212,200,0.7);
+    animation: sparkleFloat 2s ease-in-out infinite alternate;
+}
+@keyframes sparkleFloat { 0% { opacity: 0.3; transform: translateY(0); } 100% { opacity: 1; transform: translateY(-4px); } }
 
 /* Focus Moods */
 .focus-moods-section { margin-top: 2rem; }

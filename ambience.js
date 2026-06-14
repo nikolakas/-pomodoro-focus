@@ -713,6 +713,85 @@ let idx = 0;
     return nodes;
   }
 
+  // ============================================
+  //  BOUZOUKIA — Greek taverna: strings, crowd, clinks
+  // ============================================
+  function buildBouzoukia(dest) {
+    const nodes = [];
+    const ac = getCtx();
+
+    // Crowd murmur — filtered pink noise
+    const crowd = createNoise('pink');
+    const crowdFilt = createFilter('lowpass', 700, 0.4);
+    const crowdG = createGainNode(0.045);
+    crowd.connect(crowdFilt).connect(crowdG).connect(dest);
+    crowd.start(); nodes.push(crowd);
+    nodes.push(createLFO(0.07, 0.03, 0.055, crowdG.gain));
+
+    // Glass clink transients — random timing
+    const scheduleClicks = () => {
+      const t = ac.currentTime;
+      for (let i = 0; i < 4; i++) {
+        const delay = 1 + Math.random() * 11;
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine'; o.frequency.value = 1800 + Math.random() * 1200;
+        g.gain.setValueAtTime(0, t + delay);
+        g.gain.linearRampToValueAtTime(0.055, t + delay + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.55);
+        o.connect(g).connect(dest); o.start(t + delay); o.stop(t + delay + 0.6);
+        nodes.push(o);
+      }
+    };
+    scheduleClicks();
+    const clinkIv = setInterval(scheduleClicks, 12000);
+    nodes.push({ stop: () => clearInterval(clinkIv) });
+
+    // Bouzoukia strings — Phrygian Dominant phrases (E F G# A B C D)
+    // E3=164.81 F3=174.61 G#3=207.65 A3=220 B3=246.94 C4=261.63 D4=293.66
+    // E4=329.63 F4=349.23 G#4=415.30 A4=440
+    const scale = [164.81, 174.61, 207.65, 220, 246.94, 261.63, 293.66, 329.63, 349.23, 415.30, 440];
+    const state = { active: true };
+
+    const playPhrase = () => {
+      if (!state.active) return;
+      const t = ac.currentTime + 0.1;
+      const count = 5 + Math.floor(Math.random() * 6);
+      let offset = Math.random() * 0.4;
+      for (let i = 0; i < count; i++) {
+        const freq = scale[Math.floor(Math.random() * scale.length)];
+        const dur = 0.12 + Math.random() * 0.3;
+        const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+        o.type = 'sawtooth'; o.frequency.value = freq;
+        f.type = 'lowpass'; f.frequency.value = 2000 + Math.random() * 800; f.Q.value = 1.8;
+        g.gain.setValueAtTime(0, t + offset);
+        g.gain.linearRampToValueAtTime(0.038, t + offset + 0.018);
+        g.gain.setValueAtTime(0.038, t + offset + dur - 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, t + offset + dur);
+        o.connect(f).connect(g).connect(dest); o.start(t + offset); o.stop(t + offset + dur + 0.05);
+        nodes.push(o);
+        offset += dur + 0.04 + Math.random() * 0.12;
+      }
+    };
+
+    playPhrase();
+    const phraseIv = setInterval(playPhrase, 3800 + Math.random() * 1200);
+    nodes.push({ stop: () => { clearInterval(phraseIv); state.active = false; } });
+
+    // Bass drone — low E with tremolo (bouzoukia characteristic)
+    const bass = ac.createOscillator(), bassG = createGainNode(0.032);
+    bass.type = 'triangle'; bass.frequency.value = 82.41;
+    bass.connect(bassG).connect(dest); bass.start(); nodes.push(bass);
+    nodes.push(createLFO(5.8, 0.026, 0.040, bassG.gain));
+
+    // Subtle tambourine shimmer
+    const tamb = createNoise('white'), tambFilt = createFilter('highpass', 7500, 0.5);
+    const tambG = createGainNode(0.006);
+    tamb.connect(tambFilt).connect(tambG).connect(dest); tamb.start(); nodes.push(tamb);
+    nodes.push(createLFO(4.2, 0.004, 0.010, tambG.gain));
+
+    return nodes;
+  }
+
   const SCENES = {
     rain:          { build: buildRain },
     waves:         { build: buildWaves },
@@ -721,7 +800,8 @@ let idx = 0;
     cafe:          { build: buildCafe },
     library:       { build: buildLibrary },
     jazz:          { build: buildJazz },
-    binary_sunset: { build: buildBinarySunset }
+    binary_sunset: { build: buildBinarySunset },
+    bouzoukia:     { build: buildBouzoukia }
   };
 
   // ============================================

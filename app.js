@@ -45,7 +45,7 @@ const app = {
         hyperspaceActive: false,
         modeTimers: { work: null, shortBreak: null, longBreak: null },
        sceneVolumes: {},
-mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0 },
+mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0, bouzoukia: 0 },
       currentIntention: null,
 currentSubtasks: [],
         activeNoteFilter: null
@@ -76,6 +76,7 @@ currentSubtasks: [],
 
         setInterval(() => this.rotateQuote(), 60000);
         this.rotateQuote();
+        setInterval(() => this.checkBouzoukiaHours(), 300000); // re-check every 5 min
 	setTimeout(() => this.initOnboarding(), 800);
 
 this.restoreSessionState();
@@ -376,11 +377,14 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
     });
   }
 
-  // Appearance
-  const themeBtn = document.getElementById('btn-theme-toggle');
-if (themeBtn) {
-    themeBtn.addEventListener('click', () => this.toggleTheme());
-}
+  // Theme buttons (4 direct selectors)
+  document.querySelectorAll('.theme-select-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      this.state.settings.theme = e.currentTarget.dataset.theme;
+      this.saveSettings();
+      this.updateTheme();
+    });
+  });
 
   this.elements.colorBtns.forEach(btn => {
     btn.addEventListener('click', e => this.setAccent(e.target.dataset.color));
@@ -496,7 +500,12 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
 
     btnStartIntention.addEventListener('click', () => {
       const inp = document.getElementById('intention-input');
-      if (inp && inp.value.trim()) this.state.currentIntention = inp.value.trim();
+      if (inp && inp.value.trim()) {
+        this.state.currentIntention = inp.value.trim();
+        if (/maria/i.test(this.state.currentIntention)) {
+          this.showToast('Η βασίλισσα μπήκε. 👑💨', 'Locked and loaded.', '💨');
+        }
+      }
 
       this.state.currentSubtasks = [];
       document.querySelectorAll('.subtask-input').forEach(input => {
@@ -511,6 +520,33 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       const modal = document.getElementById('intention-modal');
       if (modal) modal.style.display = 'none';
       this.startTimer();
+    });
+  }
+
+  // Logo 3x click easter egg
+  let _logoClicks = 0, _logoTimer = null;
+  const logoEl = document.getElementById('logo-title');
+  if (logoEl) {
+    logoEl.style.cursor = 'pointer';
+    logoEl.addEventListener('click', () => {
+      _logoClicks++;
+      clearTimeout(_logoTimer);
+      _logoTimer = setTimeout(() => { _logoClicks = 0; }, 700);
+      if (_logoClicks >= 3) {
+        _logoClicks = 0;
+        this.playAudio('bouzoukia_riff');
+        const gColors = ['#ffd700','#ffec6e','#ffffff','#00d4c8','#ffd700'];
+        for (let i = 0; i < 35; i++) {
+          const p = document.createElement('div');
+          p.className = 'confetti-particle';
+          p.style.background = gColors[Math.floor(Math.random() * gColors.length)];
+          const cx = (Math.random() - 0.5) * 500, cy = (Math.random() - 0.5) * 500 - 120;
+          p.style.setProperty('--cx', `${cx}px`); p.style.setProperty('--cy', `${cy}px`);
+          this.elements.container.appendChild(p);
+          setTimeout(() => p.remove(), 1200);
+        }
+        this.showToast('Opa! 🎶', 'Bouzoukia για όλους. 💨', '🪗');
+      }
     });
   }
 
@@ -720,13 +756,45 @@ setMode(mode, preserveTime = false) {
     else if (mode === 'longBreak') label = 'Long Break';
     this.elements.label.textContent = label;
 
+    const isTerea = this.state.settings.theme === 'terea';
+
+    // Terea long break: shift ring to hot pink accent
+    if (isTerea) {
+        if (mode === 'longBreak') {
+            document.body.style.setProperty('--accent', '#ff6eb4');
+            document.body.style.setProperty('--accent-glow', 'rgba(255,110,180,0.45)');
+        } else {
+            document.body.style.setProperty('--accent', '#00d4c8');
+            document.body.style.setProperty('--accent-glow', 'rgba(0,212,200,0.35)');
+        }
+    }
+
     if (mode === 'work') {
         if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'none';
         this.stopBreathing();
+    } else if (isTerea) {
+        // Terea: stretch prompt instead of breathing guide
+        this.showTereaStretchPrompt(mode);
     } else {
         if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'flex';
         this.startBreathing();
     }
+},
+
+showTereaStretchPrompt(mode) {
+    const prompts = mode === 'longBreak' ? [
+        'Stretch those quads, Maria 👑',
+        'Hip flexors — hold 30s each side 💪',
+        'Roll out those shoulders, queen 🔥',
+        'Full body stretch. You earned it. 💨'
+    ] : [
+        'Neck rolls. Left, right. 30 seconds. 👑',
+        'Stand up, shake it out. Quick. 💨',
+        'Glute squeeze, 10 reps. Right now. 🔥',
+        'Deep breath. In... and out. 💪'
+    ];
+    const msg = prompts[Math.floor(Math.random() * prompts.length)];
+    this.showToast(msg, mode === 'longBreak' ? 'Bouzoukia after this. 🎶' : 'Back in a minute.', '🧘‍♀️');
 },
 
 toggleTimer() {
@@ -850,6 +918,12 @@ toggleTimer() {
         if (this.state.mode === 'work') {
             this.state.sessionsToday++;
             this.state.totalSessions++;
+            if (this.state.settings.theme === 'terea') {
+                this.state.tereaSessionsStreak = (this.state.tereaSessionsStreak || 0) + 1;
+            } else {
+                this.state.tereaSessionsStreak = 0;
+            }
+            this.updateRepCounter();
             this.addXp(15);
             this.saveStats();
 	            const user = window.firebaseAuth?.currentUser; if (user) this.saveToFirestore(user.uid);
@@ -866,7 +940,17 @@ toggleTimer() {
             this.createConfetti();
 			        if (this.state.settings.theme === 'pink') this.createHearts();
             if (this.state.settings.theme === 'terea') {
-                this.showToast('Queen mode locked in 👑', 'That\'s what queens do. 💨', '💪');
+                const tereaToasts = [
+                    ['25 λεπτά καθαρά. Τέρεα τώρα.', 'Η βασίλισσα τελείωσε.'],
+                    ['Bouzoukia δεν χάνονται. Sessions μαζί.', 'Τελείωσες. 💨'],
+                    ['Σήκω, τράβα, κάπνισε.', 'Queen mode locked in 👑']
+                ];
+                const [title, desc] = tereaToasts[Math.floor(Math.random() * tereaToasts.length)];
+                this.showToast(title, desc, '💨');
+                this.createSmokeParticles();
+                this.flashTereaComplete();
+                this.playAudio('smoke_break');
+                this.checkTereaLegend();
                 const tereaLights = document.getElementById('terea-lights');
                 if (tereaLights) {
                     tereaLights.classList.add('queen-locked');
@@ -982,19 +1066,36 @@ updateTimeDisplay() {
     },
 
     updateSessionCounter() {
-		
         const total = this.state.settings.rounds;
         let current = this.state.currentRound % total || total;
         this.elements.sessionText.textContent = `Session ${current} of ${total}`;
 
         this.elements.sessionDots.innerHTML = '';
         const completedInCycle = (this.state.currentRound - 1) % total;
+        const isTerea = this.state.settings.theme === 'terea';
         for (let i = 1; i <= total; i++) {
-            const d = document.createElement('div');
-            d.className = 'dot' + (i <= completedInCycle ? ' active' : '');
-            this.elements.sessionDots.appendChild(d);
+            if (isTerea) {
+                const s = document.createElement('span');
+                s.textContent = i <= completedInCycle ? '🚬' : '○';
+                s.style.opacity = i <= completedInCycle ? '1' : '0.3';
+                s.style.fontSize = '0.9rem';
+                this.elements.sessionDots.appendChild(s);
+            } else {
+                const d = document.createElement('div');
+                d.className = 'dot' + (i <= completedInCycle ? ' active' : '');
+                this.elements.sessionDots.appendChild(d);
+            }
         }
+        this.updateRepCounter();
     },
+
+updateRepCounter() {
+    const el = document.getElementById('rep-counter');
+    if (!el) return;
+    const show = !!this.state.settings.repCounter;
+    el.style.display = show ? 'inline-flex' : 'none';
+    if (show) el.textContent = `${this.state.sessionsToday} × 💪`;
+},
 	renderSubtaskTracker() {
     const tracker = document.getElementById('subtask-tracker');
     if (!tracker) return;
@@ -1093,7 +1194,10 @@ el.addEventListener('click', () => {
 				      }
 		    },
     createConfetti() {
-        const colors = [this.state.accents[this.state.settings.accent], '#ffffff', '#ffca28', '#4ecdc4'];
+        const isTerea = this.state.settings.theme === 'terea';
+        const colors = isTerea
+            ? ['#00d4c8', '#80fff9', '#00a89e', '#ffffff', '#00e8da']
+            : [this.state.accents[this.state.settings.accent], '#ffffff', '#ffca28', '#4ecdc4'];
         for (let i = 0; i < 30; i++) {
             const p = document.createElement('div');
             p.className = 'confetti-particle';
@@ -1105,6 +1209,31 @@ el.addEventListener('click', () => {
             this.elements.container.appendChild(p);
             setTimeout(() => p.remove(), 1200);
         }
+    },
+
+    createSmokeParticles() {
+        const container = this.elements.container;
+        if (!container) return;
+        for (let i = 0; i < 12; i++) {
+            const s = document.createElement('div');
+            s.className = 'smoke-particle';
+            const size = 12 + Math.random() * 20;
+            s.style.width = size + 'px';
+            s.style.height = size + 'px';
+            s.style.left = (30 + Math.random() * 220) + 'px';
+            s.style.bottom = '20px';
+            s.style.setProperty('--dur', (1.5 + Math.random() * 1.5) + 's');
+            s.style.animationDelay = (Math.random() * 0.8) + 's';
+            container.appendChild(s);
+            setTimeout(() => s.remove(), 3200);
+        }
+    },
+
+    flashTereaComplete() {
+        const el = document.createElement('div');
+        el.className = 'terea-flash';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
     },
 
     // ===================================
@@ -1272,6 +1401,51 @@ el.addEventListener('click', () => {
                 o.connect(g).connect(tCtx.destination);
                 o.start(t + d); o.stop(t + d + l + 0.05);
             });
+
+        } else if (type === 'bouzoukia_riff') {
+            // Short Phrygian Dominant riff (E F G# A B — Greek/bouzoukia flavour)
+            const riff = [
+                { f: 329.63, d: 0,    l: 0.22 },
+                { f: 349.23, d: 0.24, l: 0.16 },
+                { f: 415.30, d: 0.42, l: 0.22 },
+                { f: 440.00, d: 0.66, l: 0.18 },
+                { f: 493.88, d: 0.86, l: 0.32 },
+                { f: 440.00, d: 1.2,  l: 0.20 },
+                { f: 329.63, d: 1.44, l: 0.55 }
+            ];
+            riff.forEach(({ f, d, l }) => {
+                const o = tCtx.createOscillator(), filt = tCtx.createBiquadFilter(), g = tCtx.createGain();
+                o.type = 'sawtooth'; o.frequency.value = f;
+                filt.type = 'lowpass'; filt.frequency.value = 2200; filt.Q.value = 1.5;
+                g.gain.setValueAtTime(0, t + d);
+                g.gain.linearRampToValueAtTime(0.18, t + d + 0.02);
+                g.gain.setValueAtTime(0.18, t + d + l - 0.04);
+                g.gain.exponentialRampToValueAtTime(0.001, t + d + l);
+                o.connect(filt).connect(g).connect(tCtx.destination);
+                o.start(t + d); o.stop(t + d + l + 0.05);
+            });
+
+        } else if (type === 'smoke_break') {
+            // Lighter flick: short noise burst
+            const nBuf = tCtx.createBuffer(1, tCtx.sampleRate * 0.08, tCtx.sampleRate);
+            const nd = nBuf.getChannelData(0);
+            for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+            const nSrc = tCtx.createBufferSource(), nFilt = tCtx.createBiquadFilter(), nG = tCtx.createGain();
+            nSrc.buffer = nBuf; nFilt.type = 'bandpass'; nFilt.frequency.value = 4000; nFilt.Q.value = 0.8;
+            nG.gain.setValueAtTime(0.25, t); nG.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            nSrc.connect(nFilt).connect(nG).connect(tCtx.destination);
+            nSrc.start(t); nSrc.stop(t + 0.12);
+
+            // Exhale: low noise swell
+            const eBuf = tCtx.createBuffer(1, tCtx.sampleRate * 1.2, tCtx.sampleRate);
+            const ed = eBuf.getChannelData(0);
+            for (let i = 0; i < ed.length; i++) ed[i] = Math.random() * 2 - 1;
+            const eSrc = tCtx.createBufferSource(), eFilt = tCtx.createBiquadFilter(), eG = tCtx.createGain();
+            eSrc.buffer = eBuf; eFilt.type = 'lowpass'; eFilt.frequency.value = 400;
+            eG.gain.setValueAtTime(0, t + 0.15); eG.gain.linearRampToValueAtTime(0.09, t + 0.5);
+            eG.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+            eSrc.connect(eFilt).connect(eG).connect(tCtx.destination);
+            eSrc.start(t + 0.15); eSrc.stop(t + 1.5);
         }
     } catch (e) { console.error("Audio error", e); }
 },
@@ -1404,6 +1578,8 @@ el.addEventListener('click', () => {
         if (this.elements.ambientVolInput) this.elements.ambientVolInput.value = this.state.ambientVolume;
         const autoStartEl = document.getElementById('setting-auto-start');
         if (autoStartEl) autoStartEl.checked = !!this.state.settings.autoStart;
+        const repEl = document.getElementById('setting-rep-counter');
+        if (repEl) repEl.checked = !!this.state.settings.repCounter;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -1417,6 +1593,9 @@ el.addEventListener('click', () => {
         if (this.elements.swMusicInput) this.state.settings.swMusic = this.elements.swMusicInput.checked;
         const autoStartEl = document.getElementById('setting-auto-start');
         if (autoStartEl) this.state.settings.autoStart = autoStartEl.checked;
+        const repEl = document.getElementById('setting-rep-counter');
+        if (repEl) this.state.settings.repCounter = repEl.checked;
+        this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
         const user = window.firebaseAuth?.currentUser;
@@ -1495,7 +1674,11 @@ this.state.history.push({
         if (rD) rD.textContent = rankName;
 
         if (this.state.level > cl && cl > 0) {
-            this.showToast('Level Up!', `You've reached Level ${this.state.level}: ${rankName}`, '⭐');
+            if (this.state.settings.theme === 'terea') {
+                this.showToast('Maria ανέβηκε επίπεδο 👑', rankName, '💨');
+            } else {
+                this.showToast('Level Up!', `You've reached Level ${this.state.level}: ${rankName}`, '⭐');
+            }
         }
     },
 
@@ -1503,25 +1686,23 @@ this.state.history.push({
     // THEMES & APPEARANCE
     // ===================================
 updateTheme() {
-		const isSw   = this.state.settings.theme === 'starwars';
-		const isPink  = this.state.settings.theme === 'pink';
-		const isTerea = this.state.settings.theme === 'terea';
+		const theme  = this.state.settings.theme;
+		const isSw   = theme === 'starwars';
+		const isPink  = theme === 'pink';
+		const isTerea = theme === 'terea';
 
 		document.body.classList.toggle('theme-starwars', isSw);
 		document.body.classList.toggle('theme-pink',     isPink);
 		document.body.classList.toggle('theme-terea',    isTerea);
 		document.body.classList.toggle('minimal-mode',   isPink || isTerea);
 
+		// Sync 4-button active state
+		document.querySelectorAll('.theme-select-btn').forEach(btn => {
+			btn.classList.toggle('active', btn.dataset.theme === theme);
+		});
+
 		if (this.elements.swSettings) {
 			this.elements.swSettings.style.display = isSw ? 'block' : 'none';
-		}
-
-		const themeBtn = document.getElementById('btn-theme-toggle');
-		if (themeBtn) {
-			if (isSw)    themeBtn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
-			else if (isPink)  themeBtn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Terea Mode 💨</span>';
-			else if (isTerea) themeBtn.innerHTML = '💨 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
-			else              themeBtn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
 		}
 
 		if (this.elements.btnWarp) {
@@ -1546,52 +1727,25 @@ updateTheme() {
 			this.setAccent(this.state.settings.accent);
 		}
 
+		if (window.AmbienceModule) {
+			if (isSw && this.state.settings.swMusic) window.AmbienceModule.play('binary_sunset');
+			else window.AmbienceModule.stop('binary_sunset');
+		}
+
+		this.checkBouzoukiaHours();
 		this.setWallpaper(this.state.settings.wallpaper);
 		this.updateLogo();
 		this.updateLevel();
 		this.updateTereaLights();
+		this.updateRepCounter();
 	},
 
-   toggleTheme() {
-		if (this.state.settings.theme === 'normal') {
-			this.state.settings.theme = 'starwars';
-		} else if (this.state.settings.theme === 'starwars') {
-			this.state.settings.theme = 'pink';
-		} else if (this.state.settings.theme === 'pink') {
-			this.state.settings.theme = 'terea';
-		} else {
-			this.state.settings.theme = 'normal';
-		}
-
-		this.saveSettings();
-		this.updateTheme();
-
-		const btn = document.getElementById('btn-theme-toggle');
-
-		if (btn) {
-			if (this.state.settings.theme === 'starwars') {
-				btn.innerHTML = '⚔️ <span class="tooltip" id="theme-toggle-text">Marianna Mode 🌸</span>';
-			} else if (this.state.settings.theme === 'pink') {
-				btn.innerHTML = '🌸 <span class="tooltip" id="theme-toggle-text">Terea Mode 💨</span>';
-				this.playAudio('cute');
-				this.createHearts();
-				this.showMotivationPop();
-			} else if (this.state.settings.theme === 'terea') {
-				btn.innerHTML = '💨 <span class="tooltip" id="theme-toggle-text">Normal Mode 🌙</span>';
-				this.showMotivationPop();
-			} else {
-				btn.innerHTML = '🌙 <span class="tooltip" id="theme-toggle-text">Star Wars Mode ⚔️</span>';
-			}
-		}
-
-		if (window.AmbienceModule) {
-			if (this.state.settings.theme === 'starwars' && this.state.settings.swMusic) {
-				window.AmbienceModule.play('binary_sunset');
-			} else {
-				window.AmbienceModule.stop('binary_sunset');
-			}
-		}
-	},
+checkBouzoukiaHours() {
+    const hour = new Date().getHours();
+    const isNight = hour >= 22 || hour < 4;
+    const isTerea = this.state.settings.theme === 'terea';
+    document.body.classList.toggle('bouzoukia-hours', isTerea && isNight);
+},
 
 updateTereaLights() {
     const lights = document.getElementById('terea-lights');
@@ -1602,10 +1756,10 @@ updateTereaLights() {
 
     const els = lights.querySelectorAll('.terea-light');
     const total = (this.state.mode === 'work'
-        ? this.state.settings.workDuration
+        ? this.state.settings.work
         : this.state.mode === 'shortBreak'
-        ? this.state.settings.shortBreak
-        : this.state.settings.longBreak) * 60;
+        ? this.state.settings.short
+        : this.state.settings.long) * 60;
     const p = total > 0 ? this.state.timeLeft / total : 1;
 
     // Light 0 = top, light 3 = bottom; fill from bottom (3→0) as session starts,
@@ -1813,7 +1967,10 @@ setThemePreview(theme) {
         const b = document.getElementById('streak-badge');
         if (b) {
             if (currentStreak > 0) {
-                b.textContent = `🔥 ${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
+                const isTerea = this.state.settings.theme === 'terea';
+                b.textContent = isTerea
+                    ? `🚬 ${currentStreak} day streak`
+                    : `🔥 ${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
                 b.style.display = 'inline-flex';
             } else {
                 b.style.display = 'none';
@@ -2392,12 +2549,28 @@ initOnboarding() {
         localStorage.setItem('pomodoro_onboarded', '1');
     });
 },
+    checkTereaLegend() {
+        const streak = this.state.tereaSessionsStreak || 0;
+        if (streak >= 7) {
+            const unlocked = JSON.parse(localStorage.getItem('pomodoro_ach_v2') || '[]');
+            if (!unlocked.includes('terea_legend')) {
+                unlocked.push('terea_legend');
+                localStorage.setItem('pomodoro_ach_v2', JSON.stringify(unlocked));
+                this.showToast('Η Μαρία 👑', '7 consecutive Terea sessions. Legend status unlocked.', '💨');
+                // Persist badge in stats
+                const badge = document.getElementById('stat-rank-display');
+                if (badge) badge.textContent = 'Η Μαρία 👑';
+            }
+        }
+    },
+
     checkAchievements() {
         const aList = [
             { id: 'first_blood', name: 'First Focus', desc: 'Complete 1 session', req: () => this.state.totalSessions > 0, icon: '🎯' },
             { id: 'streak_3', name: 'On a Roll', desc: 'Complete 3 sessions today', req: () => this.state.sessionsToday >= 3, icon: '🔥' },
             { id: 'daily_goal', name: 'Goal Crusher', desc: 'Hit your daily goal', req: () => this.state.sessionsToday >= this.state.settings.dailyGoal, icon: '👑' },
-            { id: 'century', name: 'Centurion', desc: '100 total sessions', req: () => this.state.totalSessions >= 100, icon: '🏛️' }
+            { id: 'century', name: 'Centurion', desc: '100 total sessions', req: () => this.state.totalSessions >= 100, icon: '🏛️' },
+            { id: 'terea_legend', name: 'Η Μαρία 👑', desc: '7 consecutive Terea sessions', req: () => (this.state.tereaSessionsStreak || 0) >= 7, icon: '💨' }
         ];
 
         let unlocked = JSON.parse(localStorage.getItem('pomodoro_ach_v2') || '[]');
