@@ -606,15 +606,11 @@ initMixer() {
         const vol = this.state.mixerVolumes[scene] || 0;
         slider.value = vol;
 
-        // Update label
+        // Restore UI state only — don't call play() on load (AudioContext needs user gesture)
         const channel = slider.closest('.mixer-channel');
         if (channel) {
             channel.querySelector('.mixer-vol').textContent = `${vol}%`;
-            if (vol > 0) {
-                channel.classList.add('active');
-                window.AmbienceModule.play(scene);
-                window.AmbienceModule.setSceneVolume(scene, vol / 100);
-            }
+            if (vol > 0) channel.classList.add('active');
         }
 
         slider.addEventListener('input', (e) => {
@@ -757,10 +753,11 @@ toggleTimer() {
         this.setMode(this.state.mode || 'work');
     }
 
-    // Request notification permission on first start
+    // Request notification permission and resume any pending ambient sounds on first start
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
+    this.resumeAmbience();
 
     this.state.isRunning = true;
 
@@ -1294,6 +1291,16 @@ el.addEventListener('click', () => {
             t.classList.add('hiding');
             setTimeout(() => t.remove(), 300);
         }, 6000);
+    },
+
+    resumeAmbience() {
+        if (!window.AmbienceModule) return;
+        Object.entries(this.state.mixerVolumes).forEach(([scene, vol]) => {
+            if (typeof vol === 'number' && vol > 0 && !scene.startsWith('_prev_') && !window.AmbienceModule.isActive(scene)) {
+                window.AmbienceModule.play(scene);
+                window.AmbienceModule.setSceneVolume(scene, vol / 100);
+            }
+        });
     },
 
     sendNotification(title, body) {

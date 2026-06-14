@@ -338,17 +338,16 @@ body.theme-starwars .level-bar-fill::after { content: ''; position: absolute; ri
 
 .timer-container { position: relative; width: 280px; height: 280px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
 .timer-ring { position: absolute; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-.timer-ring circle { fill: none; transition: stroke-dashoffset 0.1s linear; }
+.timer-ring circle { fill: none; }
 .timer-ring-bg { stroke: var(--bg-secondary); stroke-width: 12; }
-.timer-ring-glow { stroke: var(--accent); stroke-width: 16; opacity: 0; filter: url(#soft-glow); transition: opacity 0.5s; }
+.timer-ring-glow { stroke: var(--accent); stroke-width: 16; opacity: 0; filter: url(#soft-glow); transition: opacity 0.5s ease, stroke 0.5s ease; }
 body.theme-starwars .timer-ring-glow { filter: url(#saber-glow); }
 .timer-container.running .timer-ring-glow { opacity: 0.5; }
-.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; stroke-dashoffset: 0; transition: stroke 0.5s ease, stroke-dashoffset 1s linear; }
+.timer-ring-progress { stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 753.98; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
+@keyframes warningGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 0.9; } }
 .timer-container.timer-warning .timer-ring-progress { stroke: #ef4444 !important; }
-.timer-container.timer-warning .timer-ring-glow { stroke: #ef4444 !important; opacity: 0.6 !important; }
+.timer-container.timer-warning .timer-ring-glow { stroke: #ef4444 !important; opacity: 0.5 !important; animation: warningGlow 1s ease-in-out infinite; }
 .timer-container.timer-warning .timer-time { color: #ef4444; transition: color 0.5s ease; }
-@keyframes warningPulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
-.timer-container.timer-warning .timer-ring-progress { animation: warningPulse 1s ease-in-out infinite; }
 
 .timer-display { display: flex; flex-direction: column; align-items: center; z-index: 10; }
 .timer-time { font-size: 4.5rem; font-weight: 700; font-family: var(--font-mono); line-height: 1; letter-spacing: -2px; text-shadow: 0 4px 20px rgba(0,0,0,0.3); }
@@ -535,71 +534,103 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
 
 /* Responsive */
 @media (max-width: 768px) {
-    .app { padding: 1rem; }
+    .app { padding: 0.75rem 1rem 6rem; max-width: 100%; }
     .stats-split, .insights-grid { grid-template-columns: 1fr; }
     .stats-overview { grid-template-columns: 1fr 1fr; }
-    .timer-container { width: 220px; height: 220px; }
-    .timer-time { font-size: 3rem; }
-
-    /* Moods — single column on very small, 2-col on normal mobile */
-    .moods-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mood-card { padding: 10px; gap: 8px; }
-    .mood-icon { font-size: 1.2rem; }
-    .mood-name { font-size: 0.8rem; }
-    .mood-desc { font-size: 0.7rem; }
-
-    /* Mixer — 4 col stays but smaller */
-    .mixer-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .mixer-channel { padding: 8px 4px; }
-    .mixer-btn { font-size: 1.1rem; }
-    .mixer-slider { height: 50px; }
-    .mixer-label { font-size: 0.6rem; }
-    .mixer-vol { font-size: 0.6rem; }
-
-    /* Tabs */
-    .tab { padding: 8px 10px; font-size: 0.8rem; gap: 4px; }
-    .tab svg { display: none; }
 
     /* Header */
-    .header { margin-bottom: 1rem; }
-    .logo h1 { font-size: 1.1rem; }
+    .header { margin-bottom: 0.75rem; padding-bottom: 0.75rem; }
+    .logo h1 { font-size: 1.05rem; }
+    .logo-icon { font-size: 1.3rem; }
+    .tabs { gap: 2px; }
+    .tab { padding: 8px 12px; font-size: 0.82rem; gap: 4px; }
+    .tab svg { width: 15px; height: 15px; }
+
+    /* Auth bar */
+    .auth-bar { gap: 6px; }
+    .auth-avatar { width: 28px; height: 28px; }
+    #btn-auth { padding: 0 10px; height: 30px; font-size: 0.75rem; }
+
+    /* Timer */
+    .timer-container { width: min(72vw, 260px); height: min(72vw, 260px); }
+    .timer-time { font-size: clamp(2.4rem, 10vw, 4rem); }
+    .timer-label { font-size: 0.8rem; }
+
+    /* Mode buttons */
+    .mode-selector { gap: 6px; margin-bottom: 1rem; }
+    .mode-btn { padding: 7px 14px; font-size: 0.82rem; }
+
+    /* Controls */
+    .controls { gap: 0.5rem; margin: 0.75rem 0; }
+    .btn-primary { width: 64px; height: 64px; }
+    .btn-secondary { width: 44px; height: 44px; font-size: 1rem; }
+
+    /* Session counter */
+    .session-counter { margin: 0.5rem 0; }
+
+    /* Level bar */
+    .level-progress-container { margin: 0.75rem 0; }
+
+    /* Quote */
+    .quote-display { font-size: 0.82rem; margin: 0.5rem 0; }
+
+    /* Moods */
+    .moods-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mood-card { padding: 10px 8px; gap: 6px; }
+    .mood-icon { font-size: 1.3rem; }
+    .mood-name { font-size: 0.78rem; }
+    .mood-desc { font-size: 0.68rem; }
+
+    /* Mixer — 2 columns with bigger sliders on mobile */
+    .ambient-mixer { padding: 1rem; margin-top: 1rem; }
+    .mixer-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .mixer-channel { flex-direction: row; padding: 10px 12px; gap: 10px; align-items: center; border-radius: 10px; }
+    .mixer-btn { font-size: 1.4rem; flex-shrink: 0; }
+    .mixer-label { font-size: 0.72rem; min-width: 36px; }
+    .mixer-slider { flex: 1; height: 36px; min-width: 0; }
+    .mixer-vol { font-size: 0.7rem; min-width: 28px; text-align: right; flex-shrink: 0; }
+
+    /* Breathing widget */
+    .breathing-widget { padding: 1rem; }
 
     /* Settings */
-    .settings-body { padding: 0 1rem 1rem; }
+    .settings-body { padding: 0 0.75rem 1rem; }
+    .settings-toggle { padding: 0.75rem; font-size: 0.9rem; }
     .setting-row { flex-wrap: wrap; gap: 8px; }
+    .settings-section-title { font-size: 0.8rem; }
+    .wallpaper-picker-new { flex-wrap: wrap; gap: 8px; }
+    .wp-thumb { width: 70px; }
 
     /* Notebook */
-    .notebook-pages {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 8px auto;
-    }
-    .notebook-spine {
-        height: 8px;
-        background: linear-gradient(180deg, #c4a882, #e8d5b0, #c4a882);
-    }
-    body.theme-starwars .notebook-spine {
-        background: linear-gradient(180deg, #001830, #003060, #001830);
-    }
+    .notebook-pages { grid-template-columns: 1fr; grid-template-rows: auto 8px auto; }
+    .notebook-spine { height: 8px; background: linear-gradient(180deg, #c4a882, #e8d5b0, #c4a882); }
+    body.theme-starwars .notebook-spine { background: linear-gradient(180deg, #001830, #003060, #001830); }
     .notebook-page { padding: 1rem; }
 
-    /* History split */
+    /* Stats */
     .stats-split { gap: 1rem; }
     .history-list { max-height: 250px; }
-
-    /* EOD modal */
     .eod-modal-content { padding: 1.5rem; }
     .eod-stats { gap: 8px; }
     .eod-stat-val { font-size: 1.3rem; }
+
+    /* Modals */
+    .modal-content { margin: 1rem; max-width: calc(100vw - 2rem); }
+    .intention-modal-card { padding: 1.25rem; }
 }
 
 @media (max-width: 400px) {
-    .moods-grid { grid-template-columns: 1fr; }
-    .mixer-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
-    .timer-container { width: 200px; height: 200px; }
-    .timer-time { font-size: 2.6rem; }
-    .controls { gap: 0.5rem; }
-    .btn-primary { width: 56px; height: 56px; }
+    .app { padding: 0.5rem 0.75rem 5rem; }
+    .moods-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .mixer-grid { grid-template-columns: 1fr; gap: 6px; }
+    .timer-container { width: min(80vw, 220px); height: min(80vw, 220px); }
+    .timer-time { font-size: clamp(2.2rem, 11vw, 3rem); }
+    .controls { gap: 0.4rem; }
+    .btn-primary { width: 60px; height: 60px; }
     .btn-secondary { width: 42px; height: 42px; }
+    .tabs { gap: 1px; }
+    .tab { padding: 7px 8px; font-size: 0.75rem; }
+    .tab svg { display: none; }
 }
 
 /* ---- Ambient Mixer ---- */

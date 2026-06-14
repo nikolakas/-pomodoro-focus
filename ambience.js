@@ -763,14 +763,16 @@ function stop(sceneKey) {
 
   function crossfadeTo(callback) {
     const ac = getCtx();
+    // Resume immediately while still in the user-gesture stack
+    if (ac.state === 'suspended') ac.resume();
     const currentVol = volume || 0.6;
     if (masterGain) {
-      masterGain.gain.setTargetAtTime(0, ac.currentTime, 0.1);
+      masterGain.gain.setTargetAtTime(0, ac.currentTime, 0.08);
       setTimeout(() => {
         stopAll();
         if (callback) callback();
-        if (masterGain) masterGain.gain.setTargetAtTime(currentVol, ac.currentTime, 0.1);
-      }, 400);
+        if (masterGain) masterGain.gain.setTargetAtTime(currentVol, ac.currentTime, 0.12);
+      }, 350);
     } else {
       stopAll();
       if (callback) callback();
