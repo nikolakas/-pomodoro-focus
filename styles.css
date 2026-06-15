@@ -1581,27 +1581,35 @@ body.theme-medical::before {
 }
 
 /* Animated ECG line across the bottom of the header area */
-body.theme-medical .app::after {
-    content: '';
+/* ECG background line — PQRST waveform, slow scroll near bottom */
+#med-ecg-bg {
+    display: none;
     position: fixed;
-    top: 56px; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(0,198,224,0.0) 20%,
-        rgba(0,198,224,0.4) 48%,
-        rgba(0,198,224,0.9) 50%,
-        rgba(0,198,224,0.4) 52%,
-        rgba(0,198,224,0.0) 80%,
-        transparent 100%
-    );
+    bottom: 18%;
+    left: -100%;
+    width: 300%;
+    height: 60px;
     pointer-events: none;
-    z-index: 50;
-    animation: ecgScan 4s linear infinite;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.8s ease;
 }
-@keyframes ecgScan {
-    0%   { background-position: -100vw 0; }
-    100% { background-position: 200vw 0; }
+body.theme-medical #med-ecg-bg {
+    display: block;
+    opacity: 1;
+}
+#med-ecg-bg svg {
+    width: 100%;
+    height: 100%;
+    animation: ecgScroll 18s linear infinite;
+}
+#med-ecg-bg path {
+    stroke: rgba(0,198,224,0.13);
+    stroke-width: 1.2;
+}
+@keyframes ecgScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-33.33%); }
 }
 
 /* Timer ring — vital-monitor green-teal pulse */
@@ -2121,8 +2129,97 @@ body.zen-mode .timer-container{transform:scale(1.08);}
 
 .med-card:hover:not(.flipped) { box-shadow: 0 8px 32px rgba(0,180,216,0.15); }
 
+/* Summary stats — 4-column when flag stat present */
+.med-summary-stats { grid-template-columns: repeat(4,1fr); }
+.med-stat-flag .med-stat-num { color: #f59e0b !important; }
+
+/* Flagged list */
+.med-flagged-list { background: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.2); }
+.med-flagged-list .med-missed-title { color: #f59e0b; }
+.med-btn-flag-retry { background: rgba(245,158,11,0.09) !important; border-color: #f59e0b !important; color: #f59e0b !important; }
+.med-btn-flag-retry:hover { background: rgba(245,158,11,0.2) !important; }
+
+/* Flag confidence button */
+.med-conf-flag { background: rgba(245,158,11,0.1); border-color: #f59e0b; color: #f59e0b; }
+.med-conf-flag:hover { background: rgba(245,158,11,0.22); transform: translateY(-2px); }
+
+/* ── Motivation button ── */
+#btn-med-motivate {
+    display: none;
+    position: fixed;
+    bottom: 90px;
+    right: 16px;
+    z-index: 300;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 16px;
+    background: rgba(10,24,48,0.88);
+    border: 1.5px solid rgba(0,198,224,0.25);
+    border-radius: 50px;
+    color: rgba(0,198,224,0.85);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    white-space: nowrap;
+}
+body.theme-medical #btn-med-motivate { display: flex; }
+#btn-med-motivate:hover {
+    border-color: #00c6e0;
+    color: #00c6e0;
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 6px 24px rgba(0,198,224,0.25);
+}
+#btn-med-motivate:active { transform: scale(0.96); }
+.motivate-icon { font-size: 1rem; }
+
+/* ── Post-it notes ── */
+#med-postits { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+.med-postit {
+    position: absolute;
+    pointer-events: auto;
+    width: 170px;
+    min-height: 130px;
+    padding: 14px 14px 20px;
+    border-radius: 3px 3px 3px 0;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    font-weight: 500;
+    color: rgba(0,0,0,0.72);
+    box-shadow: 3px 4px 18px rgba(0,0,0,0.32), 0 1px 3px rgba(0,0,0,0.18);
+    animation: postItDrop 0.35s cubic-bezier(0.2,1.4,0.5,1) forwards;
+    cursor: default;
+}
+.med-postit::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    background: rgba(0,0,0,0.07);
+    border-radius: 3px 3px 0 0;
+}
+.med-postit-close {
+    position: absolute;
+    top: 4px; right: 6px;
+    background: none; border: none;
+    font-size: 0.9rem; color: rgba(0,0,0,0.4);
+    cursor: pointer; line-height: 1; padding: 4px;
+    z-index: 1;
+}
+.med-postit-close:hover { color: rgba(0,0,0,0.7); }
+.med-postit-text { margin-top: 10px; display: block; }
+@keyframes postItDrop {
+    from { opacity: 0; transform: var(--rot) translateY(-18px) scale(0.88); }
+    to   { opacity: 1; transform: var(--rot) translateY(0)     scale(1); }
+}
+
 @media (max-width: 480px) {
   .med-topic-grid { grid-template-columns: repeat(3,1fr); gap: 5px; }
   .med-topic-btn { padding: 8px 2px; }
   .med-conf-btn { max-width: 100%; padding: 10px 8px; font-size: 0.78rem; }
+  #btn-med-motivate { font-size: 0.72rem; padding: 8px 12px; bottom: 80px; }
+  .med-postit { width: 150px; font-size: 0.75rem; }
+  .med-summary-stats { grid-template-columns: repeat(2,1fr); }
 }

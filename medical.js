@@ -23,7 +23,8 @@ window.MedicalModule = (() => {
   const MODES = [
     { id: 'flashcard', name: 'Flashcard Review', icon: '📚', desc: 'Flip cards, rate recall confidence' },
     { id: 'rapid',     name: 'Rapid Recall',     icon: '⚡', desc: '30 s per card — fast fact sprints' },
-    { id: 'missed',    name: 'Missed Queue',      icon: '🔄', desc: 'Focus on cards you got wrong' }
+    { id: 'missed',    name: 'Missed Queue',      icon: '🔄', desc: 'Focus on cards you got wrong' },
+    { id: 'flagged',   name: 'Flagged Cards',     icon: '🚩', desc: 'Review cards you flagged as difficult' }
   ];
 
   // ── State ───────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ window.MedicalModule = (() => {
     cards: [],
     idx: 0,
     revealed: false,
-    session: { easy: [], unsure: [], missed: [] },
+    session: { easy: [], unsure: [], missed: [], flagged: [] },
     timerSec: 0,
     timerIv: null,
     rapidTO: null,
@@ -45,8 +46,10 @@ window.MedicalModule = (() => {
   };
 
   // ── Persistence ─────────────────────────────────────────────────
-  const getMissed = () => { try { return JSON.parse(localStorage.getItem('med_missed') || '[]'); } catch { return []; } };
-  const setMissed = (arr) => localStorage.setItem('med_missed', JSON.stringify(arr));
+  const getMissed   = () => { try { return JSON.parse(localStorage.getItem('med_missed')   || '[]'); } catch { return []; } };
+  const setMissed   = (arr) => localStorage.setItem('med_missed',   JSON.stringify(arr));
+  const getFlagged  = () => { try { return JSON.parse(localStorage.getItem('med_flagged')  || '[]'); } catch { return []; } };
+  const setFlagged  = (arr) => localStorage.setItem('med_flagged',  JSON.stringify(arr));
 
   // ── Utilities ───────────────────────────────────────────────────
   const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -128,10 +131,11 @@ window.MedicalModule = (() => {
   }
 
   function syncMissedMode() {
-    const missed = getMissed();
-    setDisplay('med-source-section', st.mode==='missed' ? 'none' : 'block');
+    const missed  = getMissed();
+    const isSpecial = st.mode === 'missed' || st.mode === 'flagged';
+    setDisplay('med-source-section', isSpecial ? 'none' : 'block');
     const info = $('med-missed-info');
-    if (info) info.style.display = (missed.length > 0 && st.mode !== 'missed') ? 'flex' : 'none';
+    if (info) info.style.display = (missed.length > 0 && !isSpecial) ? 'flex' : 'none';
     setText('med-missed-count', missed.length);
   }
 
@@ -184,7 +188,12 @@ window.MedicalModule = (() => {
   function startSession() {
     let cards = [];
 
-    if (st.mode === 'missed') {
+    if (st.mode === 'flagged') {
+      cards = getFlagged();
+      if (!cards.length) {
+        showToast('No flagged cards yet — flag cards during a session with the 🚩 button.'); return;
+      }
+    } else if (st.mode === 'missed') {
       cards = getMissed();
       if (!cards.length) {
         showToast('No missed cards yet — complete a session first.'); return;
@@ -243,6 +252,9 @@ window.MedicalModule = (() => {
     show('med-actions-reveal');
     hide('med-actions-confidence');
     st.revealed = false;
+    // Reset flag button
+    const flagBtn = $('btn-med-flag');
+    if (flagBtn) { flagBtn.textContent = '🚩 Flag'; flagBtn.style.opacity = ''; flagBtn.disabled = false; }
 
     updateProgress();
 
@@ -275,8 +287,21 @@ window.MedicalModule = (() => {
     if (cntEl) cntEl.style.display = 'none';
   }
 
+  function flagCurrentCard() {
+    const card = st.cards[st.idx];
+    const existing = getFlagged();
+    if (!existing.find(c => c.front === card.front)) {
+      existing.push(card);
+      setFlagged(existing);
+    }
+    const btn = $('btn-med-flag');
+    if (btn) { btn.textContent = '✅ Flagged'; btn.style.opacity = '0.6'; btn.disabled = true; }
+  }
+
   function markCard(conf) {
+    if (conf === 'flag') { flagCurrentCard(); return; }
     if (!st.revealed && conf !== 'missed') { revealCard(); return; }
+    if (!st.session[conf]) st.session[conf] = [];
     st.session[conf].push(st.cards[st.idx]);
     st.idx++;
     // Brief pause before next card
@@ -306,6 +331,7 @@ window.MedicalModule = (() => {
 
   function renderSummary() {
     const { easy, unsure, missed } = st.session;
+    const sessionFlagged = getFlagged();
     const total = st.cards.length;
     const score = total ? Math.round((easy.length / total) * 100) : 0;
     let grade = 'F';
@@ -315,6 +341,7 @@ window.MedicalModule = (() => {
     setText('med-stat-easy',   easy.length);
     setText('med-stat-unsure', unsure.length);
     setText('med-stat-missed', missed.length);
+    setText('med-stat-flag',   sessionFlagged.length);
 
     const gradeEl = $('med-summary-grade');
     if (gradeEl) {
@@ -329,20 +356,24 @@ window.MedicalModule = (() => {
     if (missedList) {
       if (missed.length) {
         missedList.style.display = 'block';
-        missedList.innerHTML = `
-          <div class="med-missed-title">Cards to revisit (${missed.length})</div>
-          ${missed.map(c => `
-            <div class="med-missed-card">
-              <div class="med-missed-q">${esc(c.front)}</div>
-              <div class="med-missed-a">${esc(c.back)}</div>
-            </div>`).join('')}`;
-      } else {
-        missedList.style.display = 'none';
-      }
+        missedList.innerHTML = `<div class="med-missed-title">Missed (${missed.length})</div>` +
+          missed.map(c => `<div class="med-missed-card"><div class="med-missed-q">${esc(c.front)}</div><div class="med-missed-a">${esc(c.back)}</div></div>`).join('');
+      } else { missedList.style.display = 'none'; }
+    }
+
+    const flaggedList = $('med-flagged-list');
+    if (flaggedList) {
+      if (sessionFlagged.length) {
+        flaggedList.style.display = 'block';
+        flaggedList.innerHTML = `<div class="med-missed-title">Flagged as Difficult (${sessionFlagged.length})</div>` +
+          sessionFlagged.map(c => `<div class="med-missed-card"><div class="med-missed-q">🚩 ${esc(c.front)}</div><div class="med-missed-a">${esc(c.back)}</div></div>`).join('');
+      } else { flaggedList.style.display = 'none'; }
     }
 
     const retryBtn = $('btn-med-retry');
     if (retryBtn) retryBtn.style.display = missed.length ? 'inline-flex' : 'none';
+    const flagRetryBtn = $('btn-med-flag-retry');
+    if (flagRetryBtn) flagRetryBtn.style.display = sessionFlagged.length ? 'inline-flex' : 'none';
   }
 
   // ── Toast ────────────────────────────────────────────────────────
@@ -418,6 +449,10 @@ window.MedicalModule = (() => {
     const retryBtn = $('btn-med-retry');
     if (retryBtn) retryBtn.addEventListener('click', () => { st.mode = 'missed'; startSession(); });
 
+    // Retry flagged
+    const flagRetryBtn = $('btn-med-flag-retry');
+    if (flagRetryBtn) flagRetryBtn.addEventListener('click', () => { st.mode = 'flagged'; startSession(); });
+
     // New session
     const newBtn = $('btn-med-new');
     if (newBtn) newBtn.addEventListener('click', () => { stopTimer(); renderPlan(); });
@@ -435,6 +470,7 @@ window.MedicalModule = (() => {
       if (st.view !== 'review') return;
       if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
       if (e.code==='Space' && !st.revealed) { e.preventDefault(); revealCard(); }
+      if (e.key==='f' || e.key==='F') { e.preventDefault(); flagCurrentCard(); }
       if (st.revealed) {
         if (e.key==='1') markCard('easy');
         if (e.key==='2') markCard('unsure');
@@ -462,5 +498,71 @@ window.MedicalModule = (() => {
     renderPlan();
   }
 
-  return { init, endSession };
+  // ── Post-it motivation notes ─────────────────────────────────────
+  const POSTIT_QUOTES = [
+    'One step at a time.\nYou\'re building something extraordinary.',
+    'The anatomy atlas\nlooked impossible too.\nLook at you now.',
+    'Every great clinician\nstarted exactly where you are.',
+    'You don\'t have to have\nit all figured out.\nJust show up today.',
+    'Your future patients\nneed you to keep going.',
+    'Rest is not laziness —\nit\'s part of studying.',
+    'Hard days mean\nyou\'re doing hard things.',
+    'You chose this path\nbecause you care.\nThat matters.',
+    'Confusion now =\nclarity later.\nTrust the process.',
+    'Coffee + determination\n= clinical competence.',
+    'You will look back\non this and feel\nso proud.',
+    'The world needs doctors\nwho care as much as you do.',
+    'Tired today.\nTenacious tomorrow.',
+    'Your brain is building\nconnections you can\'t\neven see yet.',
+    'Medicine is a marathon.\nYou\'re still in the race.',
+    'The people who\nstick with it\nchange the world.',
+    'Still here?\nThat\'s the whole thing.\nJust stay.',
+    'The Krebs cycle\nwasn\'t learned in a day.\nNeither is medicine.',
+    'First year felt impossible.\nYou survived it.',
+    'Diagnosis is an art.\nYou are becoming an artist.',
+  ];
+
+  const POSTIT_COLORS = [
+    '#fff176', '#fff59d', '#f8bbd0', '#f48fb1',
+    '#b3e5fc', '#81d4fa', '#c8e6c9', '#a5d6a7',
+    '#e1bee7', '#ffcc80', '#b2dfdb', '#ffecb3',
+  ];
+
+  let _postitIdx = Math.floor(Math.random() * POSTIT_QUOTES.length);
+  let _postitColorIdx = 0;
+
+  function addPostIt() {
+    const container = document.getElementById('med-postits');
+    if (!container) return;
+
+    // Limit to 12 visible at once
+    while (container.children.length >= 12) container.firstChild.remove();
+
+    const quote = POSTIT_QUOTES[_postitIdx % POSTIT_QUOTES.length];
+    const color = POSTIT_COLORS[_postitColorIdx % POSTIT_COLORS.length];
+    _postitIdx++;
+    _postitColorIdx++;
+
+    const deg = (Math.random() * 14 - 7).toFixed(1);
+    // Random position avoiding center of screen and tab bar
+    const safeTop  = 8 + Math.random() * 60;   // 8%–68% from top
+    const safeLeft = 2 + Math.random() * 72;    // 2%–74% from left
+
+    const el = document.createElement('div');
+    el.className = 'med-postit';
+    el.style.cssText = `
+      background: ${color};
+      top: ${safeTop}%;
+      left: ${safeLeft}%;
+      --rot: rotate(${deg}deg);
+      transform: rotate(${deg}deg);
+    `;
+    el.innerHTML = `
+      <button class="med-postit-close" title="Remove" onclick="this.parentElement.remove()">×</button>
+      <span class="med-postit-text">${quote.replace(/\n/g, '<br>')}</span>
+    `;
+    container.appendChild(el);
+  }
+
+  return { init, endSession, addPostIt };
 })();
