@@ -1858,7 +1858,7 @@ body.zen-mode .timer-container{transform:scale(1.08);}
    MEDICAL STUDY MODULE
    ======================================== */
 
-#panel-medical { background: #0a1628; padding: 0; min-height: 100vh; }
+#panel-medical { background: var(--bg-primary); padding: 0; min-height: 100vh; }
 
 /* ===== STUDY TAB — LIQUID GLASS (all themes) ===== */
 .med-dashboard { max-width: 660px; margin: 0 auto; padding: 0 0 100px; }
@@ -2313,133 +2313,230 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 
 /* ===== UNIVERSAL THOUGHT NOTES ===== */
 #thinknotes-layer {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 400;
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 400;
 }
-.thinknote {
+
+/* Pile wrapper — handles position, drag, stacked-paper effect */
+.thinknote-pile {
     position: absolute;
     pointer-events: auto;
-    min-width: 140px;
-    min-height: 100px;
-    padding: 10px 12px 12px;
-    cursor: move;
-    user-select: none;
-    box-shadow: 3px 4px 16px rgba(0,0,0,0.28);
-    animation: thinknoteIn 0.3s cubic-bezier(0.2,1.4,0.5,1) forwards;
+    animation: thinknoteIn 0.32s cubic-bezier(0.2,1.4,0.5,1) forwards;
 }
 @keyframes thinknoteIn {
-    from { opacity: 0; transform: scale(0.7); }
-    to   { opacity: 1; }
+    from { opacity: 0; transform: rotate(var(--rot,0deg)) scale(0.72); }
+    to   { opacity: 1; transform: rotate(var(--rot,0deg)) scale(1); }
+}
+/* Stacked paper shadows — appear when pages > 1 */
+.thinknote-pile::before,
+.thinknote-pile::after { content: none; }
+.thinknote-pile[data-pages="2"]::before,
+.thinknote-pile[data-pages="3"]::before,
+.thinknote-pile[data-pages="3"]::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 5px;
+    pointer-events: none; z-index: -1;
+}
+.thinknote-pile[data-pages="2"]::before {
+    background: rgba(255,255,255,0.75);
+    transform: rotate(4deg) translate(5px, 6px);
+    box-shadow: 2px 3px 10px rgba(0,0,0,0.18);
+}
+.thinknote-pile[data-pages="3"]::before {
+    background: rgba(255,255,255,0.75);
+    transform: rotate(4deg) translate(5px, 6px);
+    box-shadow: 2px 3px 10px rgba(0,0,0,0.18);
+}
+.thinknote-pile[data-pages="3"]::after {
+    background: rgba(255,255,255,0.55);
+    transform: rotate(-3.5deg) translate(-4px, 8px);
+    box-shadow: 1px 2px 8px rgba(0,0,0,0.12);
+}
+
+/* Visual note — shape is applied here */
+.thinknote {
+    position: relative;
+    cursor: move;
+    box-shadow: 3px 5px 20px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+}
+
+/* Header row (page indicator + close) */
+.tn-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 6px 2px;
+    min-height: 24px; flex-shrink: 0;
+}
+.tn-page-indicator {
+    font-size: 0.6rem; font-weight: 800;
+    color: rgba(0,0,0,0.4); letter-spacing: 0.06em;
 }
 .thinknote-close {
-    position: absolute;
-    top: 4px; right: 6px;
     background: none; border: none;
-    font-size: 0.85rem; color: rgba(0,0,0,0.35);
-    cursor: pointer; padding: 2px 4px; line-height: 1;
-    z-index: 1;
+    font-size: 0.9rem; color: rgba(0,0,0,0.3);
+    cursor: pointer; padding: 0 2px; line-height: 1;
+    flex-shrink: 0; margin-left: auto;
 }
 .thinknote-close:hover { color: rgba(0,0,0,0.65); }
+
+/* Content body */
 .thinknote-body {
     cursor: text;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: rgba(0,0,0,0.72);
-    outline: none;
-    word-break: break-word;
-    min-height: 60px;
+    font-size: 0.8rem; line-height: 1.55;
+    color: rgba(0,0,0,0.75);
+    outline: none; word-break: break-word;
+    flex: 1; padding: 2px 4px 4px;
+    overflow-y: auto;
 }
 .thinknote-body:empty::before {
     content: attr(data-placeholder);
-    opacity: 0.4;
-    pointer-events: none;
+    opacity: 0.38; pointer-events: none;
+    font-style: italic;
 }
 
-/* Normal — yellow rectangle */
+/* Footer (prev / full-hint / next / download) */
+.tn-footer {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 4px; padding: 3px 5px 4px; flex-shrink: 0;
+}
+.tn-prev, .tn-next {
+    background: none; border: 1px solid rgba(0,0,0,0.18);
+    border-radius: 4px; color: rgba(0,0,0,0.5);
+    font-size: 0.7rem; font-weight: 700;
+    cursor: pointer; padding: 1px 5px; line-height: 1.4;
+    transition: all 0.15s;
+}
+.tn-prev:hover, .tn-next:hover { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.8); }
+.tn-full-hint {
+    font-size: 0.6rem; color: rgba(200,80,0,0.7);
+    font-weight: 700; letter-spacing: 0.04em; margin-right: auto;
+}
+.tn-dl {
+    background: none; border: none;
+    color: rgba(0,0,0,0.25); font-size: 0.72rem;
+    cursor: pointer; padding: 1px 3px; line-height: 1;
+    transition: color 0.15s;
+}
+.tn-dl:hover { color: rgba(0,0,0,0.6); }
+
+/* ── Normal (yellow rectangle) ── */
 .thinknote-normal {
     background: #fff9c4;
-    border-radius: 3px;
+    border-radius: 3px 3px 3px 0;
+    min-width: 200px; min-height: 140px; max-width: 260px;
+    max-height: 320px;
+}
+.thinknote-normal .thinknote-body {
+    min-height: 90px; max-height: 240px;
 }
 
-/* Pink (Marianna) — heart shape */
+/* ── Pink / Marianna — large heart ── */
 .thinknote-pink {
     background: #ffb6d9;
-    width: 180px;
-    height: 145px;
-    clip-path: path('M 90 143 C 28 108 2 72 2 48 C 2 22 22 2 48 2 C 64 2 80 12 90 26 C 100 12 116 2 132 2 C 158 2 178 22 178 48 C 178 72 152 108 90 143 Z');
-    display: flex; align-items: center; justify-content: center;
-    padding: 30px 20px 40px;
+    width: 230px; height: 200px;
+    clip-path: path('M 115 190 C 44 148 4 104 4 66 C 4 34 28 8 58 8 C 80 8 100 20 115 38 C 130 20 150 8 172 8 C 202 8 226 34 226 66 C 226 104 186 148 115 190 Z');
 }
-.thinknote-pink .thinknote-body { text-align: center; }
-.thinknote-pink .thinknote-close { color: rgba(120,0,60,0.4); }
-.thinknote-pink .thinknote-close:hover { color: rgba(120,0,60,0.75); }
+.thinknote-pink .tn-header { padding-top: 8px; }
+.thinknote-pink .tn-page-indicator { color: rgba(100,0,50,0.45); }
+.thinknote-pink .thinknote-close { color: rgba(100,0,50,0.35); }
+.thinknote-pink .thinknote-close:hover { color: rgba(100,0,50,0.75); }
+.thinknote-pink .thinknote-body {
+    text-align: center; padding: 4px 30px 8px;
+    color: rgba(80,0,40,0.8); overflow: hidden;
+}
+.thinknote-pink .tn-footer { justify-content: center; padding-bottom: 30px; }
+.thinknote-pink .tn-prev, .thinknote-pink .tn-next { border-color: rgba(100,0,50,0.25); color: rgba(100,0,50,0.5); }
+.thinknote-pink .tn-dl { color: rgba(100,0,50,0.25); }
 
-/* Terea (Maria) — dumbbell shape */
+/* ── Terea / Maria — dumbbell ── */
 .thinknote-terea {
     background: #00d4c8;
-    width: 210px;
-    height: 120px;
-    clip-path: path('M 0 28 Q 0 0 38 0 Q 76 0 76 28 L 76 48 L 134 48 L 134 28 Q 134 0 172 0 Q 210 0 210 28 L 210 92 Q 210 120 172 120 Q 134 120 134 92 L 134 72 L 76 72 L 76 92 Q 76 120 38 120 Q 0 120 0 92 Z');
-    display: flex; align-items: center; justify-content: center;
-    padding: 8px 40px;
+    width: 250px; height: 145px;
+    /* Dumbbell: two round plates on left/right, bar connecting them */
+    clip-path: path('M 0 36 C 0 12 18 0 50 0 C 82 0 100 12 100 36 L 100 58 L 150 58 L 150 36 C 150 12 168 0 200 0 C 232 0 250 12 250 36 L 250 109 C 250 133 232 145 200 145 C 168 145 150 133 150 109 L 150 87 L 100 87 L 100 109 C 100 133 82 145 50 145 C 18 145 0 133 0 109 Z');
 }
-.thinknote-terea .thinknote-body { color: rgba(0,0,0,0.75); text-align: center; font-size: 0.72rem; }
-.thinknote-terea .thinknote-close { color: rgba(0,0,0,0.4); }
+.thinknote-terea .tn-header { padding: 6px 8px 2px; }
+.thinknote-terea .tn-page-indicator { color: rgba(0,0,0,0.4); }
+.thinknote-terea .thinknote-close { color: rgba(0,0,0,0.3); }
+.thinknote-terea .thinknote-body {
+    text-align: center; padding: 2px 55px 4px;
+    color: rgba(0,20,18,0.8); font-size: 0.75rem;
+    overflow: hidden;
+}
+.thinknote-terea .tn-footer { justify-content: center; }
+.thinknote-terea .tn-prev, .thinknote-terea .tn-next { border-color: rgba(0,0,0,0.2); color: rgba(0,0,0,0.5); }
+.thinknote-terea .tn-dl { color: rgba(0,0,0,0.25); }
 
-/* Medical — brain shape */
+/* ── Medical — two-lobe brain ── */
 .thinknote-medical {
     background: #90e0ef;
-    width: 180px;
-    height: 155px;
-    clip-path: path('M 90 150 C 72 150 60 142 52 132 C 36 136 18 124 10 106 C 2 88 8 66 22 54 C 14 42 16 26 28 16 C 40 6 58 8 68 18 C 76 6 90 0 106 0 C 118 2 130 8 138 18 C 148 8 164 6 174 16 C 184 26 184 44 176 56 C 188 70 192 92 184 110 C 176 128 160 140 142 138 C 134 146 124 152 110 152 C 104 153 96 153 90 150 Z');
-    display: flex; align-items: center; justify-content: center;
-    padding: 30px 20px 28px;
+    width: 220px; height: 195px;
+    /*
+      Two-lobe brain silhouette:
+      top center dips slightly between left and right frontal lobes
+      sides bulge out, bottom curves to a chin-like base
+    */
+    clip-path: path('M 110 18 C 88 8 66 12 56 30 C 38 22 18 36 14 56 C 8 76 20 100 40 110 C 24 124 18 148 28 166 C 38 182 60 190 82 186 C 94 194 104 196 110 194 C 116 196 126 194 138 186 C 160 190 182 182 192 166 C 202 148 196 124 180 110 C 200 100 212 76 206 56 C 202 36 182 22 164 30 C 154 12 132 8 110 18 Z');
 }
-.thinknote-medical .thinknote-body { color: rgba(0,40,60,0.8); text-align: center; font-size: 0.72rem; }
-.thinknote-medical .thinknote-close { color: rgba(0,40,60,0.35); top: 28px; }
+.thinknote-medical .tn-header { padding: 10px 10px 2px; }
+.thinknote-medical .tn-page-indicator { color: rgba(0,40,60,0.4); }
+.thinknote-medical .thinknote-close { color: rgba(0,40,60,0.3); }
+.thinknote-medical .thinknote-close:hover { color: rgba(0,40,60,0.7); }
+.thinknote-medical .thinknote-body {
+    text-align: center; padding: 4px 24px 8px;
+    color: rgba(0,40,60,0.82); font-size: 0.76rem;
+    overflow: hidden;
+}
+.thinknote-medical .tn-footer { justify-content: center; padding-bottom: 28px; }
+.thinknote-medical .tn-prev, .thinknote-medical .tn-next { border-color: rgba(0,60,80,0.25); color: rgba(0,60,80,0.5); }
+.thinknote-medical .tn-dl { color: rgba(0,60,80,0.25); }
 
-/* Star Wars — hexagon */
+/* ── Star Wars — hexagon ── */
 .thinknote-starwars {
-    background: rgba(0,20,50,0.92);
-    width: 160px;
-    height: 150px;
+    background: rgba(4,16,42,0.94);
+    width: 210px; height: 190px;
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    display: flex; align-items: center; justify-content: center;
-    padding: 30px 20px;
-    border: none;
 }
-.thinknote-starwars .thinknote-body { color: #4fc3f7; text-align: center; font-size: 0.72rem; }
-.thinknote-starwars .thinknote-close { color: rgba(79,195,247,0.4); }
-.thinknote-starwars .thinknote-close:hover { color: rgba(79,195,247,0.8); }
+.thinknote-starwars .tn-header { padding: 26px 30px 2px; }
+.thinknote-starwars .tn-page-indicator { color: rgba(79,195,247,0.5); }
+.thinknote-starwars .thinknote-close { color: rgba(79,195,247,0.35); }
+.thinknote-starwars .thinknote-close:hover { color: rgba(79,195,247,0.85); }
+.thinknote-starwars .thinknote-body {
+    text-align: center; padding: 2px 32px 4px;
+    color: #4fc3f7; font-size: 0.76rem;
+    overflow: hidden;
+}
+.thinknote-starwars .tn-footer { justify-content: center; padding-bottom: 26px; }
+.thinknote-starwars .tn-prev, .thinknote-starwars .tn-next { border-color: rgba(79,195,247,0.25); color: rgba(79,195,247,0.6); }
+.thinknote-starwars .tn-dl { color: rgba(79,195,247,0.25); }
+
+/* Journal export button */
+.btn-dl-journal {
+    font-size: 0.75rem; padding: 6px 12px;
+    border-radius: 8px; white-space: nowrap;
+}
 
 /* ===== ADD THOUGHT NOTE BUTTON ===== */
 #btn-add-thinknote {
     position: fixed;
-    bottom: 90px;
-    left: 16px;
+    bottom: 90px; left: 16px;
     z-index: 500;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: flex; align-items: center; gap: 6px;
     padding: 9px 14px;
     background: rgba(20,20,40,0.82);
     border: 1.5px solid rgba(255,255,255,0.1);
     border-radius: 50px;
     color: rgba(255,255,255,0.65);
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: 0.78rem; font-weight: 600;
     cursor: pointer;
     backdrop-filter: blur(12px);
     box-shadow: 0 4px 18px rgba(0,0,0,0.3);
     transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-    white-space: nowrap;
-    font-family: inherit;
+    white-space: nowrap; font-family: inherit;
 }
 #btn-add-thinknote:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--accent); color: var(--accent);
     transform: translateY(-2px) scale(1.04);
     box-shadow: 0 6px 22px rgba(0,0,0,0.35);
 }

@@ -603,7 +603,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
     if (e.key === '?') {
       const mod = document.getElementById('shortcut-modal');
@@ -1039,7 +1039,7 @@ toggleTimer() {
                     this.flashTereaComplete();
                 }
                 this.playAudio('smoke_break');
-                this.checkTereaLegend();
+
                 const tereaLights = document.getElementById('terea-lights');
                 if (tereaLights) {
                     tereaLights.classList.add('queen-locked');
@@ -2529,55 +2529,189 @@ addThinkNote() {
     const layer = document.getElementById('thinknotes-layer');
     if (!layer) return;
     const theme = this.state.settings.theme;
+    const isShaped = theme !== 'normal';
 
+    // Outer wrapper: handles positioning, dragging, pile shadow layers
+    const pile = document.createElement('div');
+    pile.className = 'thinknote-pile';
+    pile._pages   = [''];
+    pile._pageIdx = 0;
+    pile.dataset.pages = '1';
+
+    const left = 8  + Math.random() * 58;
+    const top  = 12 + Math.random() * 48;
+    const deg  = (Math.random() * 8 - 4).toFixed(1);
+    pile.style.cssText = `left:${left}%;top:${top}%;--rot:${deg}deg;transform:rotate(${deg}deg);`;
+
+    // Inner note: has the visual shape via clip-path
     const note = document.createElement('div');
     note.className = 'thinknote thinknote-' + theme;
 
-    // Random start position (avoid edges)
-    const left = 10 + Math.random() * 65;
-    const top  = 15 + Math.random() * 55;
-    const deg  = (Math.random() * 8 - 4).toFixed(1);
+    // Overflow hint threshold (chars)
+    const PAGE_LIMIT = isShaped ? 180 : 500;
 
-    note.style.cssText = `left:${left}%;top:${top}%;transform:rotate(${deg}deg);`;
     note.innerHTML = `
-      <button class="thinknote-close" title="Remove">×</button>
+      <div class="tn-header">
+        <span class="tn-page-indicator" style="display:none">1 / 1</span>
+        <button class="thinknote-close" title="Remove">×</button>
+      </div>
       <div class="thinknote-body" contenteditable="true" spellcheck="false" data-placeholder="Your thought..."></div>
+      <div class="tn-footer">
+        <button class="tn-prev" style="display:none" title="Previous page">‹</button>
+        <span class="tn-full-hint" style="display:none">Full</span>
+        <button class="tn-next" title="Add next page">+</button>
+        <button class="tn-dl" title="Download note">⬇</button>
+      </div>
     `;
 
-    // Close
-    note.querySelector('.thinknote-close').addEventListener('click', () => note.remove());
+    const body      = note.querySelector('.thinknote-body');
+    const indicator = note.querySelector('.tn-page-indicator');
+    const closeBtn  = note.querySelector('.thinknote-close');
+    const prevBtn   = note.querySelector('.tn-prev');
+    const nextBtn   = note.querySelector('.tn-next');
+    const dlBtn     = note.querySelector('.tn-dl');
+    const fullHint  = note.querySelector('.tn-full-hint');
 
-    // Drag via the note itself (not body)
-    note.addEventListener('pointerdown', e => {
-      if (e.target.classList.contains('thinknote-close') ||
-          e.target.classList.contains('thinknote-body')) return;
-      e.preventDefault();
-      note.setPointerCapture(e.pointerId);
-      const rect = note.getBoundingClientRect();
-      const ox = e.clientX - rect.left;
-      const oy = e.clientY - rect.top;
-      note.style.transition = 'none';
-      note.style.zIndex = '9999';
+    const refreshUI = () => {
+        const total = pile._pages.length;
+        const idx   = pile._pageIdx;
+        pile.dataset.pages = String(total);
 
-      const onMove = ev => {
-        note.style.left = (ev.clientX - ox) + 'px';
-        note.style.top  = (ev.clientY - oy) + 'px';
-        note.style.right = 'auto';
-        note.style.bottom = 'auto';
-      };
-      const onUp = () => {
-        note.removeEventListener('pointermove', onMove);
-        note.removeEventListener('pointerup',   onUp);
-        note.style.transition = '';
-        note.style.zIndex = '';
-      };
-      note.addEventListener('pointermove', onMove);
-      note.addEventListener('pointerup', onUp);
+        if (total > 1) {
+            indicator.style.display = '';
+            indicator.textContent = `${idx + 1} / ${total}`;
+            prevBtn.style.display = idx > 0 ? '' : 'none';
+        } else {
+            indicator.style.display = 'none';
+            prevBtn.style.display = 'none';
+        }
+        body.innerHTML = pile._pages[idx];
+        // Cursor to end
+        const range = document.createRange();
+        const sel   = window.getSelection();
+        range.selectNodeContents(body);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        fullHint.style.display = 'none';
+    };
+
+    const savePage = () => { pile._pages[pile._pageIdx] = body.innerHTML; };
+
+    const goNext = () => {
+        savePage();
+        if (pile._pageIdx < pile._pages.length - 1) {
+            pile._pageIdx++;
+        } else {
+            pile._pages.push('');
+            pile._pageIdx = pile._pages.length - 1;
+        }
+        refreshUI();
+        body.focus();
+    };
+
+    const goPrev = () => {
+        savePage();
+        if (pile._pageIdx > 0) { pile._pageIdx--; refreshUI(); }
+    };
+
+    body.addEventListener('input', () => {
+        savePage();
+        const len = body.innerText.length;
+        const overflow = isShaped
+            ? (body.scrollHeight > body.clientHeight + 4)
+            : (len > PAGE_LIMIT);
+        fullHint.style.display = overflow ? '' : 'none';
     });
 
-    layer.appendChild(note);
-    // Focus the editable body
-    setTimeout(() => note.querySelector('.thinknote-body').focus(), 60);
+    closeBtn.addEventListener('click', e => { e.stopPropagation(); pile.remove(); });
+    nextBtn.addEventListener('click',  e => { e.stopPropagation(); goNext(); });
+    prevBtn.addEventListener('click',  e => { e.stopPropagation(); goPrev(); });
+    dlBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        savePage();
+        const tmp = document.createElement('div');
+        const allText = pile._pages.map((html, i) => {
+            tmp.innerHTML = html;
+            return (pile._pages.length > 1 ? `[Page ${i + 1}]\n` : '') + (tmp.textContent || '').trim();
+        }).filter(Boolean).join('\n\n');
+        this.downloadAsDocx('Thought Note', allText || '(empty note)');
+    });
+
+    // Drag the pile wrapper (not body, not footer buttons)
+    pile.addEventListener('pointerdown', e => {
+        if (e.target === body || e.target.closest('.tn-footer') || e.target.closest('.thinknote-close')) return;
+        e.preventDefault();
+        pile.setPointerCapture(e.pointerId);
+        const rect = pile.getBoundingClientRect();
+        const ox = e.clientX - rect.left;
+        const oy = e.clientY - rect.top;
+        pile.style.transition = 'none';
+        pile.style.zIndex = '9000';
+
+        const onMove = ev => {
+            pile.style.left = (ev.clientX - ox) + 'px';
+            pile.style.top  = (ev.clientY - oy) + 'px';
+        };
+        const onUp = () => {
+            pile.removeEventListener('pointermove', onMove);
+            pile.removeEventListener('pointerup', onUp);
+            pile.style.transition = '';
+            pile.style.zIndex = '';
+        };
+        pile.addEventListener('pointermove', onMove);
+        pile.addEventListener('pointerup', onUp);
+    });
+
+    pile.appendChild(note);
+    layer.appendChild(pile);
+    setTimeout(() => body.focus(), 60);
+},
+
+async downloadAsDocx(title, textContent) {
+    if (!window.docx) {
+        // Fallback: plain .txt
+        const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (title || 'notes').replace(/[^a-z0-9 ]/gi, '_') + '.txt';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        return;
+    }
+    try {
+        const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+        const lines = textContent.split('\n');
+        const doc = new Document({
+            sections: [{
+                children: [
+                    new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
+                    new Paragraph({ text: '' }),
+                    ...lines.map(l => new Paragraph({ children: [new TextRun(l)] }))
+                ]
+            }]
+        });
+        const blob = await Packer.toBlob(doc);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (title || 'notes').replace(/[^a-z0-9 ]/gi, '_') + '.docx';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    } catch(err) {
+        console.warn('docx export error', err);
+        this.showToast('Export error', String(err), '⚠️');
+    }
+},
+
+downloadNotes() {
+    const notes = this.state.notes || [];
+    if (!notes.length) { this.showToast('No journal entries to download', '', '📭'); return; }
+    const text = notes.map((n, i) => {
+        const date = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : '';
+        const header = `Entry ${i + 1}${date ? ' — ' + date : ''}`;
+        return `${header}\n${n.text || n.content || ''}`;
+    }).join('\n\n---\n\n');
+    this.downloadAsDocx('My Journal', text);
 },
 
     // ===================================
@@ -2763,28 +2897,12 @@ initOnboarding() {
         localStorage.setItem('pomodoro_onboarded', '1');
     });
 },
-    checkTereaLegend() {
-        const streak = this.state.tereaSessionsStreak || 0;
-        if (streak >= 7) {
-            const unlocked = JSON.parse(localStorage.getItem('pomodoro_ach_v2') || '[]');
-            if (!unlocked.includes('terea_legend')) {
-                unlocked.push('terea_legend');
-                localStorage.setItem('pomodoro_ach_v2', JSON.stringify(unlocked));
-                this.showToast('Η Μαρία 👑', '7 consecutive Terea sessions. Legend status unlocked.', '💨');
-                // Persist badge in stats
-                const badge = document.getElementById('stat-rank-display');
-                if (badge) badge.textContent = 'Η Μαρία 👑';
-            }
-        }
-    },
-
     checkAchievements() {
         const aList = [
             { id: 'first_blood', name: 'First Focus', desc: 'Complete 1 session', req: () => this.state.totalSessions > 0, icon: '🎯' },
             { id: 'streak_3', name: 'On a Roll', desc: 'Complete 3 sessions today', req: () => this.state.sessionsToday >= 3, icon: '🔥' },
             { id: 'daily_goal', name: 'Goal Crusher', desc: 'Hit your daily goal', req: () => this.state.sessionsToday >= this.state.settings.dailyGoal, icon: '👑' },
             { id: 'century', name: 'Centurion', desc: '100 total sessions', req: () => this.state.totalSessions >= 100, icon: '🏛️' },
-            { id: 'terea_legend', name: 'Η Μαρία 👑', desc: '7 consecutive Terea sessions', req: () => (this.state.tereaSessionsStreak || 0) >= 7, icon: '💨' }
         ];
 
         let unlocked = JSON.parse(localStorage.getItem('pomodoro_ach_v2') || '[]');

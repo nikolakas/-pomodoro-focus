@@ -468,7 +468,7 @@ window.MedicalModule = (() => {
     // Keyboard shortcuts (only active in review view)
     document.addEventListener('keydown', e => {
       if (st.view !== 'review') return;
-      if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+      if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable) return;
       if (e.code==='Space' && !st.revealed) { e.preventDefault(); revealCard(); }
       if (e.key==='f' || e.key==='F') { e.preventDefault(); flagCurrentCard(); }
       if (st.revealed) {
