@@ -599,12 +599,13 @@ window.MedicalModule = (() => {
   }
 
   // ── Canvas ECG animation ─────────────────────────────────────────
-  let _ecgCanvas = null;
-  let _ecgCtx    = null;
-  let _ecgRaf    = null;
-  let _ecgBuf    = null; // Float32Array of y values, length = canvas width
-  let _ecgCursor = 0;
-  let _ecgFrame  = 0;
+  let _ecgCanvas  = null;
+  let _ecgCtx     = null;
+  let _ecgRaf     = null;
+  let _ecgBuf     = null;     // Float32Array of y values per x pixel
+  let _ecgWritten = null;     // Uint8Array: 1 = has data, 0 = blank (natural gap)
+  let _ecgCursor  = 0;
+  let _ecgFrame   = 0;
 
   // PQRST waveform: given a phase 0-1 within one heartbeat cycle, returns y offset (-1..1)
   function _pqrstY(phase) {
@@ -630,8 +631,10 @@ window.MedicalModule = (() => {
     function resize() {
       _ecgCanvas.width  = _ecgCanvas.offsetWidth  || window.innerWidth;
       _ecgCanvas.height = _ecgCanvas.offsetHeight || 60;
-      _ecgBuf = new Float32Array(_ecgCanvas.width).fill(0.5);
-      _ecgCursor = 0;
+      _ecgBuf     = new Float32Array(_ecgCanvas.width);
+      _ecgWritten = new Uint8Array(_ecgCanvas.width); // all 0 = nothing drawn yet
+      _ecgCursor  = 0;
+      _ecgFrame   = 0;
     }
     resize();
     window.addEventListener('resize', resize);
@@ -653,52 +656,52 @@ window.MedicalModule = (() => {
 
       const pixelsToAdvance = Math.max(1, Math.round(dt / 1000 * SPEED));
 
+      const ERASE = 30; // blank zone ahead of cursor (scanner gap)
+
       for (let i = 0; i < pixelsToAdvance; i++) {
         _ecgFrame = (_ecgFrame + 1) % CYCLE_PX;
         const phase = _ecgFrame / CYCLE_PX;
         _ecgBuf[_ecgCursor] = _pqrstY(phase);
+        _ecgWritten[_ecgCursor] = 1;
+        // Clear the zone ahead so gap is always visible
+        const ahead = (_ecgCursor + ERASE) % W;
+        _ecgWritten[ahead] = 0;
         _ecgCursor = (_ecgCursor + 1) % W;
       }
 
-      // Draw
+      // Draw — clearRect makes canvas transparent (no fill needed)
       _ecgCtx.clearRect(0, 0, W, H);
 
-      // Erase zone ahead of cursor (blank ~20px) — scanner effect
-      const ERASE = 22;
-      _ecgCtx.fillStyle = 'rgba(6,15,30,0.92)';
-      const ex = (_ecgCursor - ERASE + W) % W;
-      if (ex < _ecgCursor) {
-        _ecgCtx.fillRect(ex, 0, ERASE, H);
-      } else {
-        _ecgCtx.fillRect(ex, 0, W - ex, H);
-        _ecgCtx.fillRect(0, 0, _ecgCursor, H);
-      }
+      const mid = H * 0.55;
+      const amp = H * 0.36;
 
-      // Draw waveform
+      // Draw only written segments (natural gap where _ecgWritten === 0)
       _ecgCtx.beginPath();
       _ecgCtx.strokeStyle = 'rgba(0,198,224,0.22)';
       _ecgCtx.lineWidth = 1.5;
       _ecgCtx.lineJoin = 'round';
 
-      const mid = H * 0.55;
-      const amp = H * 0.36;
-
+      let inPath = false;
       for (let x = 0; x < W; x++) {
+        if (!_ecgWritten[x]) { inPath = false; continue; }
         const y = mid - _ecgBuf[x] * amp;
-        if (x === 0) _ecgCtx.moveTo(x, y);
+        if (!inPath) { _ecgCtx.moveTo(x, y); inPath = true; }
         else _ecgCtx.lineTo(x, y);
       }
       _ecgCtx.stroke();
 
-      // Glowing cursor dot
-      const cursorY = mid - _ecgBuf[(_ecgCursor - 1 + W) % W] * amp;
-      const grad = _ecgCtx.createRadialGradient(_ecgCursor, cursorY, 0, _ecgCursor, cursorY, 7);
-      grad.addColorStop(0, 'rgba(0,230,255,0.9)');
-      grad.addColorStop(1, 'rgba(0,198,224,0)');
-      _ecgCtx.beginPath();
-      _ecgCtx.arc(_ecgCursor, cursorY, 7, 0, Math.PI * 2);
-      _ecgCtx.fillStyle = grad;
-      _ecgCtx.fill();
+      // Glowing cursor dot at write head
+      const dotX = (_ecgCursor - 1 + W) % W;
+      if (_ecgWritten[dotX]) {
+        const cursorY = mid - _ecgBuf[dotX] * amp;
+        const grad = _ecgCtx.createRadialGradient(dotX, cursorY, 0, dotX, cursorY, 7);
+        grad.addColorStop(0, 'rgba(0,230,255,0.85)');
+        grad.addColorStop(1, 'rgba(0,198,224,0)');
+        _ecgCtx.beginPath();
+        _ecgCtx.arc(dotX, cursorY, 7, 0, Math.PI * 2);
+        _ecgCtx.fillStyle = grad;
+        _ecgCtx.fill();
+      }
     }
 
     _ecgRaf = requestAnimationFrame(draw);
