@@ -53,6 +53,10 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Notes
                 </button>
+                <button class="tab" data-tab="medical" role="tab" aria-selected="false" id="tab-medical">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Study
+                </button>
             </nav>
         </header>
 
@@ -63,23 +67,34 @@
                 <button class="mode-btn" data-mode="longBreak" id="mode-long-break">Long Break</button>
             </div>
 
-            <div class="timer-container" id="timer-container">
-                <svg class="timer-ring" viewBox="0 0 260 260">
-                    <defs>
-                        <filter id="saber-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                        <filter id="saber-glow-intense"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                        <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="timer-grad" x1="0" y1="130" x2="260" y2="130" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ecdc4"/><stop offset="100%" stop-color="#ffe66d"/></linearGradient>
-                                </defs>
-                        
-                    <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
-                    <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
-                    <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress" stroke-dasharray="753.98" stroke-dashoffset="0"/>
-                </svg>
-                <div class="timer-display">
-    <span class="timer-time" id="timer-time">25:00</span>
-    <span class="timer-label" id="timer-label">Focus Time</span>
-    <span class="ember-glow" id="ember-glow"></span>
-</div>
+            <div class="timer-zone">
+                <button class="btn-time-adjust" id="btn-minus5" title="Remove 5 minutes" onclick="app.adjustTimer(-300)">
+                    <span class="adjust-icon">−</span>
+                    <span class="adjust-label">5m</span>
+                </button>
+
+                <div class="timer-container" id="timer-container">
+                    <svg class="timer-ring" viewBox="0 0 260 260">
+                        <defs>
+                            <filter id="saber-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <filter id="saber-glow-intense"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="timer-grad" x1="0" y1="130" x2="260" y2="130" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ecdc4"/><stop offset="100%" stop-color="#ffe66d"/></linearGradient>
+                        </defs>
+                        <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
+                        <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
+                        <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress" stroke-dasharray="753.98" stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="timer-display">
+                        <span class="timer-time" id="timer-time">25:00</span>
+                        <span class="timer-label" id="timer-label">Focus Time</span>
+                        <span class="ember-glow" id="ember-glow"></span>
+                    </div>
+                </div>
+
+                <button class="btn-time-adjust btn-time-adjust--add" id="btn-plus5" title="Add 5 minutes" onclick="app.adjustTimer(300)">
+                    <span class="adjust-icon">+</span>
+                    <span class="adjust-label">5m</span>
+                </button>
             </div>
 
             <div class="controls">
@@ -349,6 +364,11 @@
                 <span class="theme-card-icon">💨</span>
                 <span class="theme-card-label">Terea</span>
             </button>
+            <button class="theme-card" id="theme-btn-medical" data-theme="medical" onclick="app.setThemePreview('medical')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#0a1628,#00b4d8)"></span>
+                <span class="theme-card-icon">🩺</span>
+                <span class="theme-card-label">Medical</span>
+            </button>
         </div>
     </div>
 
@@ -583,6 +603,110 @@
     </div>
 </main>
 
+    <!-- Medical Study Panel -->
+<main class="tab-content" id="panel-medical" role="tabpanel" aria-labelledby="tab-medical">
+  <div class="med-dashboard">
+    <div class="med-status-bar">
+      <div class="med-status-item">
+        <span class="med-status-label">TOPIC</span>
+        <span class="med-status-val" id="med-current-topic">—</span>
+      </div>
+      <div class="med-timer-display">
+        <span id="med-timer-time">00:00</span>
+        <span class="med-status-label" style="display:block;margin-top:2px;">SESSION</span>
+      </div>
+      <div class="med-status-item">
+        <span class="med-status-label">CARDS</span>
+        <span class="med-status-val" id="med-card-count">—</span>
+      </div>
+    </div>
+
+    <div id="med-view-plan" class="med-view">
+      <div class="med-exam-row">
+        <label for="med-exam-date">Exam date</label>
+        <input type="date" id="med-exam-date" class="med-date-input">
+        <span id="med-exam-countdown"></span>
+      </div>
+      <div class="med-section">
+        <div class="med-section-title">Topic</div>
+        <div class="med-topic-grid" id="med-topic-grid"></div>
+      </div>
+      <div class="med-section">
+        <div class="med-section-title">Study Mode</div>
+        <div class="med-mode-list" id="med-mode-list"></div>
+      </div>
+      <div class="med-section" id="med-source-section">
+        <div class="med-section-title">Cards</div>
+        <div class="med-card-source">
+          <button class="med-source-btn active" data-source="manual">✏️ Manual</button>
+          <button class="med-source-btn" data-source="import">📂 Import CSV/TSV</button>
+        </div>
+        <div id="med-manual-entry">
+          <div id="med-manual-list"></div>
+          <button class="btn-med-add" id="btn-med-add-card">+ Add Card</button>
+        </div>
+        <div id="med-import-area" style="display:none">
+          <textarea class="med-import-text" id="med-import-text" placeholder="Paste cards — one per line:&#10;Question, Answer&#10;or front[Tab]back&#10;(Anki TSV exports work directly)"></textarea>
+          <div class="med-import-controls">
+            <label class="med-file-label" for="med-import-file">📂 Open file</label>
+            <input type="file" id="med-import-file" accept=".csv,.txt,.tsv" hidden>
+            <button class="btn-med-parse" id="btn-med-parse">Parse</button>
+          </div>
+          <div class="med-import-preview" id="med-import-preview" style="display:none"></div>
+        </div>
+      </div>
+      <div class="med-missed-info" id="med-missed-info" style="display:none">
+        🔄 <span><strong id="med-missed-count">0</strong> cards in missed queue</span>
+      </div>
+      <button class="btn-med-start" id="btn-med-start">▶ Start Study Block</button>
+    </div>
+
+    <div id="med-view-review" class="med-view" style="display:none">
+      <div class="med-progress-bar"><div class="med-progress-fill" id="med-progress-fill"></div></div>
+      <div class="med-rapid-countdown" id="med-rapid-countdown"></div>
+      <div class="med-card-wrapper">
+        <div class="med-card" id="med-card">
+          <div class="med-card-face med-card-front">
+            <div class="med-card-category" id="med-card-category"></div>
+            <div class="med-card-question" id="med-card-question"></div>
+            <div class="med-card-hint">Press Space to reveal</div>
+          </div>
+          <div class="med-card-face med-card-back">
+            <div class="med-card-answer" id="med-card-answer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="med-actions" id="med-actions-reveal">
+        <button class="med-btn-reveal" id="btn-med-reveal">Reveal Answer</button>
+      </div>
+      <div class="med-actions" id="med-actions-confidence" style="display:none">
+        <button class="med-conf-btn med-conf-easy" data-confidence="easy">✓ Easy</button>
+        <button class="med-conf-btn med-conf-unsure" data-confidence="unsure">⚡ Unsure</button>
+        <button class="med-conf-btn med-conf-missed" data-confidence="missed">✗ Missed</button>
+      </div>
+      <div class="med-shortcuts-hint">Space · 1 Easy · 2 Unsure · 3 Missed</div>
+      <button class="med-btn-end" id="btn-med-end">End Session Early</button>
+    </div>
+
+    <div id="med-view-summary" class="med-view" style="display:none">
+      <div class="med-summary-header">
+        <div class="med-summary-grade" id="med-summary-grade">—</div>
+        <div class="med-summary-meta" id="med-summary-meta">Session complete</div>
+      </div>
+      <div class="med-summary-stats">
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-easy">0</span><span class="med-stat-lbl">Easy ✓</span></div>
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-unsure">0</span><span class="med-stat-lbl">Unsure ⚡</span></div>
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-missed">0</span><span class="med-stat-lbl">Missed ✗</span></div>
+      </div>
+      <div class="med-missed-list" id="med-missed-list" style="display:none"></div>
+      <div class="med-summary-actions">
+        <button class="med-btn-retry" id="btn-med-retry" style="display:none">🔄 Review Missed</button>
+        <button class="med-btn-new" id="btn-med-new">New Session</button>
+      </div>
+    </div>
+  </div>
+</main>
+
   <!-- Shortcut Modal -->
 <div id="shortcut-modal" class="modal" style="display:none;">
   <div class="modal-content glass-card">
@@ -642,7 +766,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -664,6 +788,8 @@ window.firebaseAuth = auth;
 window.firebaseDb = db;
   window.GoogleAuthProvider = GoogleAuthProvider;
   window.signInWithPopup = signInWithPopup;
+  window.signInWithRedirect = signInWithRedirect;
+  window.getRedirectResult = getRedirectResult;
   window.signOutFb = signOut;
   window.onAuthStateChanged = onAuthStateChanged;
   window.firestoreDoc = doc;
@@ -752,6 +878,7 @@ window.firestoreGetDoc = getDoc;
     </div>
 
         <script src="ambience.js"></script>
+<script src="medical.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

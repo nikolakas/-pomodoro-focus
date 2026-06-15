@@ -44,6 +44,8 @@ const app = {
         breathingState: { active: false, interval: null, phase: 0 },
         hyperspaceActive: false,
         modeTimers: { work: null, shortBreak: null, longBreak: null },
+        timeAdjustment: 0,
+        adjustedTotal: null,
        sceneVolumes: {},
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0, bouzoukia: 0 },
       currentIntention: null,
@@ -88,21 +90,43 @@ async initFirebase() {
     const authName = document.getElementById('auth-name');
     const authAvatar = document.getElementById('auth-avatar');
 
+    const doSignIn = async () => {
+        if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) {
+            this.showToast('Auth not ready', 'Please wait a moment and try again.', '⚠️');
+            return;
+        }
+        const provider = new window.GoogleAuthProvider();
+        try {
+            await window.signInWithPopup(window.firebaseAuth, provider);
+        } catch (err) {
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+                if (window.signInWithRedirect) {
+                    await window.signInWithRedirect(window.firebaseAuth, provider);
+                } else {
+                    this.showToast('Popup blocked', 'Allow popups for this site and try again.', '⚠️');
+                }
+            } else if (err.code === 'auth/unauthorized-domain') {
+                this.showToast('Domain not authorized', 'Check Firebase console authorized domains.', '⚠️');
+                console.error('Auth domain error:', err);
+            } else {
+                this.showToast('Sign-in failed', err.message || 'Please try again.', '⚠️');
+                console.error('Google sign-in failed:', err);
+            }
+        }
+    };
+
     if (btnAuth) {
         btnAuth.style.display = 'inline-flex';
         btnAuth.textContent = 'Sign in with Google';
-        btnAuth.onclick = async () => {
-            try {
-                if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) {
-                    console.error('Firebase auth not ready');
-                    return;
-                }
-                const provider = new window.GoogleAuthProvider();
-                await window.signInWithPopup(window.firebaseAuth, provider);
-            } catch (err) {
-                console.error('Google sign-in failed:', err);
+        btnAuth.onclick = doSignIn;
+    }
+
+    if (window.getRedirectResult && window.firebaseAuth) {
+        window.getRedirectResult(window.firebaseAuth).catch(err => {
+            if (err && err.code && err.code !== 'auth/no-current-user') {
+                this.showToast('Sign-in failed', err.message || 'Please try again.', '⚠️');
             }
-        };
+        });
     }
 
     if (
@@ -181,15 +205,7 @@ async initFirebase() {
 
             if (btnAuth) {
                 btnAuth.textContent = 'Sign in';
-                btnAuth.onclick = async () => {
-                    try {
-                        if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
-                        const provider = new window.GoogleAuthProvider();
-                        await window.signInWithPopup(window.firebaseAuth, provider);
-                    } catch (err) {
-                        console.error('Google sign-in failed:', err);
-                    }
-                };
+                btnAuth.onclick = doSignIn;
             }
 
             if (authName) authName.textContent = '';
@@ -327,6 +343,11 @@ this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
   if (this.elements.btnSkip) {
 this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
+
+  const btnMinus5 = document.getElementById('btn-minus5');
+  const btnPlus5 = document.getElementById('btn-plus5');
+  if (btnMinus5) btnMinus5.addEventListener('click', () => this.adjustTimer(-300));
+  if (btnPlus5) btnPlus5.addEventListener('click', () => this.adjustTimer(300));
 
   if (this.elements.btnZen) {
     this.elements.btnZen.addEventListener('click', () => {
@@ -553,11 +574,12 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     });
   }
 
-  // Tomato 🍅 icon — 3x click easter egg
+  // Tomato 🍅 icon — 3x click easter egg (Terea only)
   let _logoClicks = 0, _logoTimer = null;
   const logoIconEl = document.getElementById('logo-icon');
   if (logoIconEl) {
     logoIconEl.addEventListener('click', () => {
+      if (this.state.settings.theme !== 'terea') return;
       _logoClicks++;
       clearTimeout(_logoTimer);
       _logoTimer = setTimeout(() => { _logoClicks = 0; }, 700);
@@ -760,6 +782,9 @@ switchTab(target) {
     if (target === 'notes') {
         this.initNotebook();
     }
+    if (target === 'medical' && window.MedicalModule) {
+        window.MedicalModule.init();
+    }
 },
 
     // ===================================
@@ -768,6 +793,8 @@ switchTab(target) {
 setMode(mode, preserveTime = false) {
     if (this.state.isRunning) this.stopTimer();
     this.state.mode = mode;
+    this.state.timeAdjustment = 0;
+    this.state.adjustedTotal = null;
     this.elements.modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
 
     const m = mode === 'work' ? this.state.settings.work :
@@ -812,15 +839,15 @@ setMode(mode, preserveTime = false) {
 
 showTereaStretchPrompt(mode) {
     const prompts = mode === 'longBreak' ? [
-        'Stretch those quads, Maria 👑',
+        'Stretch those quads 👑',
         'Hip flexors — hold 30s each side 💪',
-        'Roll out those shoulders, queen 🔥',
+        'Roll out those shoulders 🔥',
         'Full body stretch. You earned it. 💨'
     ] : [
-        'Neck rolls. Left, right. 30 seconds. 👑',
-        'Stand up, shake it out. Quick. 💨',
+        'Neck rolls. Left, right. 30 seconds. 💨',
+        'Stand up, shake it out. Quick. 💪',
         'Glute squeeze, 10 reps. Right now. 🔥',
-        'Deep breath. In... and out. 💪'
+        'Deep breath. In... and out. ✨'
     ];
     const msg = prompts[Math.floor(Math.random() * prompts.length)];
     this.showToast(msg, mode === 'longBreak' ? 'Bouzoukia after this. 🎶' : 'Back in a minute.', '🧘‍♀️');
@@ -870,6 +897,7 @@ toggleTimer() {
 
     this.renderSubtaskTracker();
     this.elements.container.classList.add('running');
+    document.body.classList.add('timer-running');
     // Terea startup cascade animation
     if (this.state.settings.theme === 'terea') {
         const tereaEl = document.getElementById('terea-lights');
@@ -918,6 +946,7 @@ toggleTimer() {
     clearInterval(this.state.timer);
     this.saveSessionState();
     this.elements.container.classList.remove('running');
+    document.body.classList.remove('timer-running');
     if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
     if (this.elements.iconPause) this.elements.iconPause.style.display = 'none';
     const sf = document.getElementById('starfield');
@@ -933,10 +962,37 @@ toggleTimer() {
     },
 
     skipSession() {
-        this.state.elapsedFocusMinutes = Math.round((this.state.settings.work * 60 - this.state.timeLeft) / 60);
+        const totalSecs = this.state.adjustedTotal || (this.state.settings.work * 60);
+        this.state.elapsedFocusMinutes = Math.max(0, Math.round((totalSecs - this.state.timeLeft) / 60));
 		this.state.timeLeft = 0;
 		        this.stopTimer();
         this.onTimerComplete();
+    },
+
+    adjustTimer(deltaSecs) {
+        if (!this.state.isRunning) {
+            this.showToast('Timer not running', 'Start the timer first, then use ±5 min.', '⏱');
+            return;
+        }
+        const newTime = this.state.timeLeft + deltaSecs;
+        if (newTime < 10) return;
+
+        if (!this.state.adjustedTotal) {
+            this.state.adjustedTotal = (this.state.mode === 'work' ? this.state.settings.work :
+                this.state.mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long) * 60;
+        }
+
+        this.state.timeLeft = newTime;
+        this.state.adjustedTotal += deltaSecs;
+        this.state.timeAdjustment = (this.state.timeAdjustment || 0) + deltaSecs;
+
+        this.updateTimeDisplay();
+        this.updateRing();
+        this.saveSessionState();
+
+        const mins = Math.abs(deltaSecs / 60);
+        const label = deltaSecs > 0 ? `+${mins} min added` : `−${mins} min removed`;
+        this.showToast(label, 'Counted in your study time.', deltaSecs > 0 ? '⏩' : '⏪');
     },
 
     onTimerComplete() {
@@ -957,7 +1013,10 @@ toggleTimer() {
             this.saveStats();
 	            const user = window.firebaseAuth?.currentUser; if (user) this.saveToFirestore(user.uid);
             const completedIntention = this.state.currentIntention;
-            this.recordSession(this.state.elapsedFocusMinutes != null ? this.state.elapsedFocusMinutes : this.state.settings.work, 'focus');
+            const effectiveMinutes = this.state.elapsedFocusMinutes != null
+                ? this.state.elapsedFocusMinutes
+                : Math.round((this.state.adjustedTotal || (this.state.settings.work * 60)) / 60);
+            this.recordSession(effectiveMinutes, 'focus');
 
 			        this.state.elapsedFocusMinutes = null;
             this.elements.container.classList.add('celebrating');
@@ -966,8 +1025,7 @@ toggleTimer() {
                 this.elements.container.classList.remove('celebrating');
                 this.elements.container.classList.remove('timer-pulse');
             }, 2000);
-            this.createConfetti();
-			        if (this.state.settings.theme === 'pink') this.createHearts();
+            if (this.state.settings.theme === 'terea') this.createConfetti();
             if (this.state.settings.theme === 'terea') {
                 const tereaToasts = [
                     ['25 λεπτά καθαρά. Τέρεα τώρα.', 'Η βασίλισσα τελείωσε.'],
@@ -1000,7 +1058,7 @@ setTimeout(() => {
     this.openJournalPrompt(prompt);
 }, 3000);
             // Fixed: unified 3-arg signature
-            this.showSessionRecap(completedIntention, this.state.settings.work, 15);
+            this.showSessionRecap(completedIntention, effectiveMinutes, 15);
 
             const nextMode = (this.state.currentRound % this.state.settings.rounds === 0) ? 'longBreak' : 'shortBreak';
             this.state.modeTimers.work = null;
@@ -1041,7 +1099,9 @@ saveSessionState() {
         isRunning: this.state.isRunning,
         currentRound: this.state.currentRound,
         currentIntention: this.state.currentIntention,
-        currentSubtasks: this.state.currentSubtasks
+        currentSubtasks: this.state.currentSubtasks,
+        timeAdjustment: this.state.timeAdjustment,
+        adjustedTotal: this.state.adjustedTotal
     }));
 },
 
@@ -1057,6 +1117,8 @@ restoreSessionState() {
         this.state.currentRound = s.currentRound || this.state.currentRound;
         this.state.currentIntention = s.currentIntention || null;
         this.state.currentSubtasks = s.currentSubtasks || [];
+        this.state.timeAdjustment = s.timeAdjustment || 0;
+        this.state.adjustedTotal = s.adjustedTotal || null;
 
         this.setMode(s.mode, true);
 
@@ -1080,9 +1142,9 @@ updateTimeDisplay() {
 },
 
     updateRing() {
-        const total = (this.state.mode === 'work' ? this.state.settings.work :
-                this.state.mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long) * 60;
-        const p = total > 0 ? this.state.timeLeft / total : 1;
+        const total = this.state.adjustedTotal || ((this.state.mode === 'work' ? this.state.settings.work :
+                this.state.mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long) * 60);
+        const p = total > 0 ? Math.min(1, this.state.timeLeft / total) : 1;
         const offset = 753.98 - (p * 753.98);
         this.elements.progress.setAttribute('stroke-dashoffset', offset);
         if (this.elements.glow) this.elements.glow.setAttribute('stroke-dashoffset', offset);
@@ -1176,25 +1238,36 @@ el.addEventListener('click', () => {
         }, 1200);
     },
   showMotivationPop() {
-		const isPink  = this.state.settings.theme === 'pink';
-		const isTerea = this.state.settings.theme === 'terea';
+		const theme   = this.state.settings.theme;
+		const isPink  = theme === 'pink';
+		const isTerea = theme === 'terea';
+		const isSw    = theme === 'starwars';
 
-		const msgs = isTerea
+		const msgs = isSw
 			? [
-				'Gym queen mode 💨',
-				'Ανέβα, Maria! 🔥',
+				'Use the Force 🌌',
+				'A Jedi does not hurry',
+				'Jedi focus — activated ⚔️',
+				'The Force is with you',
+				'Discipline of the Jedi Order',
+				'Trust the Force 🌠'
+			]
+			: isTerea
+			? [
+				'Gym mode activated 💨',
+				'Lock in. No distractions. 🔥',
 				'Bouzoukia after this 🎶',
-				'Locked in like a queen 👑',
-				'Greek goddess energy ✨',
-				'Τέρεα mode activated 💨'
+				'Queen of focus 👑',
+				'Deep work energy ✨',
+				'Terea mode activated 💨'
 			]
 			: isPink
 			? [
-				'For my friend Marianna',
+				'Soft focus. Strong results.',
 				'You are doing amazing',
-				'Marianna mode activated',
+				'Gentle mode — fully locked in 🌸',
 				'Soft focus, strong heart',
-				'You got this, Marianna'
+				'You've got this — always'
 			]
 			: [
 				'You got this!',
@@ -1710,7 +1783,7 @@ this.state.history.push({
 
         if (this.state.level > cl && cl > 0) {
             if (this.state.settings.theme === 'terea') {
-                this.showToast('Maria ανέβηκε επίπεδο 👑', rankName, '💨');
+                this.showToast('Επίπεδο ανέβηκε! 👑', rankName, '💨');
             } else {
                 this.showToast('Level Up!', `You've reached Level ${this.state.level}: ${rankName}`, '⭐');
             }
@@ -1722,13 +1795,15 @@ this.state.history.push({
     // ===================================
 updateTheme() {
 		const theme  = this.state.settings.theme;
-		const isSw   = theme === 'starwars';
-		const isPink  = theme === 'pink';
-		const isTerea = theme === 'terea';
+		const isSw      = theme === 'starwars';
+		const isPink    = theme === 'pink';
+		const isTerea   = theme === 'terea';
+		const isMedical = theme === 'medical';
 
 		document.body.classList.toggle('theme-starwars', isSw);
 		document.body.classList.toggle('theme-pink',     isPink);
 		document.body.classList.toggle('theme-terea',    isTerea);
+		document.body.classList.toggle('theme-medical',  isMedical);
 		document.body.classList.toggle('minimal-mode',   isPink || isTerea);
 
 		// Sync 4-button active state
@@ -1758,6 +1833,10 @@ updateTheme() {
 			document.body.style.setProperty('--accent', '#00d4c8');
 			document.body.style.setProperty('--accent-glow', 'rgba(0,212,200,0.35)');
 			document.body.style.setProperty('--accent-glow-intense', 'rgba(0,212,200,0.75)');
+		} else if (isMedical) {
+			document.body.style.removeProperty('--accent');
+			document.body.style.removeProperty('--accent-glow');
+			document.body.style.removeProperty('--accent-glow-intense');
 		} else {
 			this.setAccent(this.state.settings.accent);
 		}
@@ -1908,14 +1987,14 @@ setThemePreview(theme) {
             if (subtitle) subtitle.textContent = 'May the force be with you';
         } else if (theme === 'terea') {
             if (title) title.textContent = 'TEREA FOCUS';
-            if (subtitle) subtitle.textContent = 'For Maria. Queen mode only. 💨';
+            if (subtitle) subtitle.textContent = 'Terea mode. Queen focus only. 💨';
         } else {
             if (title) title.textContent = 'Pomodoro Focus';
             if (subtitle) subtitle.textContent = '';
         }
         const titleEl = document.getElementById('notebook-cover-title');
         const emblem = document.querySelector('.notebook-emblem');
-        if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : theme === 'terea' ? 'Maria\'s Journal 💨' : 'My Journal';
+        if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : theme === 'terea' ? 'Terea Journal 💨' : 'My Journal';
         if (emblem) emblem.textContent = theme === 'starwars' ? '⚔️' : theme === 'terea' ? '👑' : '📖';
     },
 

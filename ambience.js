@@ -603,36 +603,68 @@ window.AmbienceModule = (() => {
         nodes.push(o);
       });
 
-      // Saxophone melody — smooth, slightly behind the beat (jazz feel)
-      if (Math.random() > 0.2) {
+      // ---- Saxophone — sawtooth + lowpass for warm reed tone, vibrato, longer phrases ----
+      if (Math.random() > 0.15) {
         const melodyNotes = [
-          ...prog.tones.map(f => f * 2),
-          ...prog.tones,
-          prog.tones[2] * 1.5,
-          prog.tones[1] * 1.333
+          ...prog.tones.map(f => f * 2),        // upper octave
+          ...prog.tones,                          // chord tones
+          prog.tones[2] * 1.5,                   // 5th above 3rd
+          prog.tones[1] * 1.333,                 // passing tone
+          prog.tones[0] * 1.125                  // maj 2nd above root
         ];
-        const count = 2 + Math.floor(Math.random() * 4);
-        let mOffset = 0.3 + Math.random() * 0.6;
+        const count = 3 + Math.floor(Math.random() * 4);
+        let mOffset = 0.2 + Math.random() * 0.5;
         for (let m = 0; m < count; m++) {
           const freq = melodyNotes[Math.floor(Math.random() * melodyNotes.length)];
-          const dur = 0.25 + Math.random() * 0.8;
-          const sax = ac.createOscillator(), saxG = ac.createGain();
+          const dur = 0.35 + Math.random() * 1.1;
+          // Sawtooth oscillator gives reed/brass harmonic content
+          const sax = ac.createOscillator(), saxFilt = ac.createBiquadFilter(), saxG = ac.createGain();
+          sax.type = 'sawtooth'; sax.frequency.value = freq;
+          // Lowpass filter shapes the tone — lower cutoff = darker sax
+          saxFilt.type = 'lowpass'; saxFilt.frequency.value = freq * 3.5; saxFilt.Q.value = 1.2;
+          // Vibrato LFO
           const vib = ac.createOscillator(), vibG = ac.createGain();
-          sax.type = 'sine'; sax.frequency.value = freq;
-          vib.type = 'sine'; vib.frequency.value = 4.8 + Math.random() * 1.5;
-          vibG.gain.value = freq * 0.012; // subtle vibrato depth
+          vib.type = 'sine'; vib.frequency.value = 5.2 + Math.random() * 1.2;
+          vibG.gain.value = freq * 0.009;
           vib.connect(vibG); vibG.connect(sax.frequency);
-          const saxVol = 0.025 + Math.random() * 0.01;
+          const saxVol = 0.038 + Math.random() * 0.016;
+          // Breath attack + sustain + release
           saxG.gain.setValueAtTime(0, t + mOffset);
-          saxG.gain.linearRampToValueAtTime(saxVol, t + mOffset + 0.06);
-          saxG.gain.setValueAtTime(saxVol * 0.9, t + mOffset + dur - 0.08);
+          saxG.gain.linearRampToValueAtTime(saxVol * 0.6, t + mOffset + 0.04);
+          saxG.gain.linearRampToValueAtTime(saxVol, t + mOffset + 0.1);
+          saxG.gain.setValueAtTime(saxVol * 0.88, t + mOffset + dur - 0.12);
           saxG.gain.exponentialRampToValueAtTime(0.001, t + mOffset + dur);
-          sax.connect(saxG).connect(dest);
-          sax.start(t + mOffset); sax.stop(t + mOffset + dur + 0.05);
-          vib.start(t + mOffset); vib.stop(t + mOffset + dur + 0.05);
+          sax.connect(saxFilt).connect(saxG).connect(dest);
+          sax.start(t + mOffset); sax.stop(t + mOffset + dur + 0.06);
+          vib.start(t + mOffset); vib.stop(t + mOffset + dur + 0.06);
           nodes.push(sax, vib);
-          mOffset += dur + 0.05 + Math.random() * 0.25;
-          if (mOffset > 4.2) break;
+          mOffset += dur + 0.04 + Math.random() * 0.2;
+          if (mOffset > 4.5) break;
+        }
+      }
+
+      // ---- Piano melody line — sparse single-note phrases above the comping ----
+      if (Math.random() > 0.45) {
+        const hiNotes = prog.tones.map(f => f * 4).concat(prog.tones.map(f => f * 2));
+        let pOffset = 0.5 + Math.random() * 1.5;
+        const pCount = 2 + Math.floor(Math.random() * 3);
+        for (let p = 0; p < pCount; p++) {
+          const freq = hiNotes[Math.floor(Math.random() * hiNotes.length)];
+          const dur = 0.2 + Math.random() * 0.5;
+          const po = ac.createOscillator(), po2 = ac.createOscillator(), pg = ac.createGain();
+          po.type = 'sine'; po.frequency.value = freq;
+          po2.type = 'triangle'; po2.frequency.value = freq * 2;
+          const vol = 0.018 + Math.random() * 0.008;
+          pg.gain.setValueAtTime(0, t + pOffset);
+          pg.gain.linearRampToValueAtTime(vol, t + pOffset + 0.015);
+          pg.gain.exponentialRampToValueAtTime(0.001, t + pOffset + dur);
+          po.connect(pg).connect(dest);
+          po2.connect(pg);
+          po.start(t + pOffset); po.stop(t + pOffset + dur + 0.05);
+          po2.start(t + pOffset); po2.stop(t + pOffset + dur + 0.05);
+          nodes.push(po, po2);
+          pOffset += dur + 0.08 + Math.random() * 0.3;
+          if (pOffset > 4.5) break;
         }
       }
 
@@ -640,27 +672,19 @@ window.AmbienceModule = (() => {
     };
 
     playPianoComp();
-    // 4.8s per chord change — one bar at ~50bpm swing
     const compIv = setInterval(playPianoComp, 4800);
     nodes.push({ stop: () => { clearInterval(compIv); state.active = false; } });
 
-    // Brush snare — continuous swing feel (filtered pink noise)
-    const brush = createNoise('pink'), brushG = createGainNode(0.007);
-    brush.connect(createFilter('bandpass', 5000, 1.5)).connect(brushG).connect(dest);
-    brush.start(); nodes.push(brush);
-    // Swing LFO — emphasis on 2 and 4 of a slow 4/4
-    nodes.push(createLFO(0.417, 0.004, 0.018, brushG.gain)); // ~50bpm
-
-    // Hi-hat — high-frequency shimmer with subtle swing pulse
-    const hihat = createNoise('white'), hihatG = createGainNode(0.003);
-    hihat.connect(createFilter('highpass', 9000, 0.4)).connect(hihatG).connect(dest);
-    hihat.start(); nodes.push(hihat);
-    nodes.push(createLFO(1.67, 0.002, 0.009, hihatG.gain)); // 8th-note swing feel
-
-    // Room ambience — very subtle reverb-like noise pad
-    const room = createNoise('brown'), roomG = createGainNode(0.006);
-    room.connect(createFilter('lowpass', 300, 0.5)).connect(roomG).connect(dest);
-    room.start(); nodes.push(room);
+    // Very subtle ride cymbal clicks — just a shimmer, not breathing
+    const rideIv = setInterval(() => {
+      if (!state.active || !ctx || ctx.state === 'closed') return;
+      const t2 = ctx.currentTime;
+      const n = ctx.createOscillator(), g = ctx.createGain();
+      n.frequency.value = 8000 + Math.random() * 4000;
+      g.gain.setValueAtTime(0.005, t2); g.gain.exponentialRampToValueAtTime(0.001, t2 + 0.04);
+      n.connect(g).connect(dest); n.start(t2); n.stop(t2 + 0.05);
+    }, 600);
+    nodes.push({ stop: () => clearInterval(rideIv) });
 
     return nodes;
   }
