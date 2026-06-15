@@ -1870,6 +1870,12 @@ updateTheme() {
 			];
 			quoteEl.textContent = medQuotes[Math.floor(Math.random() * medQuotes.length)];
 		}
+
+		// ECG canvas — start in medical, stop otherwise
+		if (window.MedicalModule) {
+			if (isMedical) window.MedicalModule.startECG();
+			else window.MedicalModule.stopECG();
+		}
 	},
 
 checkBouzoukiaHours() {
@@ -2466,36 +2472,112 @@ deleteHistoryItem(date) {
     }, 8000);
 },
 	initNotebook() {
-    const cover = document.getElementById('notebook-cover');
+    const cover    = document.getElementById('notebook-cover');
     const openBook = document.getElementById('notebook-open');
     if (!cover || !openBook) return;
 
-    // Set cover title
-    const titleEl = document.getElementById('notebook-cover-title');
-    const isSw = document.body.classList.contains('theme-starwars');
-    if (titleEl) titleEl.textContent = isSw ? 'Jedi Archives' : 'My Journal';
-    if (cover.querySelector('.notebook-emblem')) {
-        cover.querySelector('.notebook-emblem').textContent = isSw ? '⚔️' : '📖';
-    }
+    const theme = this.state.settings.theme;
+    const themes = {
+        starwars: { title: 'Jedi Archives',    emblem: '⚔️',  close: '← Close Archives' },
+        pink:     { title: 'Rose Diary',        emblem: '🌸',  close: '← Close Diary'    },
+        terea:    { title: 'Gym Log',           emblem: '🏋️',  close: '← Close Log'      },
+        medical:  { title: 'Clinical Binder',   emblem: '🩺',  close: '← Close Binder'   },
+        normal:   { title: 'My Journal',        emblem: '📖',  close: '← Close Journal'  },
+    };
+    const cfg = themes[theme] || themes.normal;
 
-    cover.addEventListener('click', () => {
-        cover.style.display = 'none';
-        openBook.style.display = 'block';
-        this.renderNotes();
+    const titleEl = document.getElementById('notebook-cover-title');
+    if (titleEl) titleEl.textContent = cfg.title;
+    const emblemEl = cover.querySelector('.notebook-emblem');
+    if (emblemEl) emblemEl.textContent = cfg.emblem;
+
+    // Remove old listener by cloning
+    const newCover = cover.cloneNode(true);
+    cover.parentNode.replaceChild(newCover, cover);
+
+    newCover.addEventListener('click', () => {
+        newCover.classList.add('opening');
+        setTimeout(() => {
+            newCover.style.display = 'none';
+            newCover.classList.remove('opening');
+            openBook.style.display = 'block';
+            openBook.classList.remove('bookReveal');
+            void openBook.offsetWidth; // reflow
+            openBook.classList.add('bookReveal');
+            this.renderNotes();
+        }, 280);
     });
 
-    // Add close button if not already there
-    if (!document.getElementById('btn-notebook-close')) {
+    const existing = document.getElementById('btn-notebook-close');
+    if (existing) {
+        existing.textContent = cfg.close;
+        existing.onclick = () => { openBook.style.display = 'none'; newCover.style.display = 'flex'; };
+    } else {
         const closeBtn = document.createElement('button');
         closeBtn.className = 'notebook-close-btn';
         closeBtn.id = 'btn-notebook-close';
-        closeBtn.textContent = isSw ? '← Close Archives' : '← Close Journal';
+        closeBtn.textContent = cfg.close;
         openBook.appendChild(closeBtn);
         closeBtn.addEventListener('click', () => {
             openBook.style.display = 'none';
-            cover.style.display = 'flex';
+            newCover.style.display = 'flex';
         });
     }
+},
+
+addThinkNote() {
+    const layer = document.getElementById('thinknotes-layer');
+    if (!layer) return;
+    const theme = this.state.settings.theme;
+
+    const note = document.createElement('div');
+    note.className = 'thinknote thinknote-' + theme;
+
+    // Random start position (avoid edges)
+    const left = 10 + Math.random() * 65;
+    const top  = 15 + Math.random() * 55;
+    const deg  = (Math.random() * 8 - 4).toFixed(1);
+
+    note.style.cssText = `left:${left}%;top:${top}%;transform:rotate(${deg}deg);`;
+    note.innerHTML = `
+      <button class="thinknote-close" title="Remove">×</button>
+      <div class="thinknote-body" contenteditable="true" spellcheck="false" data-placeholder="Your thought..."></div>
+    `;
+
+    // Close
+    note.querySelector('.thinknote-close').addEventListener('click', () => note.remove());
+
+    // Drag via the note itself (not body)
+    note.addEventListener('pointerdown', e => {
+      if (e.target.classList.contains('thinknote-close') ||
+          e.target.classList.contains('thinknote-body')) return;
+      e.preventDefault();
+      note.setPointerCapture(e.pointerId);
+      const rect = note.getBoundingClientRect();
+      const ox = e.clientX - rect.left;
+      const oy = e.clientY - rect.top;
+      note.style.transition = 'none';
+      note.style.zIndex = '9999';
+
+      const onMove = ev => {
+        note.style.left = (ev.clientX - ox) + 'px';
+        note.style.top  = (ev.clientY - oy) + 'px';
+        note.style.right = 'auto';
+        note.style.bottom = 'auto';
+      };
+      const onUp = () => {
+        note.removeEventListener('pointermove', onMove);
+        note.removeEventListener('pointerup',   onUp);
+        note.style.transition = '';
+        note.style.zIndex = '';
+      };
+      note.addEventListener('pointermove', onMove);
+      note.addEventListener('pointerup', onUp);
+    });
+
+    layer.appendChild(note);
+    // Focus the editable body
+    setTimeout(() => note.querySelector('.thinknote-body').focus(), 60);
 },
 
     // ===================================

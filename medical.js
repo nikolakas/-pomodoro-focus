@@ -550,19 +550,170 @@ window.MedicalModule = (() => {
 
     const el = document.createElement('div');
     el.className = 'med-postit';
+
+    // Convert % to px for draggable positioning
+    const startLeft = Math.round(window.innerWidth  * safeLeft  / 100);
+    const startTop  = Math.round(window.innerHeight * safeTop   / 100);
+
     el.style.cssText = `
       background: ${color};
-      top: ${safeTop}%;
-      left: ${safeLeft}%;
+      left: ${startLeft}px;
+      top:  ${startTop}px;
       --rot: rotate(${deg}deg);
       transform: rotate(${deg}deg);
     `;
     el.innerHTML = `
+      <div class="med-postit-handle" title="Drag"></div>
       <button class="med-postit-close" title="Remove" onclick="this.parentElement.remove()">×</button>
       <span class="med-postit-text">${quote.replace(/\n/g, '<br>')}</span>
     `;
+
+    // Pointer-events drag
+    const handle = el.querySelector('.med-postit-handle');
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      const rect = el.getBoundingClientRect();
+      const ox = e.clientX - rect.left;
+      const oy = e.clientY - rect.top;
+      el.style.transform = 'rotate(' + deg + 'deg) scale(1.04)';
+      el.style.zIndex = '9999';
+      el.style.transition = 'none';
+
+      const onMove = ev => {
+        el.style.left = (ev.clientX - ox) + 'px';
+        el.style.top  = (ev.clientY - oy) + 'px';
+      };
+      const onUp = () => {
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup',   onUp);
+        el.style.transform = 'rotate(' + deg + 'deg)';
+        el.style.zIndex = '';
+        el.style.transition = '';
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup',   onUp);
+    });
+
     container.appendChild(el);
   }
 
-  return { init, endSession, addPostIt };
+  // ── Canvas ECG animation ─────────────────────────────────────────
+  let _ecgCanvas = null;
+  let _ecgCtx    = null;
+  let _ecgRaf    = null;
+  let _ecgBuf    = null; // Float32Array of y values, length = canvas width
+  let _ecgCursor = 0;
+  let _ecgFrame  = 0;
+
+  // PQRST waveform: given a phase 0-1 within one heartbeat cycle, returns y offset (-1..1)
+  function _pqrstY(phase) {
+    // Flatten the intervals to taste
+    if (phase < 0.07)  return phase / 0.07 * 0.12 - 0.06;           // P rise
+    if (phase < 0.12)  return (1 - (phase - 0.07) / 0.05) * 0.12 - 0.06; // P fall
+    if (phase < 0.18)  return -0.06;                                   // PR segment
+    if (phase < 0.20)  return -0.06 - (phase - 0.18) / 0.02 * 0.2;  // Q dip
+    if (phase < 0.22)  return -0.26 + (phase - 0.20) / 0.02 * 1.26; // R rise
+    if (phase < 0.25)  return 1.0 - (phase - 0.22) / 0.03 * 1.3;    // R fall to S
+    if (phase < 0.27)  return -0.3 + (phase - 0.25) / 0.02 * 0.3;   // S recovery
+    if (phase < 0.34)  return 0.0;                                     // ST segment
+    if (phase < 0.46)  return Math.sin((phase - 0.34) / 0.12 * Math.PI) * 0.28; // T wave
+    return 0;
+  }
+
+  function startECG() {
+    stopECG();
+    _ecgCanvas = document.getElementById('med-ecg-canvas');
+    if (!_ecgCanvas) return;
+    _ecgCtx = _ecgCanvas.getContext('2d');
+
+    function resize() {
+      _ecgCanvas.width  = _ecgCanvas.offsetWidth  || window.innerWidth;
+      _ecgCanvas.height = _ecgCanvas.offsetHeight || 60;
+      _ecgBuf = new Float32Array(_ecgCanvas.width).fill(0.5);
+      _ecgCursor = 0;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    _ecgCanvas._ecgResizeFn = resize;
+
+    // pixels per second: one heartbeat cycle = ~120px wide (slow & calm)
+    const CYCLE_PX = 130;
+    let lastTs = null;
+
+    function draw(ts) {
+      _ecgRaf = requestAnimationFrame(draw);
+      if (!lastTs) { lastTs = ts; return; }
+      const dt = Math.min(ts - lastTs, 50); // cap at 50ms
+      lastTs = ts;
+
+      const W = _ecgCanvas.width;
+      const H = _ecgCanvas.height;
+      const SPEED = 28; // px per second
+
+      const pixelsToAdvance = Math.max(1, Math.round(dt / 1000 * SPEED));
+
+      for (let i = 0; i < pixelsToAdvance; i++) {
+        _ecgFrame = (_ecgFrame + 1) % CYCLE_PX;
+        const phase = _ecgFrame / CYCLE_PX;
+        _ecgBuf[_ecgCursor] = _pqrstY(phase);
+        _ecgCursor = (_ecgCursor + 1) % W;
+      }
+
+      // Draw
+      _ecgCtx.clearRect(0, 0, W, H);
+
+      // Erase zone ahead of cursor (blank ~20px) — scanner effect
+      const ERASE = 22;
+      _ecgCtx.fillStyle = 'rgba(6,15,30,0.92)';
+      const ex = (_ecgCursor - ERASE + W) % W;
+      if (ex < _ecgCursor) {
+        _ecgCtx.fillRect(ex, 0, ERASE, H);
+      } else {
+        _ecgCtx.fillRect(ex, 0, W - ex, H);
+        _ecgCtx.fillRect(0, 0, _ecgCursor, H);
+      }
+
+      // Draw waveform
+      _ecgCtx.beginPath();
+      _ecgCtx.strokeStyle = 'rgba(0,198,224,0.22)';
+      _ecgCtx.lineWidth = 1.5;
+      _ecgCtx.lineJoin = 'round';
+
+      const mid = H * 0.55;
+      const amp = H * 0.36;
+
+      for (let x = 0; x < W; x++) {
+        const y = mid - _ecgBuf[x] * amp;
+        if (x === 0) _ecgCtx.moveTo(x, y);
+        else _ecgCtx.lineTo(x, y);
+      }
+      _ecgCtx.stroke();
+
+      // Glowing cursor dot
+      const cursorY = mid - _ecgBuf[(_ecgCursor - 1 + W) % W] * amp;
+      const grad = _ecgCtx.createRadialGradient(_ecgCursor, cursorY, 0, _ecgCursor, cursorY, 7);
+      grad.addColorStop(0, 'rgba(0,230,255,0.9)');
+      grad.addColorStop(1, 'rgba(0,198,224,0)');
+      _ecgCtx.beginPath();
+      _ecgCtx.arc(_ecgCursor, cursorY, 7, 0, Math.PI * 2);
+      _ecgCtx.fillStyle = grad;
+      _ecgCtx.fill();
+    }
+
+    _ecgRaf = requestAnimationFrame(draw);
+  }
+
+  function stopECG() {
+    if (_ecgRaf) { cancelAnimationFrame(_ecgRaf); _ecgRaf = null; }
+    if (_ecgCanvas && _ecgCanvas._ecgResizeFn) {
+      window.removeEventListener('resize', _ecgCanvas._ecgResizeFn);
+      _ecgCanvas._ecgResizeFn = null;
+    }
+    if (_ecgCtx && _ecgCanvas) {
+      _ecgCtx.clearRect(0, 0, _ecgCanvas.width, _ecgCanvas.height);
+    }
+  }
+
+  return { init, endSession, addPostIt, startECG, stopECG };
 })();

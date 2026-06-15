@@ -1580,36 +1580,22 @@ body.theme-medical::before {
     background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%;
 }
 
-/* Animated ECG line across the bottom of the header area */
-/* ECG background line — PQRST waveform, slow scroll near bottom */
-#med-ecg-bg {
+/* Canvas ECG — real-time PQRST drawn by medical.js startECG() */
+#med-ecg-canvas {
     display: none;
     position: fixed;
     bottom: 18%;
-    left: -100%;
-    width: 300%;
-    height: 60px;
+    left: 0;
+    width: 100vw;
+    height: 70px;
     pointer-events: none;
     z-index: 1;
     opacity: 0;
     transition: opacity 0.8s ease;
 }
-body.theme-medical #med-ecg-bg {
+body.theme-medical #med-ecg-canvas {
     display: block;
     opacity: 1;
-}
-#med-ecg-bg svg {
-    width: 100%;
-    height: 100%;
-    animation: ecgScroll 18s linear infinite;
-}
-#med-ecg-bg path {
-    stroke: rgba(0,198,224,0.13);
-    stroke-width: 1.2;
-}
-@keyframes ecgScroll {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-33.33%); }
 }
 
 /* Timer ring — vital-monitor green-teal pulse */
@@ -2214,6 +2200,235 @@ body.theme-medical #btn-med-motivate { display: flex; }
     from { opacity: 0; transform: var(--rot) translateY(-18px) scale(0.88); }
     to   { opacity: 1; transform: var(--rot) translateY(0)     scale(1); }
 }
+
+/* ===== POST-IT DRAG HANDLE ===== */
+.med-postit-handle {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    background: rgba(0,0,0,0.07);
+    border-radius: 3px 3px 0 0;
+    cursor: grab;
+}
+.med-postit-handle:active { cursor: grabbing; }
+/* Remove the ::before pseudo-element now that handle is a real element */
+.med-postit::before { display: none; }
+
+/* ===== NOTEBOOK FLIP ANIMATION ===== */
+.notebook-cover.opening {
+    animation: coverFlip 0.28s cubic-bezier(0.4,0,0.2,1) forwards;
+    transform-origin: left center;
+}
+@keyframes coverFlip {
+    from { transform: rotateY(0deg);    opacity: 1; }
+    to   { transform: rotateY(-90deg);  opacity: 0; }
+}
+.notebook-open.bookReveal {
+    animation: bookOpen 0.42s cubic-bezier(0.2,0.8,0.2,1) forwards;
+}
+
+/* ===== NOTEBOOK — PINK (ROSE DIARY) ===== */
+body.theme-pink .notebook-cover {
+    background: linear-gradient(135deg, #2d0a1a 0%, #6b1a3d 50%, #2d0a1a 100%);
+    border-color: #ff6eb4;
+    box-shadow: -4px 4px 20px rgba(0,0,0,0.6), 0 0 30px rgba(255,110,180,0.15), inset 0 0 40px rgba(0,0,0,0.3);
+}
+body.theme-pink .notebook-cover::before {
+    background: linear-gradient(90deg, #1a0010, #5a1035, #1a0010);
+    border-right-color: #ff6eb4;
+}
+body.theme-pink .notebook-cover::after { border-color: rgba(255,110,180,0.35); }
+body.theme-pink .notebook-title { color: #ff6eb4; text-shadow: 0 0 20px rgba(255,110,180,0.6); }
+body.theme-pink .notebook-subtitle { color: rgba(255,110,180,0.45); }
+body.theme-pink .notebook-page { background: #fff0f5; }
+body.theme-pink .notebook-page::before {
+    background-image: repeating-linear-gradient(
+        transparent, transparent 27px, rgba(255,110,180,0.12) 27px, rgba(255,110,180,0.12) 28px
+    );
+}
+body.theme-pink .notebook-page-title { color: #c2185b; border-bottom-color: rgba(194,24,91,0.25); }
+
+/* ===== NOTEBOOK — TEREA (GYM LOG) ===== */
+body.theme-terea .notebook-cover {
+    background: linear-gradient(135deg, #010f0e 0%, #052e28 50%, #010f0e 100%);
+    border-color: #00d4c8;
+    box-shadow: -4px 4px 20px rgba(0,0,0,0.8), 0 0 30px rgba(0,212,200,0.12), inset 0 0 40px rgba(0,0,0,0.5);
+}
+body.theme-terea .notebook-cover::before {
+    background: linear-gradient(90deg, #000, #021c18, #000);
+    border-right-color: #00d4c8;
+}
+body.theme-terea .notebook-cover::after { border-color: rgba(0,212,200,0.3); }
+body.theme-terea .notebook-title { color: #00d4c8; text-shadow: 0 0 20px rgba(0,212,200,0.6); font-family: 'Orbitron', sans-serif; }
+body.theme-terea .notebook-subtitle { color: rgba(0,212,200,0.4); }
+body.theme-terea .notebook-page { background: #0d1a18; }
+body.theme-terea .notebook-page::before {
+    background-image: repeating-linear-gradient(
+        transparent, transparent 27px, rgba(0,212,200,0.06) 27px, rgba(0,212,200,0.06) 28px
+    );
+}
+body.theme-terea .notebook-page-title { color: #00d4c8; border-bottom-color: rgba(0,212,200,0.2); }
+body.theme-terea .notebook-page textarea,
+body.theme-terea .notebook-page input { color: #dff6f4; background: rgba(0,212,200,0.04); }
+
+/* ===== NOTEBOOK — MEDICAL (CLINICAL BINDER) ===== */
+body.theme-medical .notebook-cover {
+    background: linear-gradient(135deg, #040e1c 0%, #0a2340 50%, #040e1c 100%);
+    border-color: #00c6e0;
+    box-shadow: -4px 4px 20px rgba(0,0,0,0.8), 0 0 30px rgba(0,198,224,0.1), inset 0 0 40px rgba(0,0,0,0.4);
+}
+body.theme-medical .notebook-cover::before {
+    background: linear-gradient(90deg, #020810, #071830, #020810);
+    border-right-color: #00c6e0;
+}
+body.theme-medical .notebook-cover::after { border-color: rgba(0,198,224,0.25); }
+body.theme-medical .notebook-title { color: #00c6e0; text-shadow: 0 0 20px rgba(0,198,224,0.5); font-family: 'Space Mono', monospace; }
+body.theme-medical .notebook-subtitle { color: rgba(0,198,224,0.4); }
+body.theme-medical .notebook-page { background: #f2f8fc; }
+body.theme-medical .notebook-page::before {
+    background-image:
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        repeating-linear-gradient(transparent, transparent 27px, rgba(0,150,180,0.12) 27px, rgba(0,150,180,0.12) 28px);
+    background-size: 100% 40px, 100% 100%;
+}
+body.theme-medical .notebook-page-title { color: #005f80; border-bottom-color: rgba(0,95,128,0.25); }
+body.theme-medical .notebook-page textarea,
+body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150,180,0.04); }
+
+/* ===== UNIVERSAL THOUGHT NOTES ===== */
+#thinknotes-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 400;
+}
+.thinknote {
+    position: absolute;
+    pointer-events: auto;
+    min-width: 140px;
+    min-height: 100px;
+    padding: 10px 12px 12px;
+    cursor: move;
+    user-select: none;
+    box-shadow: 3px 4px 16px rgba(0,0,0,0.28);
+    animation: thinknoteIn 0.3s cubic-bezier(0.2,1.4,0.5,1) forwards;
+}
+@keyframes thinknoteIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; }
+}
+.thinknote-close {
+    position: absolute;
+    top: 4px; right: 6px;
+    background: none; border: none;
+    font-size: 0.85rem; color: rgba(0,0,0,0.35);
+    cursor: pointer; padding: 2px 4px; line-height: 1;
+    z-index: 1;
+}
+.thinknote-close:hover { color: rgba(0,0,0,0.65); }
+.thinknote-body {
+    cursor: text;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgba(0,0,0,0.72);
+    outline: none;
+    word-break: break-word;
+    min-height: 60px;
+}
+.thinknote-body:empty::before {
+    content: attr(data-placeholder);
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Normal — yellow rectangle */
+.thinknote-normal {
+    background: #fff9c4;
+    border-radius: 3px;
+}
+
+/* Pink (Marianna) — heart shape */
+.thinknote-pink {
+    background: #ffb6d9;
+    width: 180px;
+    height: 145px;
+    clip-path: path('M 90 143 C 28 108 2 72 2 48 C 2 22 22 2 48 2 C 64 2 80 12 90 26 C 100 12 116 2 132 2 C 158 2 178 22 178 48 C 178 72 152 108 90 143 Z');
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px 40px;
+}
+.thinknote-pink .thinknote-body { text-align: center; }
+.thinknote-pink .thinknote-close { color: rgba(120,0,60,0.4); }
+.thinknote-pink .thinknote-close:hover { color: rgba(120,0,60,0.75); }
+
+/* Terea (Maria) — dumbbell shape */
+.thinknote-terea {
+    background: #00d4c8;
+    width: 210px;
+    height: 120px;
+    clip-path: path('M 0 28 Q 0 0 38 0 Q 76 0 76 28 L 76 48 L 134 48 L 134 28 Q 134 0 172 0 Q 210 0 210 28 L 210 92 Q 210 120 172 120 Q 134 120 134 92 L 134 72 L 76 72 L 76 92 Q 76 120 38 120 Q 0 120 0 92 Z');
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px 40px;
+}
+.thinknote-terea .thinknote-body { color: rgba(0,0,0,0.75); text-align: center; font-size: 0.72rem; }
+.thinknote-terea .thinknote-close { color: rgba(0,0,0,0.4); }
+
+/* Medical — brain shape */
+.thinknote-medical {
+    background: #90e0ef;
+    width: 180px;
+    height: 155px;
+    clip-path: path('M 90 150 C 72 150 60 142 52 132 C 36 136 18 124 10 106 C 2 88 8 66 22 54 C 14 42 16 26 28 16 C 40 6 58 8 68 18 C 76 6 90 0 106 0 C 118 2 130 8 138 18 C 148 8 164 6 174 16 C 184 26 184 44 176 56 C 188 70 192 92 184 110 C 176 128 160 140 142 138 C 134 146 124 152 110 152 C 104 153 96 153 90 150 Z');
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px 28px;
+}
+.thinknote-medical .thinknote-body { color: rgba(0,40,60,0.8); text-align: center; font-size: 0.72rem; }
+.thinknote-medical .thinknote-close { color: rgba(0,40,60,0.35); top: 28px; }
+
+/* Star Wars — hexagon */
+.thinknote-starwars {
+    background: rgba(0,20,50,0.92);
+    width: 160px;
+    height: 150px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px;
+    border: none;
+}
+.thinknote-starwars .thinknote-body { color: #4fc3f7; text-align: center; font-size: 0.72rem; }
+.thinknote-starwars .thinknote-close { color: rgba(79,195,247,0.4); }
+.thinknote-starwars .thinknote-close:hover { color: rgba(79,195,247,0.8); }
+
+/* ===== ADD THOUGHT NOTE BUTTON ===== */
+#btn-add-thinknote {
+    position: fixed;
+    bottom: 90px;
+    left: 16px;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    background: rgba(20,20,40,0.82);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    color: rgba(255,255,255,0.65);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    white-space: nowrap;
+    font-family: inherit;
+}
+#btn-add-thinknote:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.35);
+}
+#btn-add-thinknote:active { transform: scale(0.96); }
+body.theme-medical #btn-add-thinknote { bottom: 150px; }
 
 @media (max-width: 480px) {
   .med-topic-grid { grid-template-columns: repeat(3,1fr); gap: 5px; }
