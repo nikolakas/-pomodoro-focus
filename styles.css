@@ -317,12 +317,12 @@ body.hide-logo .header { margin-bottom: 0; }
 .btn-primary:active { transform: scale(0.95); }
 .btn-secondary { width: 48px; height: 48px; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.05); }
 .btn-secondary:hover { background: var(--bg-card); color: var(--text-primary); }
-/* Timer zone — ring flanked by ±5 buttons */
+/* ── Timer zone — ring flanked by ±5 buttons ── */
 .timer-zone {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 18px;
     margin-bottom: 4px;
 }
 .btn-time-adjust {
@@ -330,57 +330,61 @@ body.hide-logo .header { margin-bottom: 0; }
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    width: 52px;
-    height: 72px;
-    border-radius: 18px;
-    border: 1.5px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.35);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    gap: 2px;
+    width: 48px;
+    height: 68px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: transparent;
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-    backdrop-filter: blur(10px);
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 .btn-time-adjust .adjust-icon {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     line-height: 1;
-    font-weight: 300;
-    color: var(--accent);
-    opacity: 0.5;
-    transition: opacity 0.2s, transform 0.2s;
+    font-weight: 200;
+    color: var(--text-muted);
+    transition: color 0.2s, transform 0.18s;
 }
 .btn-time-adjust .adjust-label {
-    color: rgba(255,255,255,0.25);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
     transition: color 0.2s;
+    text-transform: uppercase;
 }
 .btn-time-adjust:hover {
     border-color: var(--accent);
-    background: rgba(255,255,255,0.07);
-    color: var(--accent);
-    transform: scale(1.08);
-    box-shadow: 0 0 16px var(--accent-glow);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    transform: scale(1.07);
+    box-shadow: 0 0 14px var(--accent-glow);
 }
-.btn-time-adjust:hover .adjust-icon { opacity: 1; transform: scale(1.15); }
+.btn-time-adjust:hover .adjust-icon,
 .btn-time-adjust:hover .adjust-label { color: var(--accent); }
-.btn-time-adjust:active { transform: scale(0.94); }
+.btn-time-adjust:hover .adjust-icon { transform: scale(1.1); }
+.btn-time-adjust:active { transform: scale(0.93); transition-duration: 0.08s; }
+
+/* When timer is running — come alive */
 body.timer-running .btn-time-adjust {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(255,255,255,0.05);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
-body.timer-running .btn-time-adjust .adjust-icon { opacity: 1; }
-body.timer-running .btn-time-adjust .adjust-label { color: var(--accent); }
+body.timer-running .btn-time-adjust .adjust-icon,
+body.timer-running .btn-time-adjust .adjust-label {
+    color: var(--accent);
+}
 body.timer-running .btn-time-adjust:hover {
     background: var(--accent);
-    color: #fff;
-    box-shadow: 0 0 20px var(--accent-glow);
+    border-color: var(--accent);
+    box-shadow: 0 0 22px var(--accent-glow);
+    transform: scale(1.1);
 }
-body.timer-running .btn-time-adjust:hover .adjust-icon { color: #fff; }
-body.timer-running .btn-time-adjust:hover .adjust-label { color: rgba(255,255,255,0.8); }
+body.timer-running .btn-time-adjust:hover .adjust-icon,
+body.timer-running .btn-time-adjust:hover .adjust-label { color: #fff; }
 
 .developer-credit {
     display: flex;
@@ -874,8 +878,9 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
     .timer-container { width: min(60vw, 240px); height: min(60vw, 240px); }
     .timer-time { font-size: clamp(2.2rem, 9vw, 3.6rem); }
     .timer-label { font-size: 0.8rem; }
-    .btn-time-adjust { width: 44px; height: 60px; border-radius: 14px; }
-    .btn-time-adjust .adjust-icon { font-size: 1.2rem; }
+    .btn-time-adjust { width: 42px; height: 58px; border-radius: 13px; gap: 2px; }
+    .btn-time-adjust .adjust-icon { font-size: 1.25rem; }
+    .btn-time-adjust .adjust-label { font-size: 0.52rem; }
 
     /* Mode buttons */
     .mode-selector { gap: 6px; margin-bottom: 1rem; }
@@ -947,8 +952,9 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
     .timer-zone { gap: 7px; }
     .timer-container { width: min(58vw, 210px); height: min(58vw, 210px); }
     .timer-time { font-size: clamp(2rem, 10vw, 2.8rem); }
-    .btn-time-adjust { width: 38px; height: 54px; border-radius: 12px; font-size: 0.55rem; }
-    .btn-time-adjust .adjust-icon { font-size: 1.1rem; }
+    .btn-time-adjust { width: 36px; height: 50px; border-radius: 11px; gap: 1px; }
+    .btn-time-adjust .adjust-icon { font-size: 1.05rem; }
+    .btn-time-adjust .adjust-label { font-size: 0.48rem; }
     .controls { gap: 0.4rem; }
     .btn-primary { width: 60px; height: 60px; }
     .btn-secondary { width: 42px; height: 42px; }
@@ -1549,29 +1555,152 @@ body.minimal-mode #btn-minimal { transform: rotate(180deg); color: var(--accent)
 
 /* ===== MEDICAL THEME ===== */
 body.theme-medical {
-    --bg-primary: #0a1628;
-    --bg-secondary: #0d1f3c;
-    --bg-card: rgba(13,31,60,0.75);
-    --text-primary: #e2f0ff;
-    --text-secondary: #8fb4d4;
-    --text-muted: #3a5a7a;
-    --accent: #00b4d8;
-    --accent-glow: rgba(0,180,216,0.35);
-    --accent-glow-intense: rgba(0,180,216,0.75);
+    --bg-primary: #060f1e;
+    --bg-secondary: #0a1830;
+    --bg-card: rgba(10,24,48,0.85);
+    --text-primary: #dceeff;
+    --text-secondary: #6a9fc0;
+    --text-muted: #2a4a6a;
+    --accent: #00c6e0;
+    --accent-glow: rgba(0,198,224,0.3);
+    --accent-glow-intense: rgba(0,198,224,0.7);
     --font-display: 'Space Mono', monospace;
 }
+
+/* Deep clinical background with subtle grid */
 body.theme-medical::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background:
-        radial-gradient(ellipse 60% 40% at 20% 70%, rgba(0,180,216,0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 50% at 85% 20%, rgba(0,119,168,0.05) 0%, transparent 60%);
+        linear-gradient(rgba(0,198,224,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,198,224,0.025) 1px, transparent 1px),
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,119,168,0.18) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 40% at 10% 90%, rgba(0,180,216,0.08) 0%, transparent 60%),
+        linear-gradient(180deg, #060f1e 0%, #071424 60%, #06111d 100%);
+    background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%;
 }
-body.theme-medical .timer-ring-progress { stroke: #00b4d8; }
-body.theme-medical .timer-ring-glow { stroke: #00b4d8; }
-body.theme-medical .timer-time { font-family: 'Space Mono', monospace; letter-spacing: 0.02em; }
-body.theme-medical .btn-primary { background: linear-gradient(135deg, #0077a8, #00b4d8); box-shadow: 0 4px 20px rgba(0,180,216,0.3); }
-body.theme-medical .mode-btn.active { background: rgba(0,180,216,0.12); border-color: #00b4d8; color: #00b4d8; }
-body.theme-medical .glass-card { border-color: rgba(0,180,216,0.1); }
+
+/* Animated ECG line across the bottom of the header area */
+body.theme-medical .app::after {
+    content: '';
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(0,198,224,0.0) 20%,
+        rgba(0,198,224,0.4) 48%,
+        rgba(0,198,224,0.9) 50%,
+        rgba(0,198,224,0.4) 52%,
+        rgba(0,198,224,0.0) 80%,
+        transparent 100%
+    );
+    pointer-events: none;
+    z-index: 50;
+    animation: ecgScan 4s linear infinite;
+}
+@keyframes ecgScan {
+    0%   { background-position: -100vw 0; }
+    100% { background-position: 200vw 0; }
+}
+
+/* Timer ring — vital-monitor green-teal pulse */
+body.theme-medical .timer-ring-bg { stroke: rgba(0,198,224,0.08); }
+body.theme-medical .timer-ring-progress {
+    stroke: #00c6e0;
+    filter: drop-shadow(0 0 6px rgba(0,198,224,0.6));
+}
+body.theme-medical .timer-ring-glow { stroke: #00c6e0; opacity: 0.25; }
+body.theme-medical .timer-container.running .timer-ring-glow {
+    opacity: 0.5;
+    animation: medPulse 2s ease-in-out infinite;
+}
+@keyframes medPulse {
+    0%,100% { opacity: 0.3; }
+    50% { opacity: 0.65; }
+}
+
+/* Timer digits — monospace vital-sign style */
+body.theme-medical .timer-time {
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.04em;
+    color: #00c6e0;
+    text-shadow: 0 0 20px rgba(0,198,224,0.5);
+}
+body.theme-medical .timer-label {
+    color: rgba(0,198,224,0.5);
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+/* Mode buttons */
+body.theme-medical .mode-btn {
+    border-color: rgba(0,198,224,0.1);
+    color: var(--text-secondary);
+}
+body.theme-medical .mode-btn.active {
+    background: rgba(0,198,224,0.1);
+    border-color: #00c6e0;
+    color: #00c6e0;
+    box-shadow: 0 0 12px rgba(0,198,224,0.2);
+}
+
+/* Start/pause button */
+body.theme-medical .btn-primary {
+    background: linear-gradient(135deg, #005f80 0%, #00a8c8 100%);
+    box-shadow: 0 4px 24px rgba(0,198,224,0.25);
+    border: none;
+}
+body.theme-medical .btn-primary:hover {
+    box-shadow: 0 6px 30px rgba(0,198,224,0.4);
+}
+
+/* Cards and panels */
+body.theme-medical .glass-card,
+body.theme-medical .settings-panel,
+body.theme-medical .mood-card {
+    border-color: rgba(0,198,224,0.08);
+    background: rgba(10,24,48,0.7);
+}
+body.theme-medical .mood-card:hover {
+    border-color: rgba(0,198,224,0.3);
+    box-shadow: 0 0 16px rgba(0,198,224,0.12);
+}
+
+/* Ambient bar / mood pills */
+body.theme-medical .mood-card.active {
+    border-color: #00c6e0;
+    background: rgba(0,198,224,0.08);
+    box-shadow: 0 0 18px rgba(0,198,224,0.2);
+}
+
+/* ±5 buttons in medical theme */
+body.theme-medical .btn-time-adjust {
+    border-color: rgba(0,198,224,0.15);
+    background: rgba(0,198,224,0.03);
+}
+body.theme-medical .btn-time-adjust .adjust-icon,
+body.theme-medical .btn-time-adjust .adjust-label { color: rgba(0,198,224,0.4); }
+body.theme-medical .btn-time-adjust:hover,
+body.theme-medical.timer-running .btn-time-adjust {
+    border-color: rgba(0,198,224,0.5);
+    background: rgba(0,198,224,0.07);
+}
+body.theme-medical .btn-time-adjust:hover .adjust-icon,
+body.theme-medical .btn-time-adjust:hover .adjust-label,
+body.theme-medical.timer-running .btn-time-adjust .adjust-icon,
+body.theme-medical.timer-running .btn-time-adjust .adjust-label { color: #00c6e0; }
+
+/* Level bar */
+body.theme-medical .level-bar-fill { background: linear-gradient(90deg, #005f80, #00c6e0); box-shadow: 0 0 8px rgba(0,198,224,0.3); }
+
+/* Quote display */
+body.theme-medical .quote-text { color: rgba(0,198,224,0.6); font-family: 'Space Mono', monospace; font-size: 0.8rem; }
+
+/* Scrollbar */
+body.theme-medical ::-webkit-scrollbar-thumb { background: rgba(0,198,224,0.15); }
+body.theme-medical ::-webkit-scrollbar-thumb:hover { background: rgba(0,198,224,0.3); }
 
 /* ===== MARIANNA PINK THEME ===== */
 body.theme-pink {

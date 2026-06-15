@@ -1856,6 +1856,20 @@ updateTheme() {
 		// Show Terea Lite option only in Terea mode
 		const tereaLiteRow = document.getElementById('row-terea-lite');
 		if (tereaLiteRow) tereaLiteRow.style.display = isTerea ? 'flex' : 'none';
+
+		// Medical theme — swap quotes to med student flavour
+		const quoteEl = document.getElementById('quote-text');
+		if (isMedical && quoteEl) {
+			const medQuotes = [
+				'The good physician treats the disease. The great physician treats the patient.',
+				'Medicine is a science of uncertainty and an art of probability.',
+				'Every patient is a teacher. Every case is a lesson.',
+				'Study hard. The life you save may depend on it.',
+				'Diagnosis is the first step. Understanding is the destination.',
+				'Sleep is a luxury. Knowledge is not.',
+			];
+			quoteEl.textContent = medQuotes[Math.floor(Math.random() * medQuotes.length)];
+		}
 	},
 
 checkBouzoukiaHours() {
