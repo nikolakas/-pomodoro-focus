@@ -1267,7 +1267,7 @@ el.addEventListener('click', () => {
 				'You are doing amazing',
 				'Gentle mode — fully locked in 🌸',
 				'Soft focus, strong heart',
-				'You've got this — always'
+				'You’ve got this — always'
 			]
 			: [
 				'You got this!',
