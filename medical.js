@@ -7,6 +7,12 @@
 window.MedicalModule = (() => {
   'use strict';
 
+  // Falls back to in-memory map when localStorage is blocked (sandboxed iframes, etc.)
+  const safeStorage = (() => {
+    try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return localStorage; }
+    catch { const m = {}; return { getItem: k => m[k] ?? null, setItem: (k, v) => { m[k] = v; }, removeItem: k => { delete m[k]; } }; }
+  })();
+
   // ── Configuration ──────────────────────────────────────────────
   const TOPICS = [
     { id: 'cardiology',   name: 'Cardiology',    icon: '❤️',  color: '#ef4444' },
@@ -42,14 +48,14 @@ window.MedicalModule = (() => {
     timerSec: 0,
     timerIv: null,
     rapidTO: null,
-    examDate: localStorage.getItem('med_exam_date') || ''
+    examDate: safeStorage.getItem('med_exam_date') || ''
   };
 
   // ── Persistence ─────────────────────────────────────────────────
-  const getMissed   = () => { try { return JSON.parse(localStorage.getItem('med_missed')   || '[]'); } catch { return []; } };
-  const setMissed   = (arr) => localStorage.setItem('med_missed',   JSON.stringify(arr));
-  const getFlagged  = () => { try { return JSON.parse(localStorage.getItem('med_flagged')  || '[]'); } catch { return []; } };
-  const setFlagged  = (arr) => localStorage.setItem('med_flagged',  JSON.stringify(arr));
+  const getMissed   = () => { try { return JSON.parse(safeStorage.getItem('med_missed')   || '[]'); } catch { return []; } };
+  const setMissed   = (arr) => safeStorage.setItem('med_missed',   JSON.stringify(arr));
+  const getFlagged  = () => { try { return JSON.parse(safeStorage.getItem('med_flagged')  || '[]'); } catch { return []; } };
+  const setFlagged  = (arr) => safeStorage.setItem('med_flagged',  JSON.stringify(arr));
 
   // ── Utilities ───────────────────────────────────────────────────
   const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -461,7 +467,7 @@ window.MedicalModule = (() => {
     const examEl = $('med-exam-date');
     if (examEl) examEl.addEventListener('change', e => {
       st.examDate = e.target.value;
-      localStorage.setItem('med_exam_date', st.examDate);
+      safeStorage.setItem('med_exam_date', st.examDate);
       updateExamCountdown();
     });
 

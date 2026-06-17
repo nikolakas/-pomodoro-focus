@@ -98,11 +98,11 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-secondary tooltip-btn" id="btn-minimal" style="font-size:1rem; border:none; background:transparent; padding:8px;">
+                <button class="btn btn-secondary tooltip-btn" id="btn-minimal">
     ▲
     <span class="tooltip">Minimal Mode</span>
 </button>
-                <button class="btn btn-secondary tooltip-btn" id="btn-zen" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">
+                <button class="btn btn-secondary tooltip-btn" id="btn-zen">
     ☯
     <span class="tooltip">Zen Mode (Z)</span>
 </button>
@@ -112,7 +112,7 @@
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 </button>
                 <button class="btn btn-secondary" id="btn-skip" title="Skip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
-                <button class="btn btn-secondary tooltip-btn" id="btn-warp" style="font-size:1.3rem; border:none; background:transparent; padding:8px; display:none;">
+                <button class="btn btn-secondary tooltip-btn" id="btn-warp">
     🚀
     <span class="tooltip">Hyperspace Jump (W)</span>
 </button>
@@ -432,7 +432,7 @@
       
             <div class="setting-row" style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
                 <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
-                <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data" onclick="if(confirm('Delete all local data? This cannot be undone.')){localStorage.clear(); location.reload();}">
+                <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 </button>
                 <!-- Sign out — shown when logged in -->

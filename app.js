@@ -50,7 +50,9 @@ const app = {
 mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0, bouzoukia: 0 },
       currentIntention: null,
 currentSubtasks: [],
-        activeNoteFilter: null
+        activeNoteFilter: null,
+        resetPending: false,
+        resetPendingTimer: null
     },
 
     elements: {},
@@ -242,10 +244,9 @@ async loadFromFirestore(uid) {
     const localTotal = parseInt(localStorage.getItem('pomodoro_total') || '0', 10);
     const localXp = parseInt(localStorage.getItem('pomodoro_xp') || '0', 10);
 
-    const mergedHistory = [
-        ...(remote.history || []),
-        ...localHistory
-    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const mergedHistory = [...new Map(
+        [...(remote.history || []), ...localHistory].map(s => [s.date, s])
+    ).values()].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const merged = {
         history: mergedHistory,
@@ -333,15 +334,50 @@ this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
 
   if (this.elements.btnReset) {
     this.elements.btnReset.addEventListener('click', () => {
-      if (this.state.isRunning || this.state.timeLeft < (this.state.settings.work * 60)) {
-        if (!confirm('Reset timer? Current progress will be lost.')) return;
+      const needsConfirm = this.state.isRunning || this.state.timeLeft < (this.state.settings.work * 60);
+      if (needsConfirm && !this.state.resetPending) {
+        this.state.resetPending = true;
+        this.elements.btnReset.classList.add('btn-pending');
+        this.elements.btnReset.title = 'Tap again to reset';
+        this.state.resetPendingTimer = setTimeout(() => {
+          this.state.resetPending = false;
+          this.elements.btnReset.classList.remove('btn-pending');
+          this.elements.btnReset.title = 'Reset';
+        }, 2500);
+        return;
       }
+      clearTimeout(this.state.resetPendingTimer);
+      this.state.resetPending = false;
+      this.elements.btnReset.classList.remove('btn-pending');
+      this.elements.btnReset.title = 'Reset';
       this.resetTimer();
     });
   }
 
   if (this.elements.btnSkip) {
 this.elements.btnSkip.addEventListener('click', () => this.skipSession());
+  }
+
+  const btnResetApp = document.getElementById('btn-reset-app');
+  if (btnResetApp) {
+    let resetAppPending = false;
+    let resetAppTimer = null;
+    btnResetApp.addEventListener('click', () => {
+      if (!resetAppPending) {
+        resetAppPending = true;
+        btnResetApp.classList.add('btn-pending');
+        btnResetApp.title = 'Tap again to confirm — this cannot be undone';
+        resetAppTimer = setTimeout(() => {
+          resetAppPending = false;
+          btnResetApp.classList.remove('btn-pending');
+          btnResetApp.title = 'Reset all app data';
+        }, 2500);
+        return;
+      }
+      clearTimeout(resetAppTimer);
+      localStorage.clear();
+      location.reload();
+    });
   }
 
   const btnMinus5 = document.getElementById('btn-minus5');
@@ -791,6 +827,7 @@ switchTab(target) {
     // TIMER LOGIC
     // ===================================
 setMode(mode, preserveTime = false) {
+    const wasRunning = this.state.isRunning;
     if (this.state.isRunning) this.stopTimer();
     this.state.mode = mode;
     this.state.timeAdjustment = 0;
@@ -811,6 +848,16 @@ setMode(mode, preserveTime = false) {
     if (mode === 'shortBreak') label = 'Short Break';
     else if (mode === 'longBreak') label = 'Long Break';
     this.elements.label.textContent = label;
+
+    if (wasRunning) {
+        const modeLabel = label;
+        this.elements.label.textContent = '⏸ Timer paused';
+        setTimeout(() => {
+            if (this.elements.label.textContent === '⏸ Timer paused') {
+                this.elements.label.textContent = modeLabel;
+            }
+        }, 1500);
+    }
 
     const isTerea = this.state.settings.theme === 'terea';
 
