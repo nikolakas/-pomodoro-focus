@@ -513,6 +513,9 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     });
   }
 
+  const noteSearch = document.getElementById('note-search');
+  if (noteSearch) noteSearch.addEventListener('input', () => this.renderNotes());
+
   // Chart Range Buttons
   document.querySelectorAll('.chart-range').forEach(btn => {
     btn.addEventListener('click', e => {
@@ -2469,10 +2472,17 @@ deleteHistoryItem(date) {
             if (allTags.size === 0) filterContainer.innerHTML = '';
         }
 
+        const searchEl = document.getElementById('note-search');
+        const searchQ = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
         list.innerHTML = '';
         let filteredNotes = this.state.activeNoteFilter
             ? notes.filter(n => n.tags && n.tags.includes(this.state.activeNoteFilter))
             : notes;
+
+        if (searchQ) {
+            filteredNotes = filteredNotes.filter(n => n.text.toLowerCase().includes(searchQ));
+        }
 
         if (filteredNotes.length === 0) {
             list.innerHTML = '<p class="empty-state">No notes found.</p>';
@@ -2584,6 +2594,7 @@ addThinkNote() {
     pile._pages   = [''];
     pile._pageIdx = 0;
     pile.dataset.pages = '1';
+    pile.dataset.theme = theme;
 
     const left = 8  + Math.random() * 58;
     const top  = 12 + Math.random() * 48;

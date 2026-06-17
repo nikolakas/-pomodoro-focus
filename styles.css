@@ -789,6 +789,16 @@ select { background: var(--bg-secondary); color: var(--text-primary); border: 1p
 textarea { width: 100%; background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 0.75rem 1rem; border-radius: 12px; font-family: inherit; font-size: 0.95rem; resize: vertical; min-height: 60px; outline: none; margin-bottom: 0.5rem; transition: border-color 0.2s; }
 textarea:focus { border-color: var(--accent); }
 .btn-add-note { width: 100%; height: 38px; border-radius: 8px; gap: 8px; font-weight: 600; font-size: 0.95rem; }
+.note-search-input {
+    width: 100%; box-sizing: border-box;
+    padding: 6px 10px; margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    background: rgba(255,255,255,0.04); color: var(--text-primary);
+    font-size: 0.82rem; outline: none;
+    transition: border-color 0.2s;
+}
+.note-search-input:focus { border-color: var(--accent); }
+.note-search-input::placeholder { color: var(--text-muted); }
 .notes-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: 50vh; overflow-y: auto; padding-right: 8px; }
 .note-item { background: var(--bg-card); border-radius: 12px; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.05); position: relative; animation: slideUp 0.3s ease-out; }
 .note-text { font-size: 0.95rem; line-height: 1.5; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
@@ -1375,6 +1385,20 @@ body.minimal-mode .controls {
         align-items: flex-start;
     }
 }
+
+/* Search input — notebook context */
+.notebook-page-right .note-search-input {
+    background: rgba(0,0,0,0.06); border-color: rgba(139,69,19,0.2);
+    color: #2c1810; font-family: 'Georgia', serif;
+}
+.notebook-page-right .note-search-input:focus { border-color: rgba(139,69,19,0.5); }
+.notebook-page-right .note-search-input::placeholder { color: rgba(139,69,19,0.45); }
+body.theme-starwars .notebook-page-right .note-search-input {
+    background: rgba(79,195,247,0.05); border-color: rgba(79,195,247,0.15);
+    color: #a8d8f0; font-family: var(--font-mono);
+}
+body.theme-starwars .notebook-page-right .note-search-input:focus { border-color: rgba(79,195,247,0.4); }
+body.theme-starwars .notebook-page-right .note-search-input::placeholder { color: rgba(79,195,247,0.3); }
 
 /* Notes inside book */
 .notebook-page-right .note-item {
@@ -2325,6 +2349,7 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 .thinknote-pile {
     position: absolute;
     pointer-events: auto;
+    touch-action: none;
     animation: thinknoteIn 0.32s cubic-bezier(0.2,1.4,0.5,1) forwards;
 }
 @keyframes thinknoteIn {
@@ -2358,6 +2383,32 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
     box-shadow: 1px 2px 8px rgba(0,0,0,0.12);
 }
 
+/* Shaped stacked pages — match front note clip-path so extras aren't square */
+.thinknote-pile[data-theme="pink"][data-pages="2"]::before,
+.thinknote-pile[data-theme="pink"][data-pages="3"]::before,
+.thinknote-pile[data-theme="pink"][data-pages="3"]::after {
+    clip-path: path('M 115 190 C 44 148 4 104 4 66 C 4 34 28 8 58 8 C 80 8 100 20 115 38 C 130 20 150 8 172 8 C 202 8 226 34 226 66 C 226 104 186 148 115 190 Z');
+    border-radius: 0;
+}
+.thinknote-pile[data-theme="terea"][data-pages="2"]::before,
+.thinknote-pile[data-theme="terea"][data-pages="3"]::before,
+.thinknote-pile[data-theme="terea"][data-pages="3"]::after {
+    clip-path: path('M 0 36 C 0 12 18 0 50 0 C 82 0 100 12 100 36 L 100 58 L 150 58 L 150 36 C 150 12 168 0 200 0 C 232 0 250 12 250 36 L 250 109 C 250 133 232 145 200 145 C 168 145 150 133 150 109 L 150 87 L 100 87 L 100 109 C 100 133 82 145 50 145 C 18 145 0 133 0 109 Z');
+    border-radius: 0;
+}
+.thinknote-pile[data-theme="medical"][data-pages="2"]::before,
+.thinknote-pile[data-theme="medical"][data-pages="3"]::before,
+.thinknote-pile[data-theme="medical"][data-pages="3"]::after {
+    clip-path: path('M 110 18 C 88 8 66 12 56 30 C 38 22 18 36 14 56 C 8 76 20 100 40 110 C 24 124 18 148 28 166 C 38 182 60 190 82 186 C 94 194 104 196 110 194 C 116 196 126 194 138 186 C 160 190 182 182 192 166 C 202 148 196 124 180 110 C 200 100 212 76 206 56 C 202 36 182 22 164 30 C 154 12 132 8 110 18 Z');
+    border-radius: 0;
+}
+.thinknote-pile[data-theme="starwars"][data-pages="2"]::before,
+.thinknote-pile[data-theme="starwars"][data-pages="3"]::before,
+.thinknote-pile[data-theme="starwars"][data-pages="3"]::after {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    border-radius: 0;
+}
+
 /* Visual note — shape is applied here */
 .thinknote {
     position: relative;
@@ -2378,9 +2429,11 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 }
 .thinknote-close {
     background: none; border: none;
-    font-size: 0.9rem; color: rgba(0,0,0,0.3);
-    cursor: pointer; padding: 0 2px; line-height: 1;
+    font-size: 1rem; color: rgba(0,0,0,0.3);
+    cursor: pointer; padding: 6px 8px; line-height: 1;
     flex-shrink: 0; margin-left: auto;
+    touch-action: manipulation;
+    display: flex; align-items: center; justify-content: center;
 }
 .thinknote-close:hover { color: rgba(0,0,0,0.65); }
 
