@@ -844,7 +844,7 @@ window.AmbienceModule = (() => {
     library:       { build: buildLibrary },
     jazz:          { build: buildJazz },
     binary_sunset: { build: buildBinarySunset },
-    bouzoukia:     { build: buildBouzoukia }
+    bouzoukia:     { build: () => [] }
   };
 
   // ============================================

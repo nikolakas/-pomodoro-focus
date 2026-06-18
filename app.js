@@ -1634,12 +1634,7 @@ el.addEventListener('click', () => {
         // Greek laïká YouTube playlist — cycles through these, skips errors automatically.
         // To add more: paste the 11-char video ID from any YouTube URL (?v=XXXXXXXXXXX)
         const GREEK_LAIKA = [
-            'nPCnkHwMkio', // Antonis Remos - Ela
-            'XE7bV_mFAyI', // Nikos Vertis - Pes Mou
-            'yjdNpwwpXdQ', // Giannis Ploutarhos - Gia Mia Agkalia
-            'hn-v2bIzRXE', // Notis Sfakianakis - Ola
-            'CevxZvSJLk8', // Vasilis Karras - Den Eimai Kalos
-            'JjMDZtTzxeA', // Giorgos Dalaras - Mia Fora
+            // Add real YouTube video IDs here (11-char code after ?v= in a YouTube URL)
         ];
 
         // Sabanis.mp3 — plays when YouTube unavailable or as extra layer
