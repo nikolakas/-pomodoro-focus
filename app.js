@@ -924,6 +924,8 @@ initMixer() {
             localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
         });
     }
+
+    this._initSabAudio();
 },
 switchTab(target) {
     this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
@@ -1043,6 +1045,8 @@ toggleTimer() {
     if (this.state.timeLeft <= 0) {
         this.setMode(this.state.mode || 'work');
     }
+
+    this._stopKiamos();
 
     // Request notification permission and resume any pending ambient sounds on first start
     if ('Notification' in window && Notification.permission === 'default') {
@@ -1206,6 +1210,7 @@ toggleTimer() {
                     this.flashTereaComplete();
                 }
                 this.playAudio('smoke_break');
+                setTimeout(() => this._playKiamos(), 800);
 
                 const tereaLights = document.getElementById('terea-lights');
                 if (tereaLights) {
@@ -1587,6 +1592,62 @@ el.addEventListener('click', () => {
     // ===================================
     // AUDIO & MOODS
     // ===================================
+
+    _playKiamos() {
+        if (!this._tereaAudio) {
+            this._tereaAudio = new Audio('Kiamos.mp3');
+            this._tereaAudio.loop = true;
+            this._tereaAudio.volume = 0.78;
+        }
+        this._tereaAudio.currentTime = 0;
+        this._tereaAudio.play().catch(() => {});
+    },
+
+    _stopKiamos() {
+        if (this._tereaAudio && !this._tereaAudio.paused) {
+            this._tereaAudio.pause();
+            this._tereaAudio.currentTime = 0;
+        }
+    },
+
+    _initSabAudio() {
+        const sab = new Audio('Sabanis.mp3');
+        sab.loop = true;
+        this._sabAudio = sab;
+
+        const syncSab = () => {
+            const v = (this.state.mixerVolumes.bouzoukia || 0) / 100;
+            sab.volume = Math.min(1, v);
+            if (v > 0 && sab.paused) {
+                sab.play().catch(() => {});
+            } else if (v === 0 && !sab.paused) {
+                sab.pause();
+                sab.currentTime = 0;
+            }
+        };
+
+        const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
+        if (bzSlider) {
+            bzSlider.addEventListener('input', e => {
+                const v = parseInt(e.target.value) / 100;
+                sab.volume = Math.min(1, v);
+                if (v > 0 && sab.paused) { sab.play().catch(() => {}); }
+                else if (v === 0) { sab.pause(); sab.currentTime = 0; }
+            });
+        }
+
+        const bzBtn = document.querySelector('.mixer-btn[data-scene="bouzoukia"]');
+        if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(syncSab, 60));
+
+        const stopAll = document.getElementById('btn-stop-all-ambient');
+        if (stopAll) stopAll.addEventListener('click', () => { sab.pause(); sab.currentTime = 0; });
+
+        // Restore from saved state if bouzoukia was active
+        if ((this.state.mixerVolumes.bouzoukia || 0) > 0) {
+            sab.volume = this.state.mixerVolumes.bouzoukia / 100;
+        }
+    },
+
     playAudio(type) {
     if (type === 'none') return;
     try {
