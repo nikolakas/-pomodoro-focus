@@ -1634,7 +1634,10 @@ el.addEventListener('click', () => {
         // Greek laïká YouTube playlist — cycles through these, skips errors automatically.
         // To add more: paste the 11-char video ID from any YouTube URL (?v=XXXXXXXXXXX)
         const GREEK_LAIKA = [
-            // Add real YouTube video IDs here (11-char code after ?v= in a YouTube URL)
+			'4oSIfj_nY6E&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2&index=2',
+		'tEGc0KVOerk&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2',
+         'AW3qdGNqags&list=RDAW3qdGNqags&start_radio=1',
+			// Add real YouTube video IDs here (11-char code after ?v= in a YouTube URL)
         ];
 
         // Sabanis.mp3 — plays when YouTube unavailable or as extra layer
