@@ -840,9 +840,9 @@ window.AmbienceModule = (() => {
     waves:         { build: buildWaves },
     brown:         { build: buildBrownNoise },
     nature:        { build: buildNatureForest },
-    cafe:          { build: buildCafe },
+    cafe:          { build: () => [] },
     library:       { build: buildLibrary },
-    jazz:          { build: buildJazz },
+    jazz:          { build: () => [] },
     binary_sunset: { build: buildBinarySunset },
     bouzoukia:     { build: () => [] }
   };

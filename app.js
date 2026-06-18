@@ -925,7 +925,48 @@ initMixer() {
         });
     }
 
-    this._initBouzoukiaPlayer();
+    // Greek laïká — verified YouTube IDs from official channels
+    this._initYTChannel('bouzoukia', [
+        // Antonis Remos
+        'jdeNvxLA8EQ', // Τα Σάββατα
+        'gd0Nua0I43s', // Borei na vgo
+        'sTyGh6edBRQ', // Χίλια Σπίρτα
+        'MFLZSkfA7hU', // To Kerma
+        // Nikos Oikonomopoulos
+        'KYaT3q0jfaM', // Για Παράδειγμα
+        'ycWOTNuYuxg', // Πρώτη Θέση
+        '-EzSpGMvVg4', // Κουράστηκα Να Σ'Αγαπώ
+        'q9CE6Z5fLTs', // Πάλι Γύρισα
+        // Nikos Makropoulos
+        'niUGXJR2Fp4', // De Les Kouventa (live w/ Karras)
+        // User's picks + laïká mix
+        '4oSIfj_nY6E',
+        'tEGc0KVOerk',
+        'AW3qdGNqags',
+        'yuo_HFRjuA4', // Greek Laika broken hearts mix
+    ], 'Sabanis.mp3');
+
+    // Jazz — lofi/study YouTube channels
+    this._initYTChannel('jazz', [
+        'HuFYqnbVbzY', // jazz lofi radio 🎷 beats to chill/study to
+        'CBSlu_VMS9U', // jazz lofi mix [3 hours]
+        'CfPxlb8-ZQ0', // Work & Study Lofi Jazz
+        'bz5q5gl2uZA', // Lofi Jazz Study Music
+        'qzyl0f3mRG0', // Jazz Beats lofi jazz jazzhop
+        '-R0UYHS8A_A', // Afternoon Jazz
+        'BGo4QajF1-k', // Best JazzHop Vibes 2024
+    ], null);
+
+    // Cafe — coffee shop ambience YouTube
+    this._initYTChannel('cafe', [
+        'h-PfBxoMq_4', // 4K Cozy Coffee Shop Piano Jazz
+        'YACyyY64X-E', // Cozy Coffee Shop Ambience smooth jazz
+        'gaGrHUekGrc', // Coffee Shop Sounds for Study
+        'BywDOO99Ia0', // Coffee Shop Music relax jazz
+        'vHcj3REfLc0', // 4K Cozy Coffee Shop
+        'X5cG44D_6-o', // Autumn Coffee Shop Ambience jazz
+        's_m1QKaQXVc', // STUDY WITH ME CAFE pomodoro
+    ], null);
 },
 switchTab(target) {
     this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
@@ -1630,103 +1671,85 @@ el.addEventListener('click', () => {
         if (bar) bar.classList.remove('visible');
     },
 
-    _initBouzoukiaPlayer() {
-        // Bare 11-char video IDs — paste full YouTube URLs, code strips &list=... automatically
-        const GREEK_LAIKA = [
-            '4oSIfj_nY6E&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2&index=2',
-            'tEGc0KVOerk&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2',
-            'AW3qdGNqags&list=RDAW3qdGNqags&start_radio=1',
-        ];
-        const trackIds = GREEK_LAIKA.map(s => s.split('&')[0].trim()).filter(s => s.length >= 5);
+    _initYTChannel(scene, trackIds, fallbackSrc) {
+        if (!this._ytPlayers) this._ytPlayers = {};
+        const fallback = fallbackSrc ? new Audio(fallbackSrc) : null;
+        if (fallback) fallback.loop = true;
 
-        const sab = new Audio('Sabanis.mp3');
-        sab.loop = true;
-        this._sabAudio = sab;
+        const ch = { player: null, ready: false, failed: false, idx: 0, fallback };
+        this._ytPlayers[scene] = ch;
 
-        let bzIdx = 0;
-        let ytReady = false;
-        let ytFailed = false;
-        this._bzYT = null;
+        const vol     = () => (this.state.mixerVolumes[scene] || 0) / 100;
+        const startFb = () => { if (!fallback) return; fallback.volume = Math.min(1, vol()); if (fallback.paused) fallback.play().catch(() => {}); };
+        const stopFb  = () => { if (!fallback) return; fallback.pause(); fallback.currentTime = 0; };
+        const setVol  = (v) => { if (fallback) fallback.volume = Math.min(1, v); if (ch.player && ch.ready) ch.player.setVolume(v * 100); };
 
-        const vol      = () => (this.state.mixerVolumes.bouzoukia || 0) / 100;
-        const startSab = () => { sab.volume = Math.min(1, vol()); if (sab.paused) sab.play().catch(() => {}); };
-        const stopSab  = () => { sab.pause(); sab.currentTime = 0; };
-        const setVol   = (v) => { sab.volume = Math.min(1, v); if (this._bzYT && ytReady) this._bzYT.setVolume(v * 100); };
+        const wrapId  = `yt-wrap-${scene}`;
+        const frameId = `yt-frame-${scene}`;
 
-        // max-height animation keeps the element rendered (not display:none) so YouTube can init properly
         const showPlayer = (on) => {
-            const w = document.getElementById('bz-player-wrap');
+            const w = document.getElementById(wrapId);
             if (w) w.style.maxHeight = on ? '180px' : '0';
         };
 
         const loadTrack = () => {
-            if (!this._bzYT || !trackIds.length) return;
-            this._bzYT.loadVideoById(trackIds[bzIdx % trackIds.length]);
+            if (!ch.player || !trackIds.length) return;
+            ch.player.loadVideoById(trackIds[ch.idx % trackIds.length]);
         };
 
         const ytPlay = () => {
-            if (!this._bzYT || !ytReady) return false;
-            this._bzYT.setVolume(vol() * 100);
-            const s = this._bzYT.getPlayerState();
+            if (!ch.player || !ch.ready) return false;
+            ch.player.setVolume(vol() * 100);
+            const s = ch.player.getPlayerState();
             if (s === 1) return true;
-            if (s === 2) { this._bzYT.playVideo(); return true; }
+            if (s === 2) { ch.player.playVideo(); return true; }
             loadTrack();
             return true;
         };
 
         const onStart = () => {
-            if (trackIds.length && !ytFailed) {
-                showPlayer(true);
-                if (ytReady) ytPlay();
-                else startSab(); // Sabanis until YouTube ready, then onReady takes over
-            } else {
-                startSab();
-            }
+            if (!trackIds.length || ch.failed) { startFb(); return; }
+            showPlayer(true);
+            if (ch.ready) ytPlay(); else startFb(); // fallback until YouTube is ready
         };
         const onStop = () => {
-            if (this._bzYT && ytReady) this._bzYT.pauseVideo();
-            stopSab();
+            if (ch.player && ch.ready) ch.player.pauseVideo();
+            stopFb();
             showPlayer(false);
         };
 
-        // Wrapper inserted INSIDE the channel (not as sibling) so it's part of the mixer layout
-        const channel = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
-        if (channel && !document.getElementById('bz-player-wrap') && trackIds.length) {
+        // Wrap inside the channel — max-height:0 hides it visually but keeps it rendered
+        // so YouTube can create a proper iframe with real dimensions
+        const channel = document.querySelector(`.mixer-channel[data-scene="${scene}"]`);
+        if (channel && !document.getElementById(wrapId) && trackIds.length) {
             const wrap = document.createElement('div');
-            wrap.id = 'bz-player-wrap';
-            // overflow:hidden + max-height:0 hides visually but keeps element rendered
+            wrap.id = wrapId;
             wrap.style.cssText = 'overflow:hidden;max-height:0;width:100%;transition:max-height 0.3s ease;';
-            wrap.innerHTML = '<div id="bz-yt-iframe" style="width:100%;height:160px;"></div>';
+            wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:160px;"></div>`;
             channel.appendChild(wrap);
         }
 
-        const initYTPlayer = () => {
-            if (this._bzYT || !window.YT?.Player || !trackIds.length) return;
-            const div = document.getElementById('bz-yt-iframe');
+        const initPlayer = () => {
+            if (ch.player || !window.YT?.Player || !trackIds.length) return;
+            const div = document.getElementById(frameId);
             if (!div) return;
-            this._bzYT = new window.YT.Player('bz-yt-iframe', {
+            ch.player = new window.YT.Player(frameId, {
                 width: '100%', height: '160',
-                videoId: trackIds[0], // pre-load first track
+                videoId: trackIds[0],
                 playerVars: { autoplay: 0, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
                 events: {
                     onReady: () => {
-                        ytReady = true;
-                        stopSab(); // stop fallback Sabanis
-                        if (vol() > 0) {
-                            this._bzYT.setVolume(vol() * 100);
-                            this._bzYT.playVideo();
-                        }
+                        ch.ready = true;
+                        stopFb(); // stop fallback if it was playing
+                        if (vol() > 0) { ch.player.setVolume(vol() * 100); ch.player.playVideo(); }
                     },
                     onStateChange: e => {
-                        if (e.data === 0) { // ended → next track
-                            bzIdx = (bzIdx + 1) % trackIds.length;
-                            loadTrack();
-                        }
+                        if (e.data === 0) { ch.idx = (ch.idx + 1) % trackIds.length; loadTrack(); }
                     },
                     onError: () => {
-                        bzIdx = (bzIdx + 1) % trackIds.length;
-                        if (trackIds.length > 1 && bzIdx !== 0) loadTrack();
-                        else { ytFailed = true; showPlayer(false); if (vol() > 0) startSab(); }
+                        ch.idx = (ch.idx + 1) % trackIds.length;
+                        if (trackIds.length > 1 && ch.idx !== 0) loadTrack();
+                        else { ch.failed = true; showPlayer(false); if (vol() > 0) startFb(); }
                     },
                 }
             });
@@ -1738,40 +1761,43 @@ el.addEventListener('click', () => {
                 tag.src = 'https://www.youtube.com/iframe_api';
                 document.head.appendChild(tag);
             }
-            if (window.YT?.Player) initYTPlayer();
-            else {
+            if (window.YT?.Player) {
+                initPlayer();
+            } else {
                 const prev = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = () => { if (prev) prev(); initYTPlayer(); };
+                window.onYouTubeIframeAPIReady = () => { if (prev) prev(); initPlayer(); };
             }
         }
 
-        // Slider
-        const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
-        if (bzSlider) bzSlider.addEventListener('input', e => {
+        // Slider listener — reacts immediately when user moves the slider
+        const slider = document.querySelector(`.mixer-slider[data-scene="${scene}"]`);
+        if (slider) slider.addEventListener('input', e => {
             const v = parseInt(e.target.value) / 100;
             setVol(v);
             if (v > 0) onStart(); else onStop();
         });
 
-        // Icon toggle
-        const bzBtn = document.querySelector('.mixer-btn[data-scene="bouzoukia"]');
-        if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(() => {
+        // Icon toggle — wait for initMixer to update slider.value first (hence timeout)
+        const btn = document.querySelector(`.mixer-btn[data-scene="${scene}"]`);
+        if (btn) btn.addEventListener('click', () => setTimeout(() => {
             const v = vol(); setVol(v);
             if (v > 0) onStart(); else onStop();
         }, 60));
 
-        // Stop All
+        // Stop All button
         const stopAll = document.getElementById('btn-stop-all-ambient');
         if (stopAll) stopAll.addEventListener('click', onStop);
 
-        // Next track
-        const nxt = document.getElementById('bz-next-btn');
-        if (nxt) nxt.addEventListener('click', e => {
-            e.stopPropagation();
-            bzIdx = (bzIdx + 1) % (trackIds.length || 1);
-            if (this._bzYT && ytReady && !ytFailed) loadTrack();
-            else { stopSab(); startSab(); }
-        });
+        // ⏭ next-track button (bouzoukia only)
+        if (scene === 'bouzoukia') {
+            const nxt = document.getElementById('bz-next-btn');
+            if (nxt) nxt.addEventListener('click', e => {
+                e.stopPropagation();
+                ch.idx = (ch.idx + 1) % (trackIds.length || 1);
+                if (ch.player && ch.ready && !ch.failed) loadTrack();
+                else { stopFb(); startFb(); }
+            });
+        }
     },
 
     playAudio(type) {
