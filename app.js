@@ -1631,14 +1631,12 @@ el.addEventListener('click', () => {
     },
 
     _initBouzoukiaPlayer() {
-        // Paste anything from a YouTube URL — the code strips &list=... automatically
+        // Bare 11-char video IDs — paste full YouTube URLs, code strips &list=... automatically
         const GREEK_LAIKA = [
             '4oSIfj_nY6E&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2&index=2',
             'tEGc0KVOerk&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2',
             'AW3qdGNqags&list=RDAW3qdGNqags&start_radio=1',
         ];
-
-        // Extract bare video IDs (strip &list=... suffixes — loadVideoById needs just the ID)
         const trackIds = GREEK_LAIKA.map(s => s.split('&')[0].trim()).filter(s => s.length >= 5);
 
         const sab = new Audio('Sabanis.mp3');
@@ -1646,42 +1644,60 @@ el.addEventListener('click', () => {
         this._sabAudio = sab;
 
         let bzIdx = 0;
+        let ytReady = false;
         let ytFailed = false;
         this._bzYT = null;
 
-        const vol      = () => Math.min(1, (this.state.mixerVolumes.bouzoukia || 0) / 100);
-        const startSab = () => { sab.volume = vol(); if (sab.paused) sab.play().catch(() => {}); };
+        const vol      = () => (this.state.mixerVolumes.bouzoukia || 0) / 100;
+        const startSab = () => { sab.volume = Math.min(1, vol()); if (sab.paused) sab.play().catch(() => {}); };
         const stopSab  = () => { sab.pause(); sab.currentTime = 0; };
+        const setVol   = (v) => { sab.volume = Math.min(1, v); if (this._bzYT && ytReady) this._bzYT.setVolume(v * 100); };
+
+        // max-height animation keeps the element rendered (not display:none) so YouTube can init properly
+        const showPlayer = (on) => {
+            const w = document.getElementById('bz-player-wrap');
+            if (w) w.style.maxHeight = on ? '180px' : '0';
+        };
 
         const loadTrack = () => {
             if (!this._bzYT || !trackIds.length) return;
             this._bzYT.loadVideoById(trackIds[bzIdx % trackIds.length]);
         };
 
-        const startYT = () => {
-            if (!this._bzYT || ytFailed) { startSab(); return; }
+        const ytPlay = () => {
+            if (!this._bzYT || !ytReady) return false;
             this._bzYT.setVolume(vol() * 100);
             const s = this._bzYT.getPlayerState();
-            if (s === 1) return;          // already playing
-            if (s === 2) { this._bzYT.playVideo(); return; }  // paused → resume
-            loadTrack();                  // not started → load
+            if (s === 1) return true;
+            if (s === 2) { this._bzYT.playVideo(); return true; }
+            loadTrack();
+            return true;
         };
 
-        const stopYT     = () => { if (this._bzYT) this._bzYT.pauseVideo(); };
-        const showPlayer = (on) => { const w = document.getElementById('bz-player-wrap'); if (w) w.style.display = on ? 'block' : 'none'; };
+        const onStart = () => {
+            if (trackIds.length && !ytFailed) {
+                showPlayer(true);
+                if (ytReady) ytPlay();
+                else startSab(); // Sabanis until YouTube ready, then onReady takes over
+            } else {
+                startSab();
+            }
+        };
+        const onStop = () => {
+            if (this._bzYT && ytReady) this._bzYT.pauseVideo();
+            stopSab();
+            showPlayer(false);
+        };
 
-        const onStart = () => { if (trackIds.length && !ytFailed) { startYT(); showPlayer(true); } else startSab(); };
-        const onStop  = () => { stopYT(); stopSab(); showPlayer(false); };
-        const setVol  = (v) => { sab.volume = Math.min(1, v); if (this._bzYT) this._bzYT.setVolume(v * 100); };
-
-        // Build a small visible player below the bouzoukia channel (browsers block hidden iframes)
+        // Wrapper inserted INSIDE the channel (not as sibling) so it's part of the mixer layout
         const channel = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
         if (channel && !document.getElementById('bz-player-wrap') && trackIds.length) {
             const wrap = document.createElement('div');
             wrap.id = 'bz-player-wrap';
-            wrap.style.cssText = 'display:none;width:100%;';
+            // overflow:hidden + max-height:0 hides visually but keeps element rendered
+            wrap.style.cssText = 'overflow:hidden;max-height:0;width:100%;transition:max-height 0.3s ease;';
             wrap.innerHTML = '<div id="bz-yt-iframe" style="width:100%;height:160px;"></div>';
-            channel.insertAdjacentElement('afterend', wrap);
+            channel.appendChild(wrap);
         }
 
         const initYTPlayer = () => {
@@ -1690,25 +1706,32 @@ el.addEventListener('click', () => {
             if (!div) return;
             this._bzYT = new window.YT.Player('bz-yt-iframe', {
                 width: '100%', height: '160',
-                playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
+                videoId: trackIds[0], // pre-load first track
+                playerVars: { autoplay: 0, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
                 events: {
-                    onReady: () => { if ((this.state.mixerVolumes.bouzoukia || 0) > 0) startYT(); },
+                    onReady: () => {
+                        ytReady = true;
+                        stopSab(); // stop fallback Sabanis
+                        if (vol() > 0) {
+                            this._bzYT.setVolume(vol() * 100);
+                            this._bzYT.playVideo();
+                        }
+                    },
                     onStateChange: e => {
-                        if (e.data === window.YT.PlayerState.ENDED) {
+                        if (e.data === 0) { // ended → next track
                             bzIdx = (bzIdx + 1) % trackIds.length;
                             loadTrack();
                         }
                     },
                     onError: () => {
                         bzIdx = (bzIdx + 1) % trackIds.length;
-                        if (bzIdx === 0) { ytFailed = true; showPlayer(false); startSab(); }
-                        else loadTrack();
+                        if (trackIds.length > 1 && bzIdx !== 0) loadTrack();
+                        else { ytFailed = true; showPlayer(false); if (vol() > 0) startSab(); }
                     },
                 }
             });
         };
 
-        // Load API early so it's ready the moment user touches the slider
         if (trackIds.length) {
             if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
                 const tag = document.createElement('script');
@@ -1722,7 +1745,7 @@ el.addEventListener('click', () => {
             }
         }
 
-        // ── Mixer slider ──
+        // Slider
         const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
         if (bzSlider) bzSlider.addEventListener('input', e => {
             const v = parseInt(e.target.value) / 100;
@@ -1730,23 +1753,24 @@ el.addEventListener('click', () => {
             if (v > 0) onStart(); else onStop();
         });
 
-        // ── Mixer icon toggle ──
+        // Icon toggle
         const bzBtn = document.querySelector('.mixer-btn[data-scene="bouzoukia"]');
         if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(() => {
             const v = vol(); setVol(v);
             if (v > 0) onStart(); else onStop();
         }, 60));
 
-        // ── Stop All ──
+        // Stop All
         const stopAll = document.getElementById('btn-stop-all-ambient');
         if (stopAll) stopAll.addEventListener('click', onStop);
 
-        // ── Next track ──
+        // Next track
         const nxt = document.getElementById('bz-next-btn');
         if (nxt) nxt.addEventListener('click', e => {
             e.stopPropagation();
             bzIdx = (bzIdx + 1) % (trackIds.length || 1);
-            if (this._bzYT && !ytFailed && trackIds.length) loadTrack(); else { stopSab(); startSab(); }
+            if (this._bzYT && ytReady && !ytFailed) loadTrack();
+            else { stopSab(); startSab(); }
         });
     },
 

@@ -1394,7 +1394,8 @@ body.theme-starwars .notebook-subtitle { color: rgba(79,195,247,0.4); }
 .notebook-pages {
     display: grid;
     grid-template-columns: 1fr 20px 1fr;
-    min-height: 500px;
+    height: 560px;
+    max-height: 82vh;
     border-radius: 4px 12px 12px 4px;
     overflow: hidden;
     box-shadow: 0 8px 40px rgba(0,0,0,0.5);
@@ -1403,6 +1404,9 @@ body.theme-starwars .notebook-subtitle { color: rgba(79,195,247,0.4); }
     background: #f5f0e8;
     padding: 1.5rem;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 body.theme-starwars .notebook-page {
     background: #020d1a;
@@ -1435,6 +1439,12 @@ body.theme-starwars .notebook-page-title {
     border-bottom-color: rgba(79,195,247,0.3);
     text-shadow: 0 0 8px rgba(79,195,247,0.4);
 }
+.notebook-page-left {
+    overflow: hidden;
+}
+.notebook-page-left .notebook-page-title {
+    flex-shrink: 0;
+}
 .notebook-page-left textarea {
     background: transparent;
     border: none;
@@ -1444,10 +1454,12 @@ body.theme-starwars .notebook-page-title {
     line-height: 28px;
     resize: none;
     width: 100%;
-    min-height: 180px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     outline: none;
     padding: 0;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 body.theme-starwars .notebook-page-left textarea {
     color: #a8d8f0;
@@ -1456,6 +1468,8 @@ body.theme-starwars .notebook-page-left textarea {
 }
 .notebook-actions {
     display: flex; flex-direction: column; gap: 8px;
+    flex-shrink: 0;
+    margin-top: 0.75rem;
 }
 .notebook-actions .btn-add-note {
     border-radius: 6px; height: 36px; font-size: 0.85rem;
@@ -1548,7 +1562,8 @@ body.theme-starwars .notebook-page-right .note-time { color: rgba(79,195,247,0.4
 .notebook-close-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
 
 @media (max-width: 768px) {
-    .notebook-pages { grid-template-columns: 1fr; grid-template-rows: auto 8px auto; }
+    .notebook-pages { grid-template-columns: 1fr; grid-template-rows: auto 8px auto; height: auto; max-height: none; }
+    .notebook-page-left { height: 340px; }
     .notebook-spine { height: 8px; background: linear-gradient(180deg, #c4a882, #e8d5b0, #c4a882); }
     body.theme-starwars .notebook-spine { background: linear-gradient(180deg, #001830, #003060, #001830); }
 }
