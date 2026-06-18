@@ -116,6 +116,7 @@ async initFirebase() {
     const authTabs      = document.querySelectorAll('.auth-tab');
     const forgotLink    = document.getElementById('auth-forgot-link');
     const googleBtn     = document.getElementById('auth-google-btn');
+    const googleError   = document.getElementById('auth-google-error');
     const resetBack     = document.getElementById('auth-reset-back');
     const resetEmailIn  = document.getElementById('auth-reset-email');
     const resetSubmit   = document.getElementById('auth-reset-submit');
@@ -135,6 +136,7 @@ async initFirebase() {
         'auth/popup-closed-by-user':    'Sign-in cancelled.',
         'auth/cancelled-popup-request': 'Sign-in cancelled.',
         'auth/network-request-failed':  'Network error. Check your connection.',
+        'auth/unauthorized-domain':     'This domain is not authorised for Google sign-in. Use email/password instead.',
     };
 
     // ── Modal open/close ──────────────────────────────────────────
@@ -154,6 +156,7 @@ async initFirebase() {
         if (!modal) return;
         modal.style.display = 'none';
         if (errorEl) errorEl.style.display = 'none';
+        if (googleError) googleError.style.display = 'none';
         if (form) form.reset();
         showMain();
     };
@@ -212,8 +215,10 @@ async initFirebase() {
     }
 
     // ── Google Sign-In ────────────────────────────────────────────
-    if (googleBtn && window.GoogleAuthProvider && window.signInWithPopup) {
+    if (googleBtn) {
         googleBtn.addEventListener('click', async () => {
+            if (!window.GoogleAuthProvider || !window.signInWithPopup) return;
+            if (googleError) googleError.style.display = 'none';
             const provider = new window.GoogleAuthProvider();
             googleBtn.disabled = true;
             try {
@@ -223,10 +228,9 @@ async initFirebase() {
                 if (err.code === 'auth/popup-blocked' && window.signInWithRedirect) {
                     await window.signInWithRedirect(window.firebaseAuth, provider);
                 } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-                    if (errorEl) {
-                        errorEl.textContent = AUTH_ERRORS[err.code] || err.message || 'Google sign-in failed.';
-                        errorEl.style.display = 'block';
-                    }
+                    const msg = AUTH_ERRORS[err.code] || err.message || 'Google sign-in failed.';
+                    if (googleError) { googleError.textContent = msg; googleError.style.display = 'block'; }
+                    else if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
                 }
             } finally {
                 googleBtn.disabled = false;
@@ -2724,7 +2728,6 @@ addThinkNote() {
     note.innerHTML = `
       <div class="tn-header">
         <span class="tn-page-indicator" style="display:none">1 / 1</span>
-        <button class="thinknote-close" title="Remove">×</button>
       </div>
       <div class="thinknote-body" contenteditable="true" spellcheck="false" data-placeholder="Your thought..."></div>
       <div class="tn-footer">
@@ -2735,9 +2738,14 @@ addThinkNote() {
       </div>
     `;
 
+    // Close button lives on the pile (outside clip-path) so it's always visible
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'thinknote-close';
+    closeBtn.title = 'Remove';
+    closeBtn.textContent = '×';
+
     const body      = note.querySelector('.thinknote-body');
     const indicator = note.querySelector('.tn-page-indicator');
-    const closeBtn  = note.querySelector('.thinknote-close');
     const prevBtn   = note.querySelector('.tn-prev');
     const nextBtn   = note.querySelector('.tn-next');
     const dlBtn     = note.querySelector('.tn-dl');
@@ -2835,6 +2843,7 @@ addThinkNote() {
     });
 
     pile.appendChild(note);
+    pile.appendChild(closeBtn);
     layer.appendChild(pile);
     setTimeout(() => body.focus(), 60);
 },
