@@ -88,64 +88,100 @@ if (window.firebaseAuth) { this.initFirebase(); } else { window.addEventListener
     },
 
 async initFirebase() {
-    const btnAuth = document.getElementById('btn-auth');
-    const authName = document.getElementById('auth-name');
-    const authAvatar = document.getElementById('auth-avatar');
+    if (
+        !window.firebaseAuth || !window.firebaseDb ||
+        !window.firestoreDoc || !window.firestoreOnSnapshot ||
+        !window.onAuthStateChanged || !window.signOutFb
+    ) return;
 
-    const doSignIn = async () => {
-        if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) {
-            this.showToast('Auth not ready', 'Please wait a moment and try again.', '⚠️');
-            return;
-        }
-        const provider = new window.GoogleAuthProvider();
-        try {
-            await window.signInWithPopup(window.firebaseAuth, provider);
-        } catch (err) {
-            if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-                if (window.signInWithRedirect) {
-                    await window.signInWithRedirect(window.firebaseAuth, provider);
-                } else {
-                    this.showToast('Popup blocked', 'Allow popups for this site and try again.', '⚠️');
-                }
-            } else if (err.code === 'auth/unauthorized-domain') {
-                this.showToast('Domain not authorized', 'Check Firebase console authorized domains.', '⚠️');
-                console.error('Auth domain error:', err);
-            } else {
-                this.showToast('Sign-in failed', err.message || 'Please try again.', '⚠️');
-                console.error('Google sign-in failed:', err);
-            }
-        }
+    if (this.authStateUnsub) this.authStateUnsub();
+
+    const btnAuth     = document.getElementById('btn-auth');
+    const authName    = document.getElementById('auth-name');
+    const authAvatar  = document.getElementById('auth-avatar');
+    const authBarEl   = document.getElementById('auth-bar');
+    const signoutFooter = document.getElementById('btn-signout-footer');
+    const modal       = document.getElementById('auth-modal');
+    const modalClose  = document.getElementById('auth-modal-close');
+    const form        = document.getElementById('auth-form');
+    const emailInput  = document.getElementById('auth-input-email');
+    const passInput   = document.getElementById('auth-input-password');
+    const nameInput   = document.getElementById('auth-input-name');
+    const nameRow     = document.getElementById('auth-name-row');
+    const errorEl     = document.getElementById('auth-error');
+    const submitBtn   = document.getElementById('auth-submit');
+    const authTabs    = document.querySelectorAll('.auth-tab');
+
+    let authMode = 'signin';
+
+    const openModal = () => {
+        if (modal) { modal.style.display = 'flex'; emailInput?.focus(); }
+    };
+    const closeModal = () => {
+        if (modal) modal.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        if (form) form.reset();
     };
 
-    if (btnAuth) {
-        btnAuth.style.display = 'inline-flex';
-        btnAuth.textContent = 'Sign in with Google';
-        btnAuth.onclick = doSignIn;
-    }
+    authTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            authMode = tab.dataset.authTab;
+            authTabs.forEach(t => t.classList.toggle('active', t === tab));
+            if (nameRow) nameRow.style.display = authMode === 'signup' ? '' : 'none';
+            if (submitBtn) submitBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+            if (passInput) passInput.setAttribute('autocomplete', authMode === 'signup' ? 'new-password' : 'current-password');
+            if (errorEl) errorEl.style.display = 'none';
+        });
+    });
 
-    if (window.getRedirectResult && window.firebaseAuth) {
-        window.getRedirectResult(window.firebaseAuth).catch(err => {
-            if (err && err.code && err.code !== 'auth/no-current-user') {
-                this.showToast('Sign-in failed', err.message || 'Please try again.', '⚠️');
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const email = emailInput?.value.trim();
+            const pass  = passInput?.value;
+            const name  = nameInput?.value.trim();
+            if (!email || !pass) return;
+
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '...'; }
+            if (errorEl) errorEl.style.display = 'none';
+
+            try {
+                if (authMode === 'signup') {
+                    const cred = await window.createUserWithEmailAndPassword(window.firebaseAuth, email, pass);
+                    if (name && window.updateProfile) {
+                        await window.updateProfile(cred.user, { displayName: name });
+                    }
+                } else {
+                    await window.signInWithEmailAndPassword(window.firebaseAuth, email, pass);
+                }
+                closeModal();
+            } catch (err) {
+                const msgs = {
+                    'auth/email-already-in-use': 'That email is already registered. Sign in instead.',
+                    'auth/invalid-email': 'Please enter a valid email address.',
+                    'auth/weak-password': 'Password must be at least 6 characters.',
+                    'auth/user-not-found': 'No account with that email. Create one instead.',
+                    'auth/wrong-password': 'Incorrect password.',
+                    'auth/invalid-credential': 'Email or password is incorrect.',
+                    'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
+                };
+                if (errorEl) {
+                    errorEl.textContent = msgs[err.code] || 'Something went wrong. Please try again.';
+                    errorEl.style.display = 'block';
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+                }
             }
         });
     }
 
-    if (
-        !window.firebaseAuth ||
-        !window.firebaseDb ||
-        !window.firestoreDoc ||
-        !window.firestoreOnSnapshot ||
-        !window.onAuthStateChanged ||
-        !window.signOutFb
-    ) {
-        return;
-    }
-
-    if (this.authStateUnsub) this.authStateUnsub();
-
-    const authBarEl = document.getElementById('auth-bar');
-    const signoutFooter = document.getElementById('btn-signout-footer');
+    if (btnAuth) btnAuth.addEventListener('click', openModal);
 
     this.authStateUnsub = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
         if (user) {
@@ -154,40 +190,23 @@ async initFirebase() {
                 signoutFooter.style.display = 'flex';
                 signoutFooter.onclick = () => window.signOutFb(window.firebaseAuth);
             }
-            // Keep btn-auth hidden when signed in (class handles it)
-            if (btnAuth) btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
-
-            if (authName) authName.textContent = user.displayName?.split(' ')[0] || '';
-
-            if (authAvatar) {
-                if (user.photoURL) {
-                    authAvatar.src = user.photoURL;
-                    authAvatar.style.display = 'block';
-                } else {
-                    authAvatar.src = '';
-                    authAvatar.style.display = 'none';
-                }
-            }
+            const displayName = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || '';
+            if (authName) authName.textContent = displayName;
+            if (authAvatar) authAvatar.style.display = 'none';
 
             await this.loadFromFirestore(user.uid);
 
             if (this.userUnsub) this.userUnsub();
-
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
             this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
                 if (!snap.exists()) return;
-
                 const remote = snap.data();
-
                 this.state.history = remote.history || [];
                 this.state.xp = remote.xp || 0;
                 this.state.level = remote.level || 1;
                 this.state.sessionsToday = remote.sessionsToday || 0;
                 this.state.totalSessions = remote.totalSessions || 0;
-                this.state.settings = {
-                    ...this.state.settings,
-                    ...(remote.settings || {})
-                };
+                this.state.settings = { ...this.state.settings, ...(remote.settings || {}) };
                 this.saveStats();
                 localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
                 this.updateTheme();
@@ -199,23 +218,9 @@ async initFirebase() {
         } else {
             if (authBarEl) authBarEl.classList.remove('signed-in');
             if (signoutFooter) signoutFooter.style.display = 'none';
-
-            if (this.userUnsub) {
-                this.userUnsub();
-                this.userUnsub = null;
-            }
-
-            if (btnAuth) {
-                btnAuth.textContent = 'Sign in';
-                btnAuth.onclick = doSignIn;
-            }
-
             if (authName) authName.textContent = '';
-
-            if (authAvatar) {
-                authAvatar.src = '';
-                authAvatar.style.display = 'none';
-            }
+            if (authAvatar) { authAvatar.src = ''; authAvatar.style.display = 'none'; }
+            if (this.userUnsub) { this.userUnsub(); this.userUnsub = null; }
         }
     });
 },
