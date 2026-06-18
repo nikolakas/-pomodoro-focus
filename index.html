@@ -4,24 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pomodoro Focus</title>
-    <meta name="description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta name="description" content="A beautiful, interactive Pomodoro timer with ambient sounds and focus tools.">
     <meta property="og:title" content="Pomodoro Focus">
-    <meta property="og:description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta property="og:description" content="A beautiful, interactive Pomodoro timer with ambient sounds and focus tools.">
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#ff6b6b">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.167.0/build/three.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="starfield" id="starfield" style="display:none;">
-        <div class="stars stars-sm"></div>
-        <div class="stars stars-md"></div>
-        <div class="stars stars-lg"></div>
-    </div>
-    <canvas id="celestial-canvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:none;"></canvas>
     <div class="wallpaper-layer" id="wallpaper-layer"></div>
 
     <div class="app">
@@ -33,8 +26,7 @@
             </div>
             
             <!-- Subtle friend banners — visible only in their theme -->
-            <span class="friend-hearts" id="marianna-hearts" aria-hidden="true"></span>
-            <span class="friend-terea-tag" id="terea-tag" aria-hidden="true">for Maria 💨</span>
+            <span class="friend-terea-tag" id="terea-tag" aria-hidden="true"></span>
             <div class="auth-bar" id="auth-bar">
   <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
   <span id="auth-name" class="auth-name"></span>
@@ -56,6 +48,10 @@
                 <button class="tab" data-tab="medical" role="tab" aria-selected="false" id="tab-medical">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Study
+                </button>
+                <button class="tab" data-tab="settings" role="tab" aria-selected="false" id="tab-settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Settings
                 </button>
             </nav>
         </header>
@@ -98,10 +94,6 @@
             </div>
 
             <div class="controls">
-                <button class="btn btn-secondary tooltip-btn" id="btn-minimal">
-    ▲
-    <span class="tooltip">Minimal Mode</span>
-</button>
                 <button class="btn btn-secondary tooltip-btn" id="btn-zen">
     ☯
     <span class="tooltip">Zen Mode (Z)</span>
@@ -112,10 +104,7 @@
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 </button>
                 <button class="btn btn-secondary" id="btn-skip" title="Skip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
-                <button class="btn btn-secondary tooltip-btn" id="btn-warp">
-    🚀
-    <span class="tooltip">Hyperspace Jump (W)</span>
-</button>
+                <button class="btn btn-secondary" id="btn-sounds" title="Sounds">🎵</button>
             </div>
 <div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
 <div class="subtask-tracker" id="subtask-tracker"></div>
@@ -159,301 +148,82 @@
                 <p id="quote-text">"Focus is a matter of deciding what things you're not going to do."</p>
             </div>
 
-            <!-- Breathing Exercise Guide (Hidden by default) -->
-            <div class="breathing-widget glass-card" id="breathing-widget" style="display:none;">
-    <div class="breathing-container">
-        <svg class="breathing-ring-svg" viewBox="0 0 120 120">
-            <circle class="breathing-ring-bg" cx="60" cy="60" r="54"/>
-            <circle class="breathing-ring-progress" cx="60" cy="60" r="54" id="breathing-ring"/>
-        </svg>
-        <div class="breathing-inner">
-            <div class="breathing-text" id="breathing-text">Ready</div>
-            <div class="breathing-countdown" id="breathing-countdown">4</div>
-        </div>
-    </div>
-    <button class="btn-toggle-breathe" id="btn-toggle-breathe">Start Breathing Guide</button>
-</div>
-
-            <!-- Focus Moods (Curated Presets) -->
-            <div class="focus-moods-section" aria-label="Focus Moods">
-                <h3 class="moods-title">Focus Moods</h3>
-                <div class="moods-grid">
-                    <button class="mood-card" data-mood="cozycafe">
-                        <span class="mood-icon">☕</span>
-                        <div class="mood-info">
-                            <span class="mood-name">Cozy Café</span><span class="mood-desc">Café + Jazz</span>
-                        </div>
-                    </button>
-                    <button class="mood-card" data-mood="rainyday">
-                        <span class="mood-icon">🌧️</span>
-                        <div class="mood-info">
-                            <span class="mood-name">Rainy Day</span><span class="mood-desc">Rain + Brown Noise</span>
-                        </div>
-                    </button>
-                   <button class="mood-card" data-mood="deepfocus">
-                        <span class="mood-icon">📚</span>
-                        <div class="mood-info">
-                            <span class="mood-name">Deep Focus</span><span class="mood-desc">Library + Forest</span>
-                        </div>
-                    </button>
-                   <button class="mood-card" data-mood="oceanbreeze">
-                        <span class="mood-icon">🌊</span>
-                        <div class="mood-info">
-                            <span class="mood-name">Ocean Breeze</span><span class="mood-desc">Waves + Nature</span>
-                        </div>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Ambient Sound Picker -->
-<div class="ambient-mixer glass-card" id="ambient-bar" aria-label="Ambient Mixer">
-    <div class="mixer-header">
-        <span class="mixer-title">🎛️ Ambient Mixer</span>
-        <button class="mixer-stop-all" id="btn-stop-all-ambient">Stop All</button>
-                    <button class="btn btn-sm" onclick="app.saveCurrentMix()" title="Save current mix as preset">💾 Save Mix</button>
-    </div>
-    <div class="mixer-grid">
-        <div class="mixer-channel" data-scene="rain">
-            <button class="mixer-btn" data-scene="rain">🌧️</button>
-            <span class="mixer-label">Rain</span>
-            <input type="range" class="mixer-slider" data-scene="rain" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="waves">
-            <button class="mixer-btn" data-scene="waves">🌊</button>
-            <span class="mixer-label">Waves</span>
-            <input type="range" class="mixer-slider" data-scene="waves" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="brown">
-            <button class="mixer-btn" data-scene="brown">📻</button>
-            <span class="mixer-label">Brown</span>
-            <input type="range" class="mixer-slider" data-scene="brown" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="nature">
-            <button class="mixer-btn" data-scene="nature">🌲</button>
-            <span class="mixer-label">Forest</span>
-            <input type="range" class="mixer-slider" data-scene="nature" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="cafe">
-            <button class="mixer-btn" data-scene="cafe">☕</button>
-            <span class="mixer-label">Café</span>
-            <input type="range" class="mixer-slider" data-scene="cafe" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="library">
-            <button class="mixer-btn" data-scene="library">📚</button>
-            <span class="mixer-label">Library</span>
-            <input type="range" class="mixer-slider" data-scene="library" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="jazz">
-            <button class="mixer-btn" data-scene="jazz">🎷</button>
-            <span class="mixer-label">Jazz</span>
-            <input type="range" class="mixer-slider" data-scene="jazz" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-        <div class="mixer-channel" data-scene="bouzoukia">
-            <div class="bz-btn-row">
-                <button class="mixer-btn" data-scene="bouzoukia">🪗</button>
-                <button class="bz-next-btn" id="bz-next-btn" title="Next track">⏭</button>
-            </div>
-            <span class="mixer-label">Bouzoukia</span>
-            <input type="range" class="mixer-slider" data-scene="bouzoukia" min="0" max="100" value="0">
-            <span class="mixer-vol">0%</span>
-        </div>
-    </div>
-</div>
-
-            <!-- Settings -->
-            <details class="settings-panel" id="settings-panel">
-  <summary class="settings-toggle">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    Settings
-  </summary>
-  <div class="settings-body">
-    <h3 class="settings-section-title">Timer</h3>
-    <div class="setting-row">
-      <label for="setting-work">Focus (min)</label>
-      <div class="stepper">
-        <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
-        <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
-        <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
-      </div>
-    </div>
-    <div class="setting-row">
-      <label for="setting-short">Short Break (min)</label>
-      <div class="stepper">
-        <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
-        <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
-        <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
-      </div>
-    </div>
-    <div class="setting-row">
-      <label for="setting-long">Long Break (min)</label>
-      <div class="stepper">
-        <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
-        <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
-        <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
-      </div>
-    </div>
-    <div class="setting-row">
-      <label for="setting-rounds">Rounds before long break</label>
-      <div class="stepper">
-        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
-        <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
-        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
-      </div>
-    </div>
-    <div class="setting-row">
-      <label for="setting-daily-goal">Daily Goal (Sessions)</label>
-      <div class="stepper">
-        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
-        <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
-        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
-      </div>
-    </div>
-    <div class="setting-row">
-      <label for="setting-auto-start">Auto-start next phase</label>
-      <input type="checkbox" id="setting-auto-start">
-    </div>
-    <div class="setting-row">
-      <label for="setting-rep-counter">Rep Counter (sets done today)</label>
-      <input type="checkbox" id="setting-rep-counter">
-    </div>
-    <div class="setting-row" id="row-terea-lite" style="display:none;">
-      <label for="setting-terea-lite">Terea Lite (reduce smoke &amp; flash)</label>
-      <input type="checkbox" id="setting-terea-lite">
-    </div>
-    <div class="setting-row">
-      <label for="setting-sound">Completion Sound</label>
-      <div style="display:flex; gap:8px;">
-        <select id="setting-sound">
-          <option value="bell">🔔 Ship Bell</option>
-          <option value="chime">✨ Force Chime</option>
-          <option value="digital">💎 Digital</option>
-          <option value="zen">🧘 Zen Bowl</option>
-          <option value="sw_theme">⚔️ Force Theme</option>
-          <option value="cute">♥ Cute</option>
-          <option value="none">🔇 None</option>
-        </select>
-        <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
-      </div>
-    </div>
-
-    <h3 class="settings-section-title">Appearance</h3>
-    <div class="setting-row theme-preview-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
-        <label>Theme</label>
-        <div class="theme-card-strip">
-            <button class="theme-card" id="theme-btn-normal" data-theme="normal" onclick="app.setThemePreview('normal')">
-                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a1a2e,#ff6b6b)"></span>
-                <span class="theme-card-icon">🌙</span>
-                <span class="theme-card-label">Normal</span>
-            </button>
-            <button class="theme-card" id="theme-btn-starwars" data-theme="starwars" onclick="app.setThemePreview('starwars')">
-                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#050505,#4fc3f7)"></span>
-                <span class="theme-card-icon">⚔️</span>
-                <span class="theme-card-label">Star Wars</span>
-            </button>
-            <button class="theme-card" id="theme-btn-pink" data-theme="pink" onclick="app.setThemePreview('pink')">
-                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a0a14,#ff6eb4)"></span>
-                <span class="theme-card-icon">🌸</span>
-                <span class="theme-card-label">Pink</span>
-            </button>
-            <button class="theme-card" id="theme-btn-terea" data-theme="terea" onclick="app.setThemePreview('terea')">
-                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#060d0c,#00d4c8)"></span>
-                <span class="theme-card-icon">💨</span>
-                <span class="theme-card-label">Terea</span>
-            </button>
-            <button class="theme-card" id="theme-btn-medical" data-theme="medical" onclick="app.setThemePreview('medical')">
-                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#0a1628,#00b4d8)"></span>
-                <span class="theme-card-icon">🩺</span>
-                <span class="theme-card-label">Medical</span>
-            </button>
-        </div>
-    </div>
 
 
-    <div class="setting-row">
-      <label>Accent Color</label>
-      <div class="color-picker" id="color-picker">
-        <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
-        <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
-        <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
-        <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
-        <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
-      </div>
-    </div>
-
-    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-      <label>Background</label>
-      <div class="wallpaper-picker-new" id="wallpaper-picker">
-        <button class="wp-thumb active" data-wp="default">
-          <div class="wp-thumb-img wp-thumb-default">🌙</div>
-          <span class="wp-thumb-label">None</span>
-        </button>
-        <button class="wp-thumb" data-wp="preset_forest">
-          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
-          <span class="wp-thumb-label">Forest</span>
-        </button>
-        <button class="wp-thumb" data-wp="preset_space">
-          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
-          <span class="wp-thumb-label">Space</span>
-        </button>
-        <label class="wp-thumb wp-custom-label">
-          <div class="wp-thumb-img wp-thumb-upload">＋</div>
-          <span class="wp-thumb-label">Upload</span>
-          <input type="file" id="wallpaper-upload" accept="image/*" hidden>
-        </label>
-      </div>
-      <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
-    </div>
-
-    <div class="sw-settings" id="sw-settings" style="display:none;">
-      <h3 class="settings-section-title">Lightsaber Color</h3>
-      <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
-        <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
-        <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
-        <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
-        <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
-        <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
-      </div>
-      <div class="setting-row">
-        <label for="setting-sw-music">Binary Sunset Auto-Play</label>
-        <input type="checkbox" id="setting-sw-music" checked>
-      </div>
-      <div class="setting-row">
-        <label>Binary Sunset</label>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width:auto; padding:0 12px; border-radius:12px; font-size:0.8rem; height:32px;">▶ Play Binary Sunset</button>
-          <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width:80px;">
-        </div>
-      </div>
-    </div>
-      
-            <div class="setting-row" style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
-                <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
-                <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-                <!-- Sign out — shown when logged in -->
-                <button id="btn-signout-footer" class="btn-signout-footer" style="display:none;" title="Sign out">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Sign out
-                </button>
-            </div>
-  </div>
-</details>
-<div class="developer-credit">
-    <span class="developer-text">Developed by Nikolas.dam</span>
-    <div class="social-links">
-        <a class="social-btn social-ig" href="https://www.instagram.com/nikolas.dam/" target="_blank" rel="noreferrer">Instagram</a>
-        <a class="social-btn social-li" href="https://www.linkedin.com/in/nikolaos-damdounis-486239300/" target="_blank" rel="noreferrer">LinkedIn</a>
-    </div>
-</div>
         </main>
+
+<div id="atmosphere-overlay" class="atmosphere-overlay" style="display:none;" role="dialog" aria-label="Atmosphere">
+  <div class="atmosphere-panel glass-card">
+    <div class="atmosphere-header">
+      <h2 class="atmosphere-title">🎵 Atmosphere</h2>
+      <button class="atmosphere-close" id="btn-close-atmosphere" aria-label="Close">✕</button>
+    </div>
+
+    <div class="atm-presets-label">Quick Presets</div>
+    <div class="atm-presets">
+      <button class="mood-card atm-preset-btn" data-mood="deepfocus"><span class="mood-icon">📚</span><div class="mood-info"><span class="mood-name">Deep Focus</span><span class="mood-desc">Library + Forest</span></div></button>
+      <button class="mood-card atm-preset-btn" data-mood="cozycafe"><span class="mood-icon">☕</span><div class="mood-info"><span class="mood-name">Rainy Café</span><span class="mood-desc">Café + Jazz</span></div></button>
+      <button class="mood-card atm-preset-btn" data-mood="oceanbreeze"><span class="mood-icon">🌊</span><div class="mood-info"><span class="mood-name">Ocean Sunset</span><span class="mood-desc">Waves + Nature</span></div></button>
+      <button class="mood-card atm-preset-btn" data-mood="rainyday"><span class="mood-icon">🌧️</span><div class="mood-info"><span class="mood-name">Rainy Day</span><span class="mood-desc">Rain + Brown</span></div></button>
+    </div>
+
+    <div class="atm-scenes-label">Sounds</div>
+    <div class="atm-scenes" id="atm-scenes-grid">
+      <div class="mixer-channel atm-card" data-scene="rain">
+        <button class="atm-card-face mixer-btn" data-scene="rain"><span class="atm-icon">🌧️</span><span class="atm-name">Rain</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="rain" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="waves">
+        <button class="atm-card-face mixer-btn" data-scene="waves"><span class="atm-icon">🌊</span><span class="atm-name">Waves</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="waves" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="brown">
+        <button class="atm-card-face mixer-btn" data-scene="brown"><span class="atm-icon">📻</span><span class="atm-name">Brown</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="brown" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="nature">
+        <button class="atm-card-face mixer-btn" data-scene="nature"><span class="atm-icon">🌲</span><span class="atm-name">Forest</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="nature" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="cafe">
+        <button class="atm-card-face mixer-btn" data-scene="cafe"><span class="atm-icon">☕</span><span class="atm-name">Café</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="cafe" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="library">
+        <button class="atm-card-face mixer-btn" data-scene="library"><span class="atm-icon">📚</span><span class="atm-name">Library</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="library" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card" data-scene="jazz">
+        <button class="atm-card-face mixer-btn" data-scene="jazz"><span class="atm-icon">🎷</span><span class="atm-name">Jazz</span></button>
+        <input type="range" class="mixer-slider atm-slider" data-scene="jazz" min="0" max="100" value="0">
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+      <div class="mixer-channel atm-card terea-only-sound" data-scene="bouzoukia">
+        <button class="atm-card-face mixer-btn" data-scene="bouzoukia"><span class="atm-icon">🪗</span><span class="atm-name">Bouzoukia</span></button>
+        <div class="bz-btn-row" style="display:flex;gap:4px;justify-content:center;margin-bottom:4px;">
+          <input type="range" class="mixer-slider atm-slider" data-scene="bouzoukia" min="0" max="100" value="0">
+          <button class="bz-next-btn" id="bz-next-btn" title="Next track">⏭</button>
+        </div>
+        <span class="mixer-vol atm-vol-label">0%</span>
+      </div>
+    </div>
+
+    <div class="atm-footer">
+      <button class="atm-stop-all" id="btn-stop-all-ambient">⬜ Stop All</button>
+      <div class="atm-save-row">
+        <input type="text" class="atm-mix-name-input" id="atm-mix-name" placeholder="Name this mix...">
+        <button class="atm-save-btn btn btn-secondary" onclick="app.saveCurrentMix()">Save Mix</button>
+      </div>
+    </div>
+    <div class="atm-saved-mixes" id="atm-saved-mixes"></div>
+  </div>
+</div>
 
         <!-- Stats Tab -->
         <main class="tab-content" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats">
@@ -608,6 +378,184 @@
     </div>
 </main>
 
+<!-- Settings Tab -->
+<main class="tab-content" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings">
+  <div class="settings-page">
+    <h2 class="settings-page-title">Settings</h2>
+    <section class="settings-section-card glass-card">
+      <h3 class="settings-section-title">Timer</h3>
+      <div class="setting-row">
+        <label for="setting-work">Focus (min)</label>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
+          <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
+          <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-short">Short Break (min)</label>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
+          <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
+          <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-long">Long Break (min)</label>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
+          <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
+          <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-rounds">Rounds before long break</label>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
+          <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
+          <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-daily-goal">Daily Goal (Sessions)</label>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
+          <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
+          <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-auto-start">Auto-start next phase</label>
+        <input type="checkbox" id="setting-auto-start">
+      </div>
+      <div class="setting-row">
+        <label for="setting-rep-counter">Rep Counter (sets done today)</label>
+        <input type="checkbox" id="setting-rep-counter">
+      </div>
+      <div class="setting-row" id="row-terea-lite" style="display:none;">
+        <label for="setting-terea-lite">Terea Lite (reduce smoke &amp; flash)</label>
+        <input type="checkbox" id="setting-terea-lite">
+      </div>
+      <div class="setting-row">
+        <label for="setting-sound">Completion Sound</label>
+        <div style="display:flex; gap:8px;">
+          <select id="setting-sound">
+            <option value="bell">🔔 Ship Bell</option>
+            <option value="chime">✨ Chime</option>
+            <option value="digital">💎 Digital</option>
+            <option value="zen">🧘 Zen Bowl</option>
+            <option value="sw_theme">⚔️ Force Theme</option>
+            <option value="cute">♥ Cute</option>
+            <option value="none">🔇 None</option>
+          </select>
+          <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
+        </div>
+      </div>
+    </section>
+    <section class="settings-section-card glass-card">
+      <h3 class="settings-section-title">Appearance</h3>
+      <div class="setting-row theme-preview-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+        <label>Theme</label>
+        <div class="theme-card-strip">
+          <button class="theme-card" id="theme-btn-normal" data-theme="normal" onclick="app.setThemePreview('normal')">
+            <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a1a2e,#ff6b6b)"></span>
+            <span class="theme-card-icon">🌙</span>
+            <span class="theme-card-label">Normal</span>
+          </button>
+          <button class="theme-card" id="theme-btn-pink" data-theme="pink" onclick="app.setThemePreview('pink')">
+            <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a0a14,#ff6eb4)"></span>
+            <span class="theme-card-icon">🌸</span>
+            <span class="theme-card-label">Pink</span>
+          </button>
+          <button class="theme-card" id="theme-btn-terea" data-theme="terea" onclick="app.setThemePreview('terea')">
+            <span class="theme-card-swatch" style="background: linear-gradient(135deg,#060d0c,#00d4c8)"></span>
+            <span class="theme-card-icon">💨</span>
+            <span class="theme-card-label">Terea</span>
+          </button>
+          <button class="theme-card" id="theme-btn-medical" data-theme="medical" onclick="app.setThemePreview('medical')">
+            <span class="theme-card-swatch" style="background: linear-gradient(135deg,#0a1628,#00b4d8)"></span>
+            <span class="theme-card-icon">🩺</span>
+            <span class="theme-card-label">Medical</span>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>Accent Color</label>
+        <div class="color-picker" id="color-picker">
+          <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
+          <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
+          <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
+          <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
+          <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
+        </div>
+      </div>
+      <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+        <label>Background</label>
+        <div class="wallpaper-picker-new" id="wallpaper-picker">
+          <button class="wp-thumb active" data-wp="default">
+            <div class="wp-thumb-img wp-thumb-default">🌙</div>
+            <span class="wp-thumb-label">None</span>
+          </button>
+          <button class="wp-thumb" data-wp="preset_forest">
+            <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
+            <span class="wp-thumb-label">Forest</span>
+          </button>
+          <button class="wp-thumb" data-wp="preset_space">
+            <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
+            <span class="wp-thumb-label">Space</span>
+          </button>
+          <label class="wp-thumb wp-custom-label">
+            <div class="wp-thumb-img wp-thumb-upload">＋</div>
+            <span class="wp-thumb-label">Upload</span>
+            <input type="file" id="wallpaper-upload" accept="image/*" hidden>
+          </label>
+        </div>
+        <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
+      </div>
+      <div id="sw-settings" style="display:none;">
+        <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
+          <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
+          <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
+          <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
+          <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
+          <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
+        </div>
+        <div class="setting-row">
+          <label for="setting-sw-music">Binary Sunset Auto-Play</label>
+          <input type="checkbox" id="setting-sw-music" checked>
+        </div>
+        <div class="setting-row">
+          <label>Binary Sunset</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width:auto; padding:0 12px; border-radius:12px; font-size:0.8rem; height:32px;">▶ Play Binary Sunset</button>
+            <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width:80px;">
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="settings-section-card glass-card">
+      <h3 class="settings-section-title">Account &amp; Data</h3>
+      <div class="setting-row" style="padding-top:0.5rem;">
+        <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
+        <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+        <button id="btn-signout-footer" class="btn-signout-footer" style="display:none;" title="Sign out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign out
+        </button>
+      </div>
+    </section>
+    <div class="developer-credit">
+      <span class="developer-text">Developed by Nikolas.dam</span>
+      <div class="social-links">
+        <a class="social-btn social-ig" href="https://www.instagram.com/nikolas.dam/" target="_blank" rel="noreferrer">Instagram</a>
+        <a class="social-btn social-li" href="https://www.linkedin.com/in/nikolaos-damdounis-486239300/" target="_blank" rel="noreferrer">LinkedIn</a>
+      </div>
+    </div>
+  </div>
+</main>
+
     <!-- Medical Study Panel -->
 <main class="tab-content" id="panel-medical" role="tabpanel" aria-labelledby="tab-medical">
   <div class="med-dashboard">
@@ -725,7 +673,6 @@
       <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>I</kbd></span><span>Set Intention</span></div>
       <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>N</kbd></span><span>Skip Session</span></div>
       <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Z</kbd></span><span>Zen Mode</span></div>
-      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>W</kbd></span><span>Hyperspace Warp (SW Theme)</span></div>
       <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>?</kbd></span><span>Show this menu</span></div>
       <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Esc</kbd></span><span>Close menu</span></div>
     </div>
@@ -939,22 +886,6 @@
   </div>
 </div>
 
-    <!-- Intention Modal -->
-    <div id="intention-modal" class="intention-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
-        <div class="intention-card glass-card" style="background:var(--glass-bg,rgba(20,20,40,0.95)); border-radius:20px; padding:2rem; max-width:480px; width:90%; border:1px solid rgba(255,255,255,0.1);">
-            <h3 style="margin:0 0 0.5rem; font-size:1.3rem;">🎯 What are you focusing on?</h3>
-            <p style="margin:0 0 1.2rem; opacity:0.7; font-size:0.9rem;">Set your intention for this session</p>
-            <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input" style="width:100%; padding:0.75rem 1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:inherit; font-size:1rem; box-sizing:border-box; margin-bottom:1rem;" />
-            <div id="subtasks-container" style="margin-bottom:1rem;">
-                <p style="font-size:0.85rem; opacity:0.6; margin:0 0 0.5rem;">Subtasks (optional)</p>
-                <input type="text" class="subtask-input" placeholder="Subtask 1..." style="width:100%; padding:0.5rem 0.75rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:inherit; font-size:0.9rem; box-sizing:border-box; margin-bottom:0.4rem;" />
-            </div>
-            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
-                <button class="btn btn-secondary" id="btn-skip-intention" style="padding:0.6rem 1.2rem; border-radius:10px;">Skip</button>
-                <button class="btn btn-primary" id="btn-start-intention" style="padding:0.6rem 1.4rem; border-radius:10px;">Start Focus</button>
-            </div>
-        </div>
-    </div>
 
         <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
         <script src="ambience.js"></script>
@@ -973,11 +904,5 @@
   <span class="motivate-label">I need some motivation</span>
 </button>
 
-<!-- Universal thought notes layer (all themes) -->
-<div id="thinknotes-layer" aria-label="Thought notes"></div>
-<button id="btn-add-thinknote" onclick="app.addThinkNote()" title="Add a thought note">
-  <span>✏️</span>
-  <span class="thinknote-btn-label">Note</span>
-</button>
 </body>
 </html>

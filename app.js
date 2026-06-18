@@ -402,7 +402,6 @@ async loadFromFirestore(uid) {
             btnSkip: document.getElementById('btn-skip'),
             btnReset: document.getElementById('btn-reset'),
             btnZen: document.getElementById('btn-zen'),
-            btnWarp: document.getElementById('btn-warp'),
             iconPlay: document.getElementById('icon-play'),
             iconPause: document.getElementById('icon-pause'),
             container: document.getElementById('timer-container'),
@@ -435,11 +434,7 @@ ambientVolInput: null,
             wpGallery: document.getElementById('wallpaper-gallery'),
 
             btnPreviewSound: document.getElementById('btn-preview-sound'),
-            moodCards: document.querySelectorAll('.mood-card'),
-            breatheWidget: document.getElementById('breathing-widget'),
-            breatheText: document.getElementById('breathing-text'),
-            breatheCircle: document.getElementById('breathing-ring'),
-            btnToggleBreathe: document.getElementById('btn-toggle-breathe')
+            moodCards: document.querySelectorAll('.mood-card')
         };
     },
 
@@ -508,22 +503,6 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
     });
   }
 
-  const btnMinimal = document.getElementById('btn-minimal');
-  if (btnMinimal) {
-    btnMinimal.addEventListener('click', () => {
-      document.body.classList.toggle('minimal-mode');
-      const tooltip = btnMinimal.querySelector('.tooltip');
-      if (tooltip) {
-        tooltip.textContent = document.body.classList.contains('minimal-mode')
-          ? 'Full Mode'
-          : 'Minimal Mode';
-      }
-    });
-  }
-
-  if (this.elements.btnWarp) {
-    this.elements.btnWarp.addEventListener('click', () => this.triggerHyperspaceJump());
-  }
 
   // Mode Switching — save current mode's remaining time before switching
   this.elements.modeBtns.forEach(btn => {
@@ -558,13 +537,6 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
     card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
   });
 
-  // Breathing Toggle
-  if (this.elements.btnToggleBreathe) {
-    this.elements.btnToggleBreathe.addEventListener('click', () => {
-      if (this.state.breathingState.active) this.stopBreathing();
-      else this.startBreathing();
-    });
-  }
 
   // Theme cards (4 direct selectors)
   document.querySelectorAll('.theme-card').forEach(btn => {
@@ -614,7 +586,7 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
   }
 
   // General Settings Inputs
-const inputs = document.querySelectorAll('.settings-body input:not([type="file"]), .settings-body select');
+const inputs = document.querySelectorAll('.settings-page input:not([type="file"]), .settings-page select, #panel-settings input:not([type="file"]), #panel-settings select');
 inputs.forEach(input => input.addEventListener('change', () => this.saveSettings()));
 
   // Notes
@@ -797,9 +769,6 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       this.skipSession();
     }
 
-    if (document.body.classList.contains('theme-starwars') && e.code === 'KeyW') {
-      this.triggerHyperspaceJump();
-    }
   });
 
   const btnEod = document.getElementById('btn-eod-close');
@@ -809,8 +778,40 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       if (modal) modal.style.display = 'none';
     });
   }
+
+  // Atmosphere overlay
+  const btnSounds = document.getElementById('btn-sounds');
+  const atmosphereOverlay = document.getElementById('atmosphere-overlay');
+  const btnCloseAtmosphere = document.getElementById('btn-close-atmosphere');
+  if (btnSounds && atmosphereOverlay) {
+    btnSounds.addEventListener('click', () => {
+      atmosphereOverlay.style.display = 'flex';
+      this._updateSoundsActiveIndicator();
+      this.renderSavedMixes();
+    });
+  }
+  if (btnCloseAtmosphere && atmosphereOverlay) {
+    btnCloseAtmosphere.addEventListener('click', () => {
+      atmosphereOverlay.style.display = 'none';
+    });
+    atmosphereOverlay.addEventListener('click', e => {
+      if (e.target === atmosphereOverlay) atmosphereOverlay.style.display = 'none';
+    });
+  }
+
+  // Mood cards in atmosphere overlay (atm-preset-btn)
+  document.querySelectorAll('.atm-preset-btn').forEach(card => {
+    card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
+  });
 },
 
+
+    _updateSoundsActiveIndicator() {
+        const btn = document.getElementById('btn-sounds');
+        if (!btn) return;
+        const anyActive = Object.entries(this.state.mixerVolumes).some(([k, v]) => !k.startsWith('_prev_') && typeof v === 'number' && v > 0);
+        btn.classList.toggle('sounds-active', anyActive);
+    },
 
     bindSteppers() {
         document.querySelectorAll('.stepper-btn').forEach(btn => {
@@ -873,6 +874,7 @@ initMixer() {
             }
 
             localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
+            this._updateSoundsActiveIndicator();
         });
     });
 
@@ -904,6 +906,7 @@ initMixer() {
                 channel.classList.add('active');
             }
             localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
+            this._updateSoundsActiveIndicator();
         });
     });
 
@@ -922,6 +925,7 @@ initMixer() {
             });
             window.AmbienceModule.stopAll();
             localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
+            this._updateSoundsActiveIndicator();
         });
     }
 
@@ -1036,14 +1040,10 @@ setMode(mode, preserveTime = false) {
     }
 
     if (mode === 'work') {
-        if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'none';
-        this.stopBreathing();
+        // nothing extra
     } else if (isTerea) {
         // Terea: stretch prompt instead of breathing guide
         this.showTereaStretchPrompt(mode);
-    } else {
-        if (this.elements.breatheWidget) this.elements.breatheWidget.style.display = 'flex';
-        this.startBreathing();
     }
 },
 
@@ -1132,10 +1132,8 @@ toggleTimer() {
         this.state.timeLeft--;
         this.saveSessionState();
 
-        if (!this.state.hyperspaceActive) {
-            this.updateTimeDisplay();
-            this.updateRing();
-        }
+        this.updateTimeDisplay();
+        this.updateRing();
 
         if (this.state.timeLeft <= 0) {
             this.onTimerComplete();
@@ -1161,8 +1159,6 @@ toggleTimer() {
     document.body.classList.remove('timer-running');
     if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
     if (this.elements.iconPause) this.elements.iconPause.style.display = 'none';
-    const sf = document.getElementById('starfield');
-    if (sf) sf.classList.remove('hyperspace');
     const reminder = document.getElementById('intention-reminder');
     if (reminder) reminder.style.display = 'none';
 },
@@ -1242,7 +1238,7 @@ toggleTimer() {
                 const tereaToasts = [
                     ['25 λεπτά καθαρά. Τέρεα τώρα.', 'Η βασίλισσα τελείωσε.'],
                     ['Bouzoukia δεν χάνονται. Sessions μαζί.', 'Τελείωσες. 💨'],
-                    ['Σήκω, τράβα, κάπνισε.', 'Queen mode locked in 👑']
+                    ['Σήκω, τράβα, βγες έξω.', 'Queen mode locked in 👑']
                 ];
                 const [title, desc] = tereaToasts[Math.floor(Math.random() * tereaToasts.length)];
                 this.showToast(title, desc, '💨');
@@ -1382,7 +1378,7 @@ updateTimeDisplay() {
         for (let i = 1; i <= total; i++) {
             if (isTerea) {
                 const s = document.createElement('span');
-                s.textContent = i <= completedInCycle ? '🚬' : '○';
+                s.textContent = i <= completedInCycle ? '●' : '○';
                 s.style.opacity = i <= completedInCycle ? '1' : '0.3';
                 s.style.fontSize = '0.9rem';
                 this.elements.sessionDots.appendChild(s);
@@ -1426,46 +1422,12 @@ el.addEventListener('click', () => {
     });
 },
 
-    triggerHyperspaceStarfield() {
-        const sf = document.getElementById('starfield');
-        if (!sf) return;
-        sf.classList.remove('hyperspace');
-        void sf.offsetWidth;
-        sf.classList.add('hyperspace');
-       
-        setTimeout(() => sf.classList.remove('hyperspace'), 1200);
-    },
-
-    triggerHyperspaceJump() {
-        if (this.state.hyperspaceActive) return;
-        this.state.hyperspaceActive = true;
-        document.body.classList.add('hyperspace-jump');
-        this.triggerHyperspaceStarfield();
-        setTimeout(() => {
-            document.body.classList.remove('hyperspace-jump');
-            this.state.hyperspaceActive = false;
-            if (this.state.isRunning) {
-                this.updateTimeDisplay();
-                this.updateRing();
-            }
-        }, 1200);
-    },
   showMotivationPop() {
 		const theme   = this.state.settings.theme;
 		const isPink  = theme === 'pink';
 		const isTerea = theme === 'terea';
-		const isSw    = theme === 'starwars';
 
-		const msgs = isSw
-			? [
-				'Use the Force 🌌',
-				'A Jedi does not hurry',
-				'Jedi focus — activated ⚔️',
-				'The Force is with you',
-				'Discipline of the Jedi Order',
-				'Trust the Force 🌠'
-			]
-			: isTerea
+		const msgs = isTerea
 			? [
 				'Gym mode activated 💨',
 				'Lock in. No distractions. 🔥',
@@ -1554,83 +1516,6 @@ el.addEventListener('click', () => {
     },
 
     // ===================================
-    // BREATHING EXERCISE
-    // ===================================
-    startBreathing() {
-        if (this.state.breathingState.active) return;
-        this.state.breathingState.active = true;
-        if (this.elements.btnToggleBreathe) this.elements.btnToggleBreathe.textContent = "Stop Breathing Guide";
-        this.state.breathingState.phase = 0;
-        this.cycleBreathing();
-    },
-
- stopBreathing() {
-    this.state.breathingState.active = false;
-    if (this.elements.btnToggleBreathe) this.elements.btnToggleBreathe.textContent = "Start Breathing Guide";
-    clearTimeout(this.state.breathingState.interval);
-    clearInterval(this.state.breathingState.countInterval);
-    const ring = document.getElementById('breathing-ring');
-    if (ring) {
-        ring.style.transition = 'stroke-dashoffset 0.5s ease';
-        ring.style.strokeDashoffset = '339.3';
-    }
-    if (this.elements.breatheText) this.elements.breatheText.textContent = "Ready";
-    const countEl = document.getElementById('breathing-countdown');
-    if (countEl) countEl.textContent = '4';
-},
-
-    cycleBreathing() {
-    if (!this.state.breathingState.active) return;
-    const p = this.state.breathingState.phase % 4;
-
-    // phases: 0=inhale(4s), 1=hold(4s), 2=exhale(4s), 3=hold(4s)
-    const phases = [
-        { text: 'Inhale', dur: 4, color: 'var(--accent)' },
-        { text: 'Hold',   dur: 4, color: 'var(--warning)' },
-        { text: 'Exhale', dur: 4, color: 'var(--text-secondary)' },
-        { text: 'Hold',   dur: 4, color: 'var(--text-muted)' }
-    ];
-    const { text, dur, color } = phases[p];
-    const circumference = 339.3;
-
-    if (this.elements.breatheText) this.elements.breatheText.textContent = text;
-
-    const ring = document.getElementById('breathing-ring');
-    const countEl = document.getElementById('breathing-countdown');
-    if (ring) {
-        ring.style.stroke = color;
-        // Inhale fills ring, exhale empties it
-        if (p === 0) {
-            ring.style.transition = `stroke-dashoffset ${dur}s linear, stroke 0.5s ease`;
-            ring.style.strokeDashoffset = '0';
-        } else if (p === 2) {
-            ring.style.transition = `stroke-dashoffset ${dur}s linear, stroke 0.5s ease`;
-            ring.style.strokeDashoffset = circumference;
-        } else {
-            ring.style.transition = 'stroke 0.5s ease';
-            // hold — keep current offset
-        }
-    }
-
-    // Countdown ticker
-    let remaining = dur;
-    if (countEl) countEl.textContent = remaining;
-    if (this.state.breathingState.countInterval) {
-        clearInterval(this.state.breathingState.countInterval);
-    }
-    this.state.breathingState.countInterval = setInterval(() => {
-        remaining--;
-        if (countEl) countEl.textContent = remaining > 0 ? remaining : '';
-    }, 1000);
-
-    this.state.breathingState.phase++;
-    this.state.breathingState.interval = setTimeout(
-        () => this.cycleBreathing(),
-        dur * 1000
-    );
-},
-
-    // ===================================
     // AUDIO & MOODS
     // ===================================
 
@@ -1689,7 +1574,17 @@ el.addEventListener('click', () => {
 
         const showPlayer = (on) => {
             const w = document.getElementById(wrapId);
-            if (w) w.style.maxHeight = on ? '180px' : '0';
+            if (!w) return;
+            if (scene === 'bouzoukia') {
+                // Bouzoukia player lives in body — toggle visibility
+                if (on) {
+                    w.style.cssText = 'position:fixed;bottom:80px;right:16px;width:280px;height:158px;z-index:50;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);';
+                } else {
+                    w.style.cssText = 'position:fixed;bottom:0;right:0;width:200px;height:113px;z-index:-1;opacity:0;pointer-events:none;';
+                }
+            } else {
+                w.style.maxHeight = on ? '180px' : '0';
+            }
         };
 
         const loadTrack = () => {
@@ -1718,23 +1613,34 @@ el.addEventListener('click', () => {
             showPlayer(false);
         };
 
-        // Wrap inside the channel — max-height:0 hides it visually but keeps it rendered
-        // so YouTube can create a proper iframe with real dimensions
-        const channel = document.querySelector(`.mixer-channel[data-scene="${scene}"]`);
-        if (channel && !document.getElementById(wrapId) && trackIds.length) {
+        // Create player wrap — bouzoukia goes in body (always rendered) since its
+        // mixer-channel card is display:none outside Terea theme and YouTube needs
+        // a rendered element to initialise. Other channels go inside their channel div.
+        if (!document.getElementById(wrapId) && trackIds.length) {
             const wrap = document.createElement('div');
             wrap.id = wrapId;
-            wrap.style.cssText = 'overflow:hidden;max-height:0;width:100%;transition:max-height 0.3s ease;';
-            wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:160px;"></div>`;
-            channel.appendChild(wrap);
+            if (scene === 'bouzoukia') {
+                wrap.style.cssText = 'position:fixed;bottom:0;right:0;width:200px;height:113px;z-index:-1;opacity:0;pointer-events:none;';
+                wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:100%;"></div>`;
+                document.body.appendChild(wrap);
+            } else {
+                const channel = document.querySelector(`.mixer-channel[data-scene="${scene}"]`);
+                if (channel) {
+                    wrap.style.cssText = 'overflow:hidden;max-height:0;width:100%;transition:max-height 0.3s ease;';
+                    wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:160px;"></div>`;
+                    channel.appendChild(wrap);
+                }
+            }
         }
 
         const initPlayer = () => {
             if (ch.player || !window.YT?.Player || !trackIds.length) return;
             const div = document.getElementById(frameId);
             if (!div) return;
+            const playerW = scene === 'bouzoukia' ? '200' : '100%';
+            const playerH = scene === 'bouzoukia' ? '113' : '160';
             ch.player = new window.YT.Player(frameId, {
-                width: '100%', height: '160',
+                width: playerW, height: playerH,
                 videoId: trackIds[0],
                 playerVars: { autoplay: 0, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
                 events: {
@@ -2147,11 +2053,10 @@ this.state.history.push({
         const pct = (xpInLevel / xpRequired) * 100;
 
         const ranks = ['Novice', 'Apprentice', 'Adept', 'Expert', 'Master', 'Grandmaster', 'Legend'];
-        const swRanks = ['Youngling', 'Padawan', 'Jedi Knight', 'Jedi Master', 'Council Member', 'Grand Master', 'Force Ghost'];
         const tereaRanks = ['Warm Up 🏃‍♀️', 'Lifting Queen 💪', 'Cardio Goddess 🔥', 'Greek Goddess ✨', 'Bouzoukia Star 🎶', 'Queen of Queens 👑', 'Τέρεα Legend 💨'];
 
         const theme = this.state.settings.theme;
-        const rankArr = theme === 'starwars' ? swRanks : theme === 'terea' ? tereaRanks : ranks;
+        const rankArr = theme === 'terea' ? tereaRanks : ranks;
         const rankName = rankArr[Math.min(this.state.level - 1, rankArr.length - 1)];
 
         if (this.elements.lvlRank) this.elements.lvlRank.textContent = `${rankName} (Lvl ${this.state.level})`;
@@ -2175,37 +2080,21 @@ this.state.history.push({
     // ===================================
 updateTheme() {
 		const theme  = this.state.settings.theme;
-		const isSw      = theme === 'starwars';
 		const isPink    = theme === 'pink';
 		const isTerea   = theme === 'terea';
 		const isMedical = theme === 'medical';
 
-		document.body.classList.toggle('theme-starwars', isSw);
 		document.body.classList.toggle('theme-pink',     isPink);
 		document.body.classList.toggle('theme-terea',    isTerea);
 		document.body.classList.toggle('theme-medical',  isMedical);
 		document.body.classList.toggle('minimal-mode',   isPink || isTerea);
 
-		// Sync 4-button active state
+		// Sync theme-card active state
 		document.querySelectorAll('.theme-card').forEach(btn => {
 			btn.classList.toggle('active', btn.dataset.theme === theme);
 		});
 
-		if (this.elements.swSettings) {
-			this.elements.swSettings.style.display = isSw ? 'block' : 'none';
-		}
-
-		if (this.elements.btnWarp) {
-			this.elements.btnWarp.style.display = isSw ? 'flex' : 'none';
-		}
-
-		const sf = document.getElementById('starfield');
-		if (sf) sf.style.display = isSw ? 'block' : 'none';
-
-		if (isSw) {
-			this.setSaber(this.state.settings.saber);
-			document.body.style.setProperty('--accent', this.state.saberColors[this.state.settings.saber]);
-		} else if (isPink) {
+		if (isPink) {
 			document.body.style.setProperty('--accent', '#ff6eb4');
 			document.body.style.setProperty('--accent-glow', 'rgba(255,110,180,0.5)');
 			document.body.style.setProperty('--accent-glow-intense', 'rgba(255,110,180,0.85)');
@@ -2219,11 +2108,6 @@ updateTheme() {
 			document.body.style.removeProperty('--accent-glow-intense');
 		} else {
 			this.setAccent(this.state.settings.accent);
-		}
-
-		if (window.AmbienceModule) {
-			if (isSw && this.state.settings.swMusic) window.AmbienceModule.play('binary_sunset');
-			else window.AmbienceModule.stop('binary_sunset');
 		}
 
 		this.checkBouzoukiaHours();
@@ -2330,15 +2214,9 @@ setThemePreview(theme) {
     },
 
     setSaber(colorName) {
-        if (!this.state.saberColors[colorName]) return;
+        if (!this.state.saberColors || !this.state.saberColors[colorName]) return;
         this.state.settings.saber = colorName;
-        if (this.state.settings.theme === 'starwars') {
-            const hex = this.state.saberColors[colorName];
-            document.body.style.setProperty('--accent', hex);
-            const metaTheme = document.querySelector('meta[name="theme-color"]');
-            if (metaTheme) metaTheme.content = hex;
-        }
-        this.elements.saberBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
+        if (this.elements.saberBtns) this.elements.saberBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
         this.saveSettings();
     },
 
@@ -2382,10 +2260,7 @@ setThemePreview(theme) {
         const title = document.getElementById('logo-title');
         const subtitle = document.getElementById('logo-subtitle');
         const theme = this.state.settings.theme;
-        if (theme === 'starwars') {
-            if (title) title.textContent = 'JEDI FOCUS';
-            if (subtitle) subtitle.textContent = 'May the force be with you';
-        } else if (theme === 'terea') {
+        if (theme === 'terea') {
             if (title) title.textContent = 'TEREA FOCUS';
             if (subtitle) subtitle.textContent = 'Terea mode. Queen focus only. 💨';
         } else {
@@ -2394,8 +2269,8 @@ setThemePreview(theme) {
         }
         const titleEl = document.getElementById('notebook-cover-title');
         const emblem = document.querySelector('.notebook-emblem');
-        if (titleEl) titleEl.textContent = theme === 'starwars' ? 'Jedi Archives' : theme === 'terea' ? 'Terea Journal 💨' : 'My Journal';
-        if (emblem) emblem.textContent = theme === 'starwars' ? '⚔️' : theme === 'terea' ? '👑' : '📖';
+        if (titleEl) titleEl.textContent = theme === 'terea' ? 'Terea Journal 💨' : 'My Journal';
+        if (emblem) emblem.textContent = theme === 'terea' ? '👑' : '📖';
     },
 
     rotateQuote() {
@@ -2404,12 +2279,7 @@ setThemePreview(theme) {
         text.style.opacity = 0;
         setTimeout(() => {
             const theme = this.state.settings.theme;
-            const arr = theme === 'starwars' ? [
-                '"Do or do not. There is no try." — Yoda',
-                '"Your focus determines your reality." — Qui-Gon Jinn',
-                '"In a dark place we find ourselves, and a little more knowledge lights our way." — Yoda',
-                '"Mind what you have learned. Save you it can." — Yoda'
-            ] : theme === 'pink' ? [
+            const arr = theme === 'pink' ? [
                 '"Soft heart, strong mind."',
                 '"She believed she could, so she did."',
                 '"Bloom where you are planted."',
@@ -2487,7 +2357,7 @@ setThemePreview(theme) {
             if (currentStreak > 0) {
                 const isTerea = this.state.settings.theme === 'terea';
                 b.textContent = isTerea
-                    ? `🚬 ${currentStreak} day streak`
+                    ? `💨 ${currentStreak} day streak`
                     : `🔥 ${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
                 b.style.display = 'inline-flex';
             } else {
@@ -2865,7 +2735,6 @@ deleteHistoryItem(date) {
 
     const theme = this.state.settings.theme;
     const themes = {
-        starwars: { title: 'Jedi Archives',    emblem: '⚔️',  close: '← Close Archives' },
         pink:     { title: 'Rose Diary',        emblem: '🌸',  close: '← Close Diary'    },
         terea:    { title: 'Gym Log',           emblem: '🏋️',  close: '← Close Log'      },
         medical:  { title: 'Clinical Binder',   emblem: '🩺',  close: '← Close Binder'   },
@@ -2910,155 +2779,6 @@ deleteHistoryItem(date) {
             newCover.style.display = 'flex';
         });
     }
-},
-
-addThinkNote() {
-    const layer = document.getElementById('thinknotes-layer');
-    if (!layer) return;
-    const theme = this.state.settings.theme;
-    const isShaped = theme !== 'normal';
-
-    // Outer wrapper: handles positioning, dragging, pile shadow layers
-    const pile = document.createElement('div');
-    pile.className = 'thinknote-pile';
-    pile._pages   = [''];
-    pile._pageIdx = 0;
-    pile.dataset.pages = '1';
-    pile.dataset.theme = theme;
-
-    const left = 8  + Math.random() * 58;
-    const top  = 12 + Math.random() * 48;
-    const deg  = (Math.random() * 8 - 4).toFixed(1);
-    pile.style.cssText = `left:${left}%;top:${top}%;--rot:${deg}deg;transform:rotate(${deg}deg);`;
-
-    // Inner note: has the visual shape via clip-path
-    const note = document.createElement('div');
-    note.className = 'thinknote thinknote-' + theme;
-
-    // Overflow hint threshold (chars)
-    const PAGE_LIMIT = isShaped ? 180 : 500;
-
-    note.innerHTML = `
-      <div class="tn-header">
-        <span class="tn-page-indicator" style="display:none">1 / 1</span>
-      </div>
-      <div class="thinknote-body" contenteditable="true" spellcheck="false" data-placeholder="Your thought..."></div>
-      <div class="tn-footer">
-        <button class="tn-prev" style="display:none" title="Previous page">‹</button>
-        <span class="tn-full-hint" style="display:none">Full</span>
-        <button class="tn-next" title="Add next page">+</button>
-        <button class="tn-dl" title="Download note">⬇</button>
-      </div>
-    `;
-
-    // Close button lives on the pile (outside clip-path) so it's always visible
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'thinknote-close';
-    closeBtn.title = 'Remove';
-    closeBtn.textContent = '×';
-
-    const body      = note.querySelector('.thinknote-body');
-    const indicator = note.querySelector('.tn-page-indicator');
-    const prevBtn   = note.querySelector('.tn-prev');
-    const nextBtn   = note.querySelector('.tn-next');
-    const dlBtn     = note.querySelector('.tn-dl');
-    const fullHint  = note.querySelector('.tn-full-hint');
-
-    const refreshUI = () => {
-        const total = pile._pages.length;
-        const idx   = pile._pageIdx;
-        pile.dataset.pages = String(total);
-
-        if (total > 1) {
-            indicator.style.display = '';
-            indicator.textContent = `${idx + 1} / ${total}`;
-            prevBtn.style.display = idx > 0 ? '' : 'none';
-        } else {
-            indicator.style.display = 'none';
-            prevBtn.style.display = 'none';
-        }
-        body.innerHTML = pile._pages[idx];
-        // Cursor to end
-        const range = document.createRange();
-        const sel   = window.getSelection();
-        range.selectNodeContents(body);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        fullHint.style.display = 'none';
-    };
-
-    const savePage = () => { pile._pages[pile._pageIdx] = body.innerHTML; };
-
-    const goNext = () => {
-        savePage();
-        if (pile._pageIdx < pile._pages.length - 1) {
-            pile._pageIdx++;
-        } else {
-            pile._pages.push('');
-            pile._pageIdx = pile._pages.length - 1;
-        }
-        refreshUI();
-        body.focus();
-    };
-
-    const goPrev = () => {
-        savePage();
-        if (pile._pageIdx > 0) { pile._pageIdx--; refreshUI(); }
-    };
-
-    body.addEventListener('input', () => {
-        savePage();
-        const len = body.innerText.length;
-        const overflow = isShaped
-            ? (body.scrollHeight > body.clientHeight + 4)
-            : (len > PAGE_LIMIT);
-        fullHint.style.display = overflow ? '' : 'none';
-    });
-
-    closeBtn.addEventListener('click', e => { e.stopPropagation(); pile.remove(); });
-    nextBtn.addEventListener('click',  e => { e.stopPropagation(); goNext(); });
-    prevBtn.addEventListener('click',  e => { e.stopPropagation(); goPrev(); });
-    dlBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        savePage();
-        const tmp = document.createElement('div');
-        const allText = pile._pages.map((html, i) => {
-            tmp.innerHTML = html;
-            return (pile._pages.length > 1 ? `[Page ${i + 1}]\n` : '') + (tmp.textContent || '').trim();
-        }).filter(Boolean).join('\n\n');
-        this.downloadAsDocx('Thought Note', allText || '(empty note)');
-    });
-
-    // Drag the pile wrapper (not body, not footer buttons)
-    pile.addEventListener('pointerdown', e => {
-        if (e.target === body || e.target.closest('.tn-footer') || e.target.closest('.thinknote-close')) return;
-        e.preventDefault();
-        pile.setPointerCapture(e.pointerId);
-        const rect = pile.getBoundingClientRect();
-        const ox = e.clientX - rect.left;
-        const oy = e.clientY - rect.top;
-        pile.style.transition = 'none';
-        pile.style.zIndex = '9000';
-
-        const onMove = ev => {
-            pile.style.left = (ev.clientX - ox) + 'px';
-            pile.style.top  = (ev.clientY - oy) + 'px';
-        };
-        const onUp = () => {
-            pile.removeEventListener('pointermove', onMove);
-            pile.removeEventListener('pointerup', onUp);
-            pile.style.transition = '';
-            pile.style.zIndex = '';
-        };
-        pile.addEventListener('pointermove', onMove);
-        pile.addEventListener('pointerup', onUp);
-    });
-
-    pile.appendChild(note);
-    pile.appendChild(closeBtn);
-    layer.appendChild(pile);
-    setTimeout(() => body.focus(), 60);
 },
 
 async downloadAsDocx(title, textContent) {
@@ -3339,18 +3059,34 @@ initOnboarding() {
 		}).join('');
 	},
 	saveCurrentMix() {
-		const name = prompt('Name this mix:');
-		if (!name || !name.trim()) return;
+		const input = document.getElementById('atm-mix-name');
+		const name = input ? input.value.trim() : '';
+		if (!name) { if (input) input.focus(); return; }
 		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
 		saved[name.trim()] = { ...this.state.mixerVolumes };
 		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
-		this.showToast('Mix saved!', name.trim(), '🎵');
+		if (input) input.value = '';
+		this.showToast('Mix saved!', name, '🎵');
+		this.renderSavedMixes?.();
+	},
+	renderSavedMixes() {
+		const container = document.getElementById('atm-saved-mixes');
+		if (!container) return;
+		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
+		const keys = Object.keys(saved);
+		if (!keys.length) { container.innerHTML = ''; return; }
+		container.innerHTML = keys.map(k => `
+			<button class="atm-saved-chip" onclick="app.activateMood('${k.replace(/'/g, '&#39;')}')">
+				${k}
+				<span class="atm-chip-del" onclick="event.stopPropagation();app.deleteCustomMood('${k.replace(/'/g, '&#39;')}')">✕</span>
+			</button>`).join('');
 	},
 	deleteCustomMood(key) {
 		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
 		delete saved[key];
 		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
 		this.showToast('Mix deleted', key, '🗑️');
+		this.renderSavedMixes();
 	},
 	updateRingGradient() {
 				const grad = document.getElementById('timer-grad');
