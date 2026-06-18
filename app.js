@@ -925,7 +925,7 @@ initMixer() {
         });
     }
 
-    this._initSabAudio();
+    this._initBouzoukiaPlayer();
 },
 switchTab(target) {
     this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
@@ -1630,41 +1630,160 @@ el.addEventListener('click', () => {
         if (bar) bar.classList.remove('visible');
     },
 
-    _initSabAudio() {
+    _initBouzoukiaPlayer() {
+        // Greek laïká YouTube playlist — cycles through these, skips errors automatically.
+        // To add more: paste the 11-char video ID from any YouTube URL (?v=XXXXXXXXXXX)
+        const GREEK_LAIKA = [
+            'nPCnkHwMkio', // Antonis Remos - Ela
+            'XE7bV_mFAyI', // Nikos Vertis - Pes Mou
+            'yjdNpwwpXdQ', // Giannis Ploutarhos - Gia Mia Agkalia
+            'hn-v2bIzRXE', // Notis Sfakianakis - Ola
+            'CevxZvSJLk8', // Vasilis Karras - Den Eimai Kalos
+            'JjMDZtTzxeA', // Giorgos Dalaras - Mia Fora
+        ];
+
+        // Sabanis.mp3 — plays when YouTube unavailable or as extra layer
         const sab = new Audio('Sabanis.mp3');
         sab.loop = true;
         this._sabAudio = sab;
 
-        const syncSab = () => {
-            const v = (this.state.mixerVolumes.bouzoukia || 0) / 100;
-            sab.volume = Math.min(1, v);
-            if (v > 0 && sab.paused) {
-                sab.play().catch(() => {});
-            } else if (v === 0 && !sab.paused) {
-                sab.pause();
-                sab.currentTime = 0;
-            }
+        let bzIdx = 0;
+        let ytReady = false;
+        let ytFailed = false;
+        this._bzYT = null;
+
+        const vol = () => Math.min(1, (this.state.mixerVolumes.bouzoukia || 0) / 100);
+
+        const startSab = () => {
+            sab.volume = vol();
+            if (sab.paused) sab.play().catch(() => {});
+        };
+        const stopSab = () => { sab.pause(); sab.currentTime = 0; };
+
+        const loadNextYT = () => {
+            if (!this._bzYT) return;
+            this._bzYT.loadVideoById(GREEK_LAIKA[bzIdx % GREEK_LAIKA.length]);
         };
 
+        const startYT = () => {
+            if (!this._bzYT || ytFailed) { startSab(); return; }
+            this._bzYT.setVolume(vol() * 100);
+            if (this._bzYT.getPlayerState() !== 1) loadNextYT();
+            else this._bzYT.playVideo();
+        };
+
+        const stopYT = () => { if (this._bzYT) this._bzYT.pauseVideo(); };
+
+        const onChannelStart = () => {
+            if (GREEK_LAIKA.length > 0 && !ytFailed) { startYT(); }
+            else { startSab(); }
+        };
+        const onChannelStop = () => { stopYT(); stopSab(); };
+
+        const setVol = (v) => {
+            sab.volume = Math.min(1, v);
+            if (this._bzYT) this._bzYT.setVolume(v * 100);
+        };
+
+        // ── YouTube IFrame API ──
+        const initYTPlayer = () => {
+            if (this._bzYT || !window.YT?.Player) return;
+            let div = document.getElementById('bz-yt-iframe');
+            if (!div) {
+                div = document.createElement('div');
+                div.id = 'bz-yt-iframe';
+                div.style.cssText = 'position:fixed;bottom:-9999px;left:-9999px;width:200px;height:113px;';
+                document.body.appendChild(div);
+            }
+            this._bzYT = new window.YT.Player('bz-yt-iframe', {
+                playerVars: { autoplay: 0, controls: 0, playsinline: 1, rel: 0, iv_load_policy: 3, enablejsapi: 1 },
+                events: {
+                    onReady: () => {
+                        ytReady = true;
+                        if ((this.state.mixerVolumes.bouzoukia || 0) > 0) startYT();
+                    },
+                    onStateChange: e => {
+                        if (e.data === window.YT.PlayerState.ENDED) {
+                            bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
+                            loadNextYT();
+                        }
+                        // Update now-playing label
+                        const lbl = document.getElementById('bz-now-playing');
+                        if (lbl && this._bzYT?.getVideoData) {
+                            const d = this._bzYT.getVideoData();
+                            if (d?.title) lbl.textContent = d.title;
+                        }
+                    },
+                    onError: () => {
+                        // Skip broken video, try next; after all fail fall back to Sabanis
+                        bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
+                        if (bzIdx === 0) { ytFailed = true; startSab(); }
+                        else { loadNextYT(); }
+                    },
+                }
+            });
+        };
+
+        if (GREEK_LAIKA.length > 0) {
+            if (window.YT?.Player) {
+                initYTPlayer();
+            } else {
+                if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+                    const tag = document.createElement('script');
+                    tag.src = 'https://www.youtube.com/iframe_api';
+                    document.head.appendChild(tag);
+                }
+                const prev = window.onYouTubeIframeAPIReady;
+                window.onYouTubeIframeAPIReady = () => { if (prev) prev(); initYTPlayer(); };
+            }
+        }
+
+        // ── Add "Now Playing" label to bouzoukia channel ──
+        const bzChannel = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
+        if (bzChannel && !document.getElementById('bz-now-playing')) {
+            const lbl = document.createElement('div');
+            lbl.id = 'bz-now-playing';
+            lbl.className = 'bz-now-playing';
+            lbl.textContent = 'Greek Laïká';
+            bzChannel.appendChild(lbl);
+        }
+
+        // ── Mixer slider ──
         const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
         if (bzSlider) {
             bzSlider.addEventListener('input', e => {
                 const v = parseInt(e.target.value) / 100;
-                sab.volume = Math.min(1, v);
-                if (v > 0 && sab.paused) { sab.play().catch(() => {}); }
-                else if (v === 0) { sab.pause(); sab.currentTime = 0; }
+                setVol(v);
+                if (v > 0) onChannelStart(); else onChannelStop();
             });
         }
 
+        // ── Mixer icon toggle ──
         const bzBtn = document.querySelector('.mixer-btn[data-scene="bouzoukia"]');
-        if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(syncSab, 60));
+        if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(() => {
+            const v = vol();
+            setVol(v);
+            if (v > 0) onChannelStart(); else onChannelStop();
+        }, 60));
 
+        // ── Stop All ──
         const stopAll = document.getElementById('btn-stop-all-ambient');
-        if (stopAll) stopAll.addEventListener('click', () => { sab.pause(); sab.currentTime = 0; });
+        if (stopAll) stopAll.addEventListener('click', onChannelStop);
 
-        // Restore from saved state if bouzoukia was active
-        if ((this.state.mixerVolumes.bouzoukia || 0) > 0) {
-            sab.volume = this.state.mixerVolumes.bouzoukia / 100;
+        // ── Next track button ──
+        const bzChannel2 = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
+        if (bzChannel2 && GREEK_LAIKA.length > 0 && !document.getElementById('bz-next-btn')) {
+            const nxt = document.createElement('button');
+            nxt.id = 'bz-next-btn';
+            nxt.className = 'bz-next-btn';
+            nxt.title = 'Next track';
+            nxt.textContent = '⏭';
+            nxt.addEventListener('click', e => {
+                e.stopPropagation();
+                bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
+                if (this._bzYT && !ytFailed) loadNextYT();
+            });
+            bzChannel2.appendChild(nxt);
         }
     },
 
