@@ -1596,18 +1596,38 @@ el.addEventListener('click', () => {
     _playKiamos() {
         if (!this._tereaAudio) {
             this._tereaAudio = new Audio('Kiamos.mp3');
-            this._tereaAudio.loop = true;
+            this._tereaAudio.loop = false;
             this._tereaAudio.volume = 0.78;
+            this._tereaAudio.addEventListener('ended', () => this._hideKiamosBar());
         }
         this._tereaAudio.currentTime = 0;
         this._tereaAudio.play().catch(() => {});
+        this._showKiamosBar();
     },
 
     _stopKiamos() {
-        if (this._tereaAudio && !this._tereaAudio.paused) {
+        if (this._tereaAudio) {
             this._tereaAudio.pause();
             this._tereaAudio.currentTime = 0;
         }
+        this._hideKiamosBar();
+    },
+
+    _showKiamosBar() {
+        let bar = document.getElementById('kiamos-bar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'kiamos-bar';
+            bar.innerHTML = `<span>🎵 Kiamos</span><button id="kiamos-stop" title="Stop">✕</button>`;
+            document.body.appendChild(bar);
+            document.getElementById('kiamos-stop').addEventListener('click', () => this._stopKiamos());
+        }
+        bar.classList.add('visible');
+    },
+
+    _hideKiamosBar() {
+        const bar = document.getElementById('kiamos-bar');
+        if (bar) bar.classList.remove('visible');
     },
 
     _initSabAudio() {

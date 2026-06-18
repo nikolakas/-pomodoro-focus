@@ -2726,3 +2726,24 @@ body.theme-medical #btn-add-thinknote { bottom: 150px; }
   .med-postit { width: 150px; font-size: 0.75rem; }
   .med-summary-stats { grid-template-columns: repeat(2,1fr); }
 }
+
+/* ── Kiamos now-playing bar ── */
+#kiamos-bar {
+    position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: rgba(20,8,30,0.88); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,180,220,0.25); border-radius: 40px;
+    padding: 8px 10px 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.82rem; color: rgba(255,200,230,0.9); font-weight: 600;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 8000;
+}
+#kiamos-bar.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+#kiamos-stop {
+    background: rgba(255,255,255,0.12); border: none; border-radius: 50%;
+    width: 26px; height: 26px; cursor: pointer; color: rgba(255,200,230,0.9);
+    font-size: 0.75rem; display: flex; align-items: center; justify-content: center;
+    transition: background-color 0.15s;
+}
+#kiamos-stop:hover { background: rgba(255,255,255,0.25); }
