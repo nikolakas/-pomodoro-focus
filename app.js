@@ -96,47 +96,86 @@ async initFirebase() {
 
     if (this.authStateUnsub) this.authStateUnsub();
 
-    const btnAuth     = document.getElementById('btn-auth');
-    const authName    = document.getElementById('auth-name');
-    const authAvatar  = document.getElementById('auth-avatar');
-    const authBarEl   = document.getElementById('auth-bar');
+    // ── DOM refs ──────────────────────────────────────────────────
+    const btnAuth       = document.getElementById('btn-auth');
+    const authName      = document.getElementById('auth-name');
+    const authAvatar    = document.getElementById('auth-avatar');
+    const authBarEl     = document.getElementById('auth-bar');
     const signoutFooter = document.getElementById('btn-signout-footer');
-    const modal       = document.getElementById('auth-modal');
-    const modalClose  = document.getElementById('auth-modal-close');
-    const form        = document.getElementById('auth-form');
-    const emailInput  = document.getElementById('auth-input-email');
-    const passInput   = document.getElementById('auth-input-password');
-    const nameInput   = document.getElementById('auth-input-name');
-    const nameRow     = document.getElementById('auth-name-row');
-    const errorEl     = document.getElementById('auth-error');
-    const submitBtn   = document.getElementById('auth-submit');
-    const authTabs    = document.querySelectorAll('.auth-tab');
+    const modal         = document.getElementById('auth-modal');
+    const modalClose    = document.getElementById('auth-modal-close');
+    const mainView      = document.getElementById('auth-main-view');
+    const resetView     = document.getElementById('auth-reset-view');
+    const form          = document.getElementById('auth-form');
+    const emailInput    = document.getElementById('auth-input-email');
+    const passInput     = document.getElementById('auth-input-password');
+    const nameInput     = document.getElementById('auth-input-name');
+    const nameRow       = document.getElementById('auth-name-row');
+    const errorEl       = document.getElementById('auth-error');
+    const submitBtn     = document.getElementById('auth-submit');
+    const authTabs      = document.querySelectorAll('.auth-tab');
+    const forgotLink    = document.getElementById('auth-forgot-link');
+    const googleBtn     = document.getElementById('auth-google-btn');
+    const resetBack     = document.getElementById('auth-reset-back');
+    const resetEmailIn  = document.getElementById('auth-reset-email');
+    const resetSubmit   = document.getElementById('auth-reset-submit');
+    const resetError    = document.getElementById('auth-reset-error');
+    const resetSuccess  = document.getElementById('auth-reset-success');
 
     let authMode = 'signin';
 
-    const openModal = () => {
-        if (modal) { modal.style.display = 'flex'; emailInput?.focus(); }
-    };
-    const closeModal = () => {
-        if (modal) modal.style.display = 'none';
-        if (errorEl) errorEl.style.display = 'none';
-        if (form) form.reset();
+    const AUTH_ERRORS = {
+        'auth/email-already-in-use':   'That email is already registered — sign in instead.',
+        'auth/invalid-email':           'Please enter a valid email address.',
+        'auth/weak-password':           'Password must be at least 6 characters.',
+        'auth/user-not-found':          'No account with that email — create one instead.',
+        'auth/wrong-password':          'Incorrect password.',
+        'auth/invalid-credential':      'Email or password is incorrect.',
+        'auth/too-many-requests':       'Too many attempts. Please wait and try again.',
+        'auth/popup-closed-by-user':    'Sign-in cancelled.',
+        'auth/cancelled-popup-request': 'Sign-in cancelled.',
+        'auth/network-request-failed':  'Network error. Check your connection.',
     };
 
+    // ── Modal open/close ──────────────────────────────────────────
+    const showMain = () => {
+        if (mainView) mainView.style.display = '';
+        if (resetView) resetView.style.display = 'none';
+        if (resetSuccess) resetSuccess.style.display = 'none';
+        if (resetError) resetError.style.display = 'none';
+    };
+    const openModal = () => {
+        if (!modal) return;
+        modal.style.display = 'flex';
+        showMain();
+        emailInput?.focus();
+    };
+    const closeModal = () => {
+        if (!modal) return;
+        modal.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        if (form) form.reset();
+        showMain();
+    };
+
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    if (btnAuth) btnAuth.addEventListener('click', openModal);
+
+    // ── Tab switching ─────────────────────────────────────────────
     authTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             authMode = tab.dataset.authTab;
             authTabs.forEach(t => t.classList.toggle('active', t === tab));
             if (nameRow) nameRow.style.display = authMode === 'signup' ? '' : 'none';
+            if (forgotLink) forgotLink.style.display = authMode === 'signup' ? 'none' : '';
             if (submitBtn) submitBtn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
             if (passInput) passInput.setAttribute('autocomplete', authMode === 'signup' ? 'new-password' : 'current-password');
             if (errorEl) errorEl.style.display = 'none';
         });
     });
 
-    if (modalClose) modalClose.addEventListener('click', closeModal);
-    if (modal) modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
+    // ── Email / Password submit ───────────────────────────────────
     if (form) {
         form.addEventListener('submit', async e => {
             e.preventDefault();
@@ -159,17 +198,8 @@ async initFirebase() {
                 }
                 closeModal();
             } catch (err) {
-                const msgs = {
-                    'auth/email-already-in-use': 'That email is already registered. Sign in instead.',
-                    'auth/invalid-email': 'Please enter a valid email address.',
-                    'auth/weak-password': 'Password must be at least 6 characters.',
-                    'auth/user-not-found': 'No account with that email. Create one instead.',
-                    'auth/wrong-password': 'Incorrect password.',
-                    'auth/invalid-credential': 'Email or password is incorrect.',
-                    'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
-                };
                 if (errorEl) {
-                    errorEl.textContent = msgs[err.code] || 'Something went wrong. Please try again.';
+                    errorEl.textContent = AUTH_ERRORS[err.code] || 'Something went wrong. Please try again.';
                     errorEl.style.display = 'block';
                 }
             } finally {
@@ -181,8 +211,79 @@ async initFirebase() {
         });
     }
 
-    if (btnAuth) btnAuth.addEventListener('click', openModal);
+    // ── Google Sign-In ────────────────────────────────────────────
+    if (googleBtn && window.GoogleAuthProvider && window.signInWithPopup) {
+        googleBtn.addEventListener('click', async () => {
+            const provider = new window.GoogleAuthProvider();
+            googleBtn.disabled = true;
+            try {
+                await window.signInWithPopup(window.firebaseAuth, provider);
+                closeModal();
+            } catch (err) {
+                if (err.code === 'auth/popup-blocked' && window.signInWithRedirect) {
+                    await window.signInWithRedirect(window.firebaseAuth, provider);
+                } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+                    if (errorEl) {
+                        errorEl.textContent = AUTH_ERRORS[err.code] || err.message || 'Google sign-in failed.';
+                        errorEl.style.display = 'block';
+                    }
+                }
+            } finally {
+                googleBtn.disabled = false;
+            }
+        });
+    }
 
+    // Handle redirect result (Google on mobile fallback)
+    if (window.getRedirectResult && window.firebaseAuth) {
+        window.getRedirectResult(window.firebaseAuth).catch(err => {
+            if (err?.code && err.code !== 'auth/no-current-user') {
+                this.showToast('Sign-in failed', AUTH_ERRORS[err.code] || err.message, '⚠️');
+            }
+        });
+    }
+
+    // ── Forgot Password ───────────────────────────────────────────
+    if (forgotLink) {
+        forgotLink.addEventListener('click', () => {
+            if (mainView) mainView.style.display = 'none';
+            if (resetView) resetView.style.display = '';
+            if (resetEmailIn && emailInput?.value) resetEmailIn.value = emailInput.value;
+            resetEmailIn?.focus();
+        });
+    }
+
+    if (resetBack) {
+        resetBack.addEventListener('click', () => {
+            showMain();
+        });
+    }
+
+    if (resetSubmit && window.sendPasswordResetEmail) {
+        resetSubmit.addEventListener('click', async () => {
+            const email = resetEmailIn?.value.trim();
+            if (!email) return;
+            if (resetError) resetError.style.display = 'none';
+            if (resetSuccess) resetSuccess.style.display = 'none';
+            resetSubmit.disabled = true;
+            resetSubmit.textContent = 'Sending...';
+            try {
+                await window.sendPasswordResetEmail(window.firebaseAuth, email);
+                if (resetSuccess) resetSuccess.style.display = 'block';
+                if (resetEmailIn) resetEmailIn.value = '';
+            } catch (err) {
+                if (resetError) {
+                    resetError.textContent = AUTH_ERRORS[err.code] || 'Could not send reset email. Try again.';
+                    resetError.style.display = 'block';
+                }
+            } finally {
+                resetSubmit.disabled = false;
+                resetSubmit.textContent = 'Send Reset Email';
+            }
+        });
+    }
+
+    // ── Auth state listener ───────────────────────────────────────
     this.authStateUnsub = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
         if (user) {
             if (authBarEl) authBarEl.classList.add('signed-in');
@@ -192,7 +293,14 @@ async initFirebase() {
             }
             const displayName = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || '';
             if (authName) authName.textContent = displayName;
-            if (authAvatar) authAvatar.style.display = 'none';
+            if (authAvatar) {
+                if (user.photoURL) {
+                    authAvatar.src = user.photoURL;
+                    authAvatar.style.display = 'block';
+                } else {
+                    authAvatar.style.display = 'none';
+                }
+            }
 
             await this.loadFromFirestore(user.uid);
 

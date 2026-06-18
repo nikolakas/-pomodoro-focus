@@ -326,6 +326,43 @@ body.theme-starwars .logo-icon { display: none; }
     font-size: 0.68rem; color: var(--text-muted); text-align: center;
     margin: 14px 0 0;
 }
+.auth-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 14px 0 12px; color: var(--text-muted); font-size: 0.75rem;
+}
+.auth-divider::before, .auth-divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1);
+}
+.auth-google-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 10px 14px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05);
+    color: var(--text-primary); font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; transition: background-color 0.2s, border-color 0.2s;
+}
+.auth-google-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+.auth-google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-forgot-link {
+    background: none; border: none; padding: 0; margin-top: 2px;
+    font-size: 0.72rem; color: var(--accent); cursor: pointer;
+    text-align: right; opacity: 0.8; transition: opacity 0.15s;
+}
+.auth-forgot-link:hover { opacity: 1; }
+.auth-reset-back {
+    background: none; border: none; padding: 0 0 10px;
+    font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+    transition: color 0.15s;
+}
+.auth-reset-back:hover { color: var(--text-primary); }
+.auth-reset-desc {
+    font-size: 0.82rem; color: var(--text-secondary); margin: 0 0 14px; line-height: 1.5;
+}
+.auth-reset-success {
+    font-size: 0.78rem; color: #10b981; background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25); border-radius: 8px;
+    padding: 8px 10px; margin: 0;
+}
 
 /* Friend banners — subtle, corner-only */
 .friend-hearts { display: none; position: absolute; top: 10px; right: 50%; font-size: 0.7rem; opacity: 0.3; pointer-events: none; letter-spacing: 3px; }
