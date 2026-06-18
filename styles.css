@@ -2509,7 +2509,7 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 .thinknote-pile[data-theme="terea"][data-pages="2"]::before,
 .thinknote-pile[data-theme="terea"][data-pages="3"]::before,
 .thinknote-pile[data-theme="terea"][data-pages="3"]::after {
-    clip-path: path('M 0 36 C 0 12 18 0 50 0 C 82 0 100 12 100 36 L 100 58 L 150 58 L 150 36 C 150 12 168 0 200 0 C 232 0 250 12 250 36 L 250 109 C 250 133 232 145 200 145 C 168 145 150 133 150 109 L 150 87 L 100 87 L 100 109 C 100 133 82 145 50 145 C 18 145 0 133 0 109 Z');
+    clip-path: ellipse(49% 48% at 50% 50%);
     border-radius: 0;
 }
 .thinknote-pile[data-theme="medical"][data-pages="2"]::before,
@@ -2623,23 +2623,22 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 .thinknote-pink .tn-prev, .thinknote-pink .tn-next { border-color: rgba(100,0,50,0.25); color: rgba(100,0,50,0.5); }
 .thinknote-pink .tn-dl { color: rgba(100,0,50,0.25); }
 
-/* ── Terea / Maria — dumbbell ── */
+/* ── Terea / Maria — oval ── */
 .thinknote-terea {
-    background: #00d4c8;
-    width: 250px; height: 145px;
-    /* Dumbbell: two round plates on left/right, bar connecting them */
-    clip-path: path('M 0 36 C 0 12 18 0 50 0 C 82 0 100 12 100 36 L 100 58 L 150 58 L 150 36 C 150 12 168 0 200 0 C 232 0 250 12 250 36 L 250 109 C 250 133 232 145 200 145 C 168 145 150 133 150 109 L 150 87 L 100 87 L 100 109 C 100 133 82 145 50 145 C 18 145 0 133 0 109 Z');
+    background: linear-gradient(135deg, #00d4c8 0%, #00b8b0 100%);
+    width: 230px; height: 200px;
+    clip-path: ellipse(49% 48% at 50% 50%);
 }
-.thinknote-terea .tn-header { padding: 6px 8px 2px; }
-.thinknote-terea .tn-page-indicator { color: rgba(0,0,0,0.4); }
+.thinknote-terea .tn-header { padding: 22px 20px 0; }
+.thinknote-terea .tn-page-indicator { color: rgba(0,0,0,0.45); }
 .thinknote-pile[data-theme="terea"] .thinknote-close { color: rgba(0,0,0,0.5); background: rgba(0,212,200,0.3); }
 .thinknote-pile[data-theme="terea"] .thinknote-close:hover { color: rgba(0,0,0,0.85); background: rgba(0,212,200,0.55); }
 .thinknote-terea .thinknote-body {
-    text-align: center; padding: 2px 55px 4px;
-    color: rgba(0,20,18,0.8); font-size: 0.75rem;
+    text-align: center; padding: 6px 36px 4px;
+    color: rgba(0,20,18,0.85); font-size: 0.8rem;
     overflow: hidden;
 }
-.thinknote-terea .tn-footer { justify-content: center; }
+.thinknote-terea .tn-footer { justify-content: center; padding-bottom: 24px; }
 .thinknote-terea .tn-prev, .thinknote-terea .tn-next { border-color: rgba(0,0,0,0.2); color: rgba(0,0,0,0.5); }
 .thinknote-terea .tn-dl { color: rgba(0,0,0,0.25); }
 
@@ -2748,15 +2747,15 @@ body.theme-medical #btn-add-thinknote { bottom: 150px; }
 }
 #kiamos-stop:hover { background: rgba(255,255,255,0.25); }
 
-/* ── Bouzoukia channel now-playing + next ── */
-.bz-now-playing {
-    font-size: 0.58rem; color: var(--text-muted); text-align: center;
-    max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    opacity: 0.7; margin-top: 2px;
+/* ── Bouzoukia channel next-track button ── */
+.bz-btn-row {
+    display: flex; align-items: center; gap: 4px;
 }
 .bz-next-btn {
-    background: none; border: none; font-size: 0.7rem; cursor: pointer;
-    color: var(--text-muted); opacity: 0.6; padding: 2px 4px;
-    transition: opacity 0.15s;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; font-size: 0.7rem; cursor: pointer;
+    color: var(--text-muted); opacity: 0.7; padding: 3px 5px; line-height: 1;
+    transition: opacity 0.15s, background-color 0.15s;
 }
-.bz-next-btn:hover { opacity: 1; }
+.bz-next-btn:hover { opacity: 1; background: rgba(255,255,255,0.14); }
+.mixer-channel.active .bz-next-btn { opacity: 1; color: var(--accent); border-color: var(--accent); }

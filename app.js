@@ -1707,12 +1707,6 @@ el.addEventListener('click', () => {
                             bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
                             loadNextYT();
                         }
-                        // Update now-playing label
-                        const lbl = document.getElementById('bz-now-playing');
-                        if (lbl && this._bzYT?.getVideoData) {
-                            const d = this._bzYT.getVideoData();
-                            if (d?.title) lbl.textContent = d.title;
-                        }
                     },
                     onError: () => {
                         // Skip broken video, try next; after all fail fall back to Sabanis
@@ -1738,16 +1732,6 @@ el.addEventListener('click', () => {
             }
         }
 
-        // ── Add "Now Playing" label to bouzoukia channel ──
-        const bzChannel = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
-        if (bzChannel && !document.getElementById('bz-now-playing')) {
-            const lbl = document.createElement('div');
-            lbl.id = 'bz-now-playing';
-            lbl.className = 'bz-now-playing';
-            lbl.textContent = 'Greek Laïká';
-            bzChannel.appendChild(lbl);
-        }
-
         // ── Mixer slider ──
         const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
         if (bzSlider) {
@@ -1770,21 +1754,13 @@ el.addEventListener('click', () => {
         const stopAll = document.getElementById('btn-stop-all-ambient');
         if (stopAll) stopAll.addEventListener('click', onChannelStop);
 
-        // ── Next track button ──
-        const bzChannel2 = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
-        if (bzChannel2 && GREEK_LAIKA.length > 0 && !document.getElementById('bz-next-btn')) {
-            const nxt = document.createElement('button');
-            nxt.id = 'bz-next-btn';
-            nxt.className = 'bz-next-btn';
-            nxt.title = 'Next track';
-            nxt.textContent = '⏭';
-            nxt.addEventListener('click', e => {
-                e.stopPropagation();
-                bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
-                if (this._bzYT && !ytFailed) loadNextYT();
-            });
-            bzChannel2.appendChild(nxt);
-        }
+        // ── Next track button (already in HTML) ──
+        const nxt = document.getElementById('bz-next-btn');
+        if (nxt) nxt.addEventListener('click', e => {
+            e.stopPropagation();
+            bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
+            if (this._bzYT && !ytFailed) loadNextYT(); else { stopSab(); startSab(); }
+        });
     },
 
     playAudio(type) {
