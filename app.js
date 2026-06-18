@@ -1631,100 +1631,92 @@ el.addEventListener('click', () => {
     },
 
     _initBouzoukiaPlayer() {
-        // Greek laïká YouTube playlist — cycles through these, skips errors automatically.
-        // To add more: paste the 11-char video ID from any YouTube URL (?v=XXXXXXXXXXX)
+        // Paste anything from a YouTube URL — the code strips &list=... automatically
         const GREEK_LAIKA = [
-			'4oSIfj_nY6E&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2&index=2',
-		'tEGc0KVOerk&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2',
-         'AW3qdGNqags&list=RDAW3qdGNqags&start_radio=1',
-			// Add real YouTube video IDs here (11-char code after ?v= in a YouTube URL)
+            '4oSIfj_nY6E&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2&index=2',
+            'tEGc0KVOerk&list=PLrP10DVRz19SwDohuD8eN88Wn0idFANq2',
+            'AW3qdGNqags&list=RDAW3qdGNqags&start_radio=1',
         ];
 
-        // Sabanis.mp3 — plays when YouTube unavailable or as extra layer
+        // Extract bare video IDs (strip &list=... suffixes — loadVideoById needs just the ID)
+        const trackIds = GREEK_LAIKA.map(s => s.split('&')[0].trim()).filter(s => s.length >= 5);
+
         const sab = new Audio('Sabanis.mp3');
         sab.loop = true;
         this._sabAudio = sab;
 
         let bzIdx = 0;
-        let ytReady = false;
         let ytFailed = false;
         this._bzYT = null;
 
-        const vol = () => Math.min(1, (this.state.mixerVolumes.bouzoukia || 0) / 100);
+        const vol      = () => Math.min(1, (this.state.mixerVolumes.bouzoukia || 0) / 100);
+        const startSab = () => { sab.volume = vol(); if (sab.paused) sab.play().catch(() => {}); };
+        const stopSab  = () => { sab.pause(); sab.currentTime = 0; };
 
-        const startSab = () => {
-            sab.volume = vol();
-            if (sab.paused) sab.play().catch(() => {});
-        };
-        const stopSab = () => { sab.pause(); sab.currentTime = 0; };
-
-        const loadNextYT = () => {
-            if (!this._bzYT) return;
-            this._bzYT.loadVideoById(GREEK_LAIKA[bzIdx % GREEK_LAIKA.length]);
+        const loadTrack = () => {
+            if (!this._bzYT || !trackIds.length) return;
+            this._bzYT.loadVideoById(trackIds[bzIdx % trackIds.length]);
         };
 
         const startYT = () => {
             if (!this._bzYT || ytFailed) { startSab(); return; }
             this._bzYT.setVolume(vol() * 100);
-            if (this._bzYT.getPlayerState() !== 1) loadNextYT();
-            else this._bzYT.playVideo();
+            const s = this._bzYT.getPlayerState();
+            if (s === 1) return;          // already playing
+            if (s === 2) { this._bzYT.playVideo(); return; }  // paused → resume
+            loadTrack();                  // not started → load
         };
 
-        const stopYT = () => { if (this._bzYT) this._bzYT.pauseVideo(); };
+        const stopYT     = () => { if (this._bzYT) this._bzYT.pauseVideo(); };
+        const showPlayer = (on) => { const w = document.getElementById('bz-player-wrap'); if (w) w.style.display = on ? 'block' : 'none'; };
 
-        const onChannelStart = () => {
-            if (GREEK_LAIKA.length > 0 && !ytFailed) { startYT(); }
-            else { startSab(); }
-        };
-        const onChannelStop = () => { stopYT(); stopSab(); };
+        const onStart = () => { if (trackIds.length && !ytFailed) { startYT(); showPlayer(true); } else startSab(); };
+        const onStop  = () => { stopYT(); stopSab(); showPlayer(false); };
+        const setVol  = (v) => { sab.volume = Math.min(1, v); if (this._bzYT) this._bzYT.setVolume(v * 100); };
 
-        const setVol = (v) => {
-            sab.volume = Math.min(1, v);
-            if (this._bzYT) this._bzYT.setVolume(v * 100);
-        };
+        // Build a small visible player below the bouzoukia channel (browsers block hidden iframes)
+        const channel = document.querySelector('.mixer-channel[data-scene="bouzoukia"]');
+        if (channel && !document.getElementById('bz-player-wrap') && trackIds.length) {
+            const wrap = document.createElement('div');
+            wrap.id = 'bz-player-wrap';
+            wrap.style.cssText = 'display:none;width:100%;';
+            wrap.innerHTML = '<div id="bz-yt-iframe" style="width:100%;height:160px;"></div>';
+            channel.insertAdjacentElement('afterend', wrap);
+        }
 
-        // ── YouTube IFrame API ──
         const initYTPlayer = () => {
-            if (this._bzYT || !window.YT?.Player) return;
-            let div = document.getElementById('bz-yt-iframe');
-            if (!div) {
-                div = document.createElement('div');
-                div.id = 'bz-yt-iframe';
-                div.style.cssText = 'position:fixed;bottom:-9999px;left:-9999px;width:200px;height:113px;';
-                document.body.appendChild(div);
-            }
+            if (this._bzYT || !window.YT?.Player || !trackIds.length) return;
+            const div = document.getElementById('bz-yt-iframe');
+            if (!div) return;
             this._bzYT = new window.YT.Player('bz-yt-iframe', {
-                playerVars: { autoplay: 0, controls: 0, playsinline: 1, rel: 0, iv_load_policy: 3, enablejsapi: 1 },
+                width: '100%', height: '160',
+                playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
                 events: {
-                    onReady: () => {
-                        ytReady = true;
-                        if ((this.state.mixerVolumes.bouzoukia || 0) > 0) startYT();
-                    },
+                    onReady: () => { if ((this.state.mixerVolumes.bouzoukia || 0) > 0) startYT(); },
                     onStateChange: e => {
                         if (e.data === window.YT.PlayerState.ENDED) {
-                            bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
-                            loadNextYT();
+                            bzIdx = (bzIdx + 1) % trackIds.length;
+                            loadTrack();
                         }
                     },
                     onError: () => {
-                        // Skip broken video, try next; after all fail fall back to Sabanis
-                        bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
-                        if (bzIdx === 0) { ytFailed = true; startSab(); }
-                        else { loadNextYT(); }
+                        bzIdx = (bzIdx + 1) % trackIds.length;
+                        if (bzIdx === 0) { ytFailed = true; showPlayer(false); startSab(); }
+                        else loadTrack();
                     },
                 }
             });
         };
 
-        if (GREEK_LAIKA.length > 0) {
-            if (window.YT?.Player) {
-                initYTPlayer();
-            } else {
-                if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-                    const tag = document.createElement('script');
-                    tag.src = 'https://www.youtube.com/iframe_api';
-                    document.head.appendChild(tag);
-                }
+        // Load API early so it's ready the moment user touches the slider
+        if (trackIds.length) {
+            if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                document.head.appendChild(tag);
+            }
+            if (window.YT?.Player) initYTPlayer();
+            else {
                 const prev = window.onYouTubeIframeAPIReady;
                 window.onYouTubeIframeAPIReady = () => { if (prev) prev(); initYTPlayer(); };
             }
@@ -1732,32 +1724,29 @@ el.addEventListener('click', () => {
 
         // ── Mixer slider ──
         const bzSlider = document.querySelector('.mixer-slider[data-scene="bouzoukia"]');
-        if (bzSlider) {
-            bzSlider.addEventListener('input', e => {
-                const v = parseInt(e.target.value) / 100;
-                setVol(v);
-                if (v > 0) onChannelStart(); else onChannelStop();
-            });
-        }
+        if (bzSlider) bzSlider.addEventListener('input', e => {
+            const v = parseInt(e.target.value) / 100;
+            setVol(v);
+            if (v > 0) onStart(); else onStop();
+        });
 
         // ── Mixer icon toggle ──
         const bzBtn = document.querySelector('.mixer-btn[data-scene="bouzoukia"]');
         if (bzBtn) bzBtn.addEventListener('click', () => setTimeout(() => {
-            const v = vol();
-            setVol(v);
-            if (v > 0) onChannelStart(); else onChannelStop();
+            const v = vol(); setVol(v);
+            if (v > 0) onStart(); else onStop();
         }, 60));
 
         // ── Stop All ──
         const stopAll = document.getElementById('btn-stop-all-ambient');
-        if (stopAll) stopAll.addEventListener('click', onChannelStop);
+        if (stopAll) stopAll.addEventListener('click', onStop);
 
-        // ── Next track button (already in HTML) ──
+        // ── Next track ──
         const nxt = document.getElementById('bz-next-btn');
         if (nxt) nxt.addEventListener('click', e => {
             e.stopPropagation();
-            bzIdx = (bzIdx + 1) % GREEK_LAIKA.length;
-            if (this._bzYT && !ytFailed) loadNextYT(); else { stopSab(); startSab(); }
+            bzIdx = (bzIdx + 1) % (trackIds.length || 1);
+            if (this._bzYT && !ytFailed && trackIds.length) loadTrack(); else { stopSab(); startSab(); }
         });
     },
 
