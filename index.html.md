@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Focus</title>
+    <meta name="description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta property="og:title" content="Pomodoro Focus">
+    <meta property="og:description" content="A beautiful, interactive Pomodoro timer with Star Wars themes, ambient sounds, and Spotify integration.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#ff6b6b">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.167.0/build/three.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="starfield" id="starfield" style="display:none;">
+        <div class="stars stars-sm"></div>
+        <div class="stars stars-md"></div>
+        <div class="stars stars-lg"></div>
+    </div>
+    <canvas id="celestial-canvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:none;"></canvas>
+    <div class="wallpaper-layer" id="wallpaper-layer"></div>
+
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon" id="logo-icon">🍅</span>
+                <h1 id="logo-title">Pomodoro Focus</h1>
+                <span class="logo-subtitle" id="logo-subtitle"></span>
+            </div>
+            
+            <!-- Subtle friend banners — visible only in their theme -->
+            <span class="friend-hearts" id="marianna-hearts" aria-hidden="true"></span>
+            <span class="friend-terea-tag" id="terea-tag" aria-hidden="true">for Maria 💨</span>
+            <div class="auth-bar" id="auth-bar">
+  <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
+  <span id="auth-name" class="auth-name"></span>
+  <button class="btn btn-secondary btn-signin" id="btn-auth">Sign in</button>
+</div>
+            <nav class="tabs" role="tablist">
+                <button class="tab active" data-tab="timer" role="tab" aria-selected="true" id="tab-timer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Timer
+                </button>
+                <button class="tab" data-tab="stats" role="tab" aria-selected="false" id="tab-stats">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Stats
+                </button>
+                <button class="tab" data-tab="notes" role="tab" aria-selected="false" id="tab-notes">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Notes
+                </button>
+                <button class="tab" data-tab="medical" role="tab" aria-selected="false" id="tab-medical">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Study
+                </button>
+                <button class="tab" data-tab="social" role="tab" aria-selected="false" id="tab-social">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Social
+                </button>
+            </nav>
+        </header>
+
+        <main class="tab-content active" id="panel-timer" role="tabpanel" aria-labelledby="tab-timer">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="work" id="mode-work">Focus</button>
+                <button class="mode-btn" data-mode="shortBreak" id="mode-short-break">Short Break</button>
+                <button class="mode-btn" data-mode="longBreak" id="mode-long-break">Long Break</button>
+            </div>
+
+            <div class="timer-zone">
+                <button class="btn-time-adjust" id="btn-minus5" title="Remove 5 minutes">
+                    <span class="adjust-icon">−</span>
+                    <span class="adjust-label">5m</span>
+                </button>
+
+                <div class="timer-container" id="timer-container">
+                    <svg class="timer-ring" viewBox="0 0 260 260">
+                        <defs>
+                            <filter id="saber-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <filter id="saber-glow-intense"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="timer-grad" x1="0" y1="130" x2="260" y2="130" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ecdc4"/><stop offset="100%" stop-color="#ffe66d"/></linearGradient>
+                        </defs>
+                        <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
+                        <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
+                        <circle class="timer-ring-progress" cx="130" cy="130" r="120" id="timer-progress" stroke-dasharray="753.98" stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="timer-display">
+                        <span class="timer-time" id="timer-time">25:00</span>
+                        <span class="timer-label" id="timer-label">Focus Time</span>
+                        <span class="ember-glow" id="ember-glow"></span>
+                    </div>
+                </div>
+
+                <button class="btn-time-adjust btn-time-adjust--add" id="btn-plus5" title="Add 5 minutes">
+                    <span class="adjust-icon">+</span>
+                    <span class="adjust-label">5m</span>
+                </button>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary tooltip-btn" id="btn-minimal" style="font-size:1rem; border:none; background:transparent; padding:8px;">
+    ▲
+    <span class="tooltip">Minimal Mode</span>
+</button>
+                <button class="btn btn-secondary tooltip-btn" id="btn-zen" style="font-size:1.3rem; border:none; background:transparent; padding:8px;">
+    ☯
+    <span class="tooltip">Zen Mode (Z)</span>
+</button>
+                <button class="btn btn-secondary" id="btn-reset" title="Reset"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                <button class="btn btn-primary" id="btn-start">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-play"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <button class="btn btn-secondary" id="btn-skip" title="Skip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                <button class="btn btn-secondary tooltip-btn" id="btn-warp" style="font-size:1.3rem; border:none; background:transparent; padding:8px; display:none;">
+    🚀
+    <span class="tooltip">Hyperspace Jump (W)</span>
+</button>
+            </div>
+<div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
+<div class="subtask-tracker" id="subtask-tracker"></div>
+
+            <!-- Terea Lights — Maria's gym-queen progress indicator -->
+            <div class="terea-lights" id="terea-lights">
+                <div class="terea-lights-row">
+                    <div class="terea-light" data-light="0"></div>
+                    <div class="terea-light" data-light="1"></div>
+                    <div class="terea-light" data-light="2"></div>
+                    <div class="terea-light" data-light="3"></div>
+                </div>
+                <span class="terea-label" id="terea-label">Queen Mode 💨</span>
+            </div>
+
+            <!-- Stage light — Terea mode only -->
+            <div class="terea-stage-light" id="terea-stage-light"></div>
+
+            <div class="session-counter">
+                <span class="session-dots" id="session-dots"></span>
+                <span class="session-text" id="session-text">Session 1 of 4</span>
+                <span class="rep-counter" id="rep-counter" style="display:none;"></span>
+            </div>
+
+            <!-- Focus Leveling System -->
+            <div class="level-progress-container" id="level-container">
+                <div class="level-info">
+                    <span class="level-rank" id="level-rank">Novice (Lvl 1)</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="streak-badge" id="streak-badge" style="display:none;"></span>
+                        <span class="level-xp" id="level-xp">0 / 100 XP</span>
+                    </div>
+                </div>
+                <div class="level-bar-bg">
+                    <div class="level-bar-fill" id="level-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Motivational Quote -->
+            <div class="quote-display" id="quote-display">
+                <p id="quote-text">"Focus is a matter of deciding what things you're not going to do."</p>
+            </div>
+
+            <!-- Breathing Exercise Guide (Hidden by default) -->
+            <div class="breathing-widget glass-card" id="breathing-widget" style="display:none;">
+    <div class="breathing-container">
+        <svg class="breathing-ring-svg" viewBox="0 0 120 120">
+            <circle class="breathing-ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="breathing-ring-progress" cx="60" cy="60" r="54" id="breathing-ring"/>
+        </svg>
+        <div class="breathing-inner">
+            <div class="breathing-text" id="breathing-text">Ready</div>
+            <div class="breathing-countdown" id="breathing-countdown">4</div>
+        </div>
+    </div>
+    <button class="btn-toggle-breathe" id="btn-toggle-breathe">Start Breathing Guide</button>
+</div>
+
+            <!-- Focus Moods (Curated Presets) -->
+            <div class="focus-moods-section" aria-label="Focus Moods">
+                <h3 class="moods-title">Focus Moods</h3>
+                <div class="moods-grid">
+                    <button class="mood-card" data-mood="cozycafe">
+                        <span class="mood-icon">☕</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Cozy Café</span><span class="mood-desc">Café + Jazz</span>
+                        </div>
+                    </button>
+                    <button class="mood-card" data-mood="rainyday">
+                        <span class="mood-icon">🌧️</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Rainy Day</span><span class="mood-desc">Rain + Brown Noise</span>
+                        </div>
+                    </button>
+                   <button class="mood-card" data-mood="deepfocus">
+                        <span class="mood-icon">📚</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Deep Focus</span><span class="mood-desc">Library + Forest</span>
+                        </div>
+                    </button>
+                   <button class="mood-card" data-mood="oceanbreeze">
+                        <span class="mood-icon">🌊</span>
+                        <div class="mood-info">
+                            <span class="mood-name">Ocean Breeze</span><span class="mood-desc">Waves + Nature</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ambient Sound Picker -->
+<div class="ambient-mixer glass-card" id="ambient-bar" aria-label="Ambient Mixer">
+    <div class="mixer-header">
+        <span class="mixer-title">🎛️ Ambient Mixer</span>
+        <button class="mixer-stop-all" id="btn-stop-all-ambient">Stop All</button>
+                    <button class="btn btn-sm" onclick="app.saveCurrentMix()" title="Save current mix as preset">💾 Save Mix</button>
+    </div>
+    <div class="mixer-grid">
+        <div class="mixer-channel" data-scene="rain">
+            <button class="mixer-btn" data-scene="rain">🌧️</button>
+            <span class="mixer-label">Rain</span>
+            <input type="range" class="mixer-slider" data-scene="rain" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="waves">
+            <button class="mixer-btn" data-scene="waves">🌊</button>
+            <span class="mixer-label">Waves</span>
+            <input type="range" class="mixer-slider" data-scene="waves" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="brown">
+            <button class="mixer-btn" data-scene="brown">📻</button>
+            <span class="mixer-label">Brown</span>
+            <input type="range" class="mixer-slider" data-scene="brown" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="nature">
+            <button class="mixer-btn" data-scene="nature">🌲</button>
+            <span class="mixer-label">Forest</span>
+            <input type="range" class="mixer-slider" data-scene="nature" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="cafe">
+            <button class="mixer-btn" data-scene="cafe">☕</button>
+            <span class="mixer-label">Café</span>
+            <input type="range" class="mixer-slider" data-scene="cafe" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="library">
+            <button class="mixer-btn" data-scene="library">📚</button>
+            <span class="mixer-label">Library</span>
+            <input type="range" class="mixer-slider" data-scene="library" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="jazz">
+            <button class="mixer-btn" data-scene="jazz">🎷</button>
+            <span class="mixer-label">Jazz</span>
+            <input type="range" class="mixer-slider" data-scene="jazz" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+        <div class="mixer-channel" data-scene="bouzoukia">
+            <button class="mixer-btn" data-scene="bouzoukia">🪗</button>
+            <span class="mixer-label">Bouzoukia</span>
+            <input type="range" class="mixer-slider" data-scene="bouzoukia" min="0" max="100" value="0">
+            <span class="mixer-vol">0%</span>
+        </div>
+    </div>
+</div>
+
+            <!-- Settings -->
+            <details class="settings-panel" id="settings-panel">
+  <summary class="settings-toggle">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </summary>
+  <div class="settings-body">
+    <h3 class="settings-section-title">Timer</h3>
+    <div class="setting-row">
+      <label for="setting-work">Focus (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-work" data-step="-1">−</button>
+        <input type="number" id="setting-work" min="1" max="120" value="25" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-work" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-short">Short Break (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-short" data-step="-1">−</button>
+        <input type="number" id="setting-short" min="1" max="30" value="5" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-short" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-long">Long Break (min)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-long" data-step="-1">−</button>
+        <input type="number" id="setting-long" min="1" max="60" value="15" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-long" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-rounds">Rounds before long break</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="-1">−</button>
+        <input type="number" id="setting-rounds" min="1" max="10" value="4" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-rounds" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-daily-goal">Daily Goal (Sessions)</label>
+      <div class="stepper">
+        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="-1">−</button>
+        <input type="number" id="setting-daily-goal" min="1" max="30" value="8" readonly>
+        <button type="button" class="stepper-btn" data-target="setting-daily-goal" data-step="1">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label for="setting-auto-start">Auto-start next phase</label>
+      <input type="checkbox" id="setting-auto-start">
+    </div>
+    <div class="setting-row">
+      <label for="setting-rep-counter">Rep Counter (sets done today)</label>
+      <input type="checkbox" id="setting-rep-counter">
+    </div>
+    <div class="setting-row" id="row-terea-lite" style="display:none;">
+      <label for="setting-terea-lite">Terea Lite (reduce smoke &amp; flash)</label>
+      <input type="checkbox" id="setting-terea-lite">
+    </div>
+    <div class="setting-row">
+      <label for="setting-sound">Completion Sound</label>
+      <div style="display:flex; gap:8px;">
+        <select id="setting-sound">
+          <option value="bell">🔔 Ship Bell</option>
+          <option value="chime">✨ Force Chime</option>
+          <option value="digital">💎 Digital</option>
+          <option value="zen">🧘 Zen Bowl</option>
+          <option value="sw_theme">⚔️ Force Theme</option>
+          <option value="cute">♥ Cute</option>
+          <option value="none">🔇 None</option>
+        </select>
+        <button class="btn btn-secondary" id="btn-preview-sound" title="Preview Sound" style="width:36px; height:36px; border-radius:8px;">🔊</button>
+      </div>
+    </div>
+
+    <h3 class="settings-section-title">Appearance</h3>
+    <div class="setting-row theme-preview-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+        <label>Theme</label>
+        <div class="theme-card-strip">
+            <button class="theme-card" id="theme-btn-normal" data-theme="normal" onclick="app.setThemePreview('normal')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a1a2e,#ff6b6b)"></span>
+                <span class="theme-card-icon">🌙</span>
+                <span class="theme-card-label">Normal</span>
+            </button>
+            <button class="theme-card" id="theme-btn-starwars" data-theme="starwars" onclick="app.setThemePreview('starwars')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#050505,#4fc3f7)"></span>
+                <span class="theme-card-icon">⚔️</span>
+                <span class="theme-card-label">Star Wars</span>
+            </button>
+            <button class="theme-card" id="theme-btn-pink" data-theme="pink" onclick="app.setThemePreview('pink')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#1a0a14,#ff6eb4)"></span>
+                <span class="theme-card-icon">🌸</span>
+                <span class="theme-card-label">Pink</span>
+            </button>
+            <button class="theme-card" id="theme-btn-terea" data-theme="terea" onclick="app.setThemePreview('terea')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#060d0c,#00d4c8)"></span>
+                <span class="theme-card-icon">💨</span>
+                <span class="theme-card-label">Terea</span>
+            </button>
+            <button class="theme-card" id="theme-btn-medical" data-theme="medical" onclick="app.setThemePreview('medical')">
+                <span class="theme-card-swatch" style="background: linear-gradient(135deg,#0a1628,#00b4d8)"></span>
+                <span class="theme-card-icon">🩺</span>
+                <span class="theme-card-label">Medical</span>
+            </button>
+        </div>
+    </div>
+
+
+    <div class="setting-row">
+      <label>Accent Color</label>
+      <div class="color-picker" id="color-picker">
+        <button class="color-btn active" data-color="coral" style="--swatch:#ff6b6b"></button>
+        <button class="color-btn" data-color="cyan" style="--swatch:#4ecdc4"></button>
+        <button class="color-btn" data-color="violet" style="--swatch:#a78bfa"></button>
+        <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
+        <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
+      </div>
+    </div>
+
+    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+      <label>Background</label>
+      <div class="wallpaper-picker-new" id="wallpaper-picker">
+        <button class="wp-thumb active" data-wp="default">
+          <div class="wp-thumb-img wp-thumb-default">🌙</div>
+          <span class="wp-thumb-label">None</span>
+        </button>
+        <button class="wp-thumb" data-wp="preset_forest">
+          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=60'); background-size:cover; background-position:center;"></div>
+          <span class="wp-thumb-label">Forest</span>
+        </button>
+        <button class="wp-thumb" data-wp="preset_space">
+          <div class="wp-thumb-img" style="background-image:url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&q=60'); background-size:cover; background-position:center;"></div>
+          <span class="wp-thumb-label">Space</span>
+        </button>
+        <label class="wp-thumb wp-custom-label">
+          <div class="wp-thumb-img wp-thumb-upload">＋</div>
+          <span class="wp-thumb-label">Upload</span>
+          <input type="file" id="wallpaper-upload" accept="image/*" hidden>
+        </label>
+      </div>
+      <div class="wallpaper-gallery" id="wallpaper-gallery"></div>
+    </div>
+
+    <div class="sw-settings" id="sw-settings" style="display:none;">
+      <h3 class="settings-section-title">Lightsaber Color</h3>
+      <div class="color-picker" id="saber-color-picker" style="margin-bottom:12px;">
+        <button class="color-btn active" data-color="blue" style="--swatch:#4fc3f7"></button>
+        <button class="color-btn" data-color="green" style="--swatch:#66bb6a"></button>
+        <button class="color-btn" data-color="red" style="--swatch:#ef5350"></button>
+        <button class="color-btn" data-color="purple" style="--swatch:#ab47bc"></button>
+        <button class="color-btn" data-color="yellow" style="--swatch:#ffca28"></button>
+      </div>
+      <div class="setting-row">
+        <label for="setting-sw-music">Binary Sunset Auto-Play</label>
+        <input type="checkbox" id="setting-sw-music" checked>
+      </div>
+      <div class="setting-row">
+        <label>Binary Sunset</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-secondary" id="btn-binary-sunset-toggle" style="width:auto; padding:0 12px; border-radius:12px; font-size:0.8rem; height:32px;">▶ Play Binary Sunset</button>
+          <input type="range" id="b-sunset-volume" min="0" max="100" value="40" class="ambient-slider" style="width:80px;">
+        </div>
+      </div>
+    </div>
+      
+    <h3 class="settings-section-title" id="settings-social-title" style="display:none; margin-top:1.5rem;">Social Profile</h3>
+    <div class="setting-row" id="settings-social-row" style="display:none; flex-direction:column; align-items:flex-start; gap:8px;">
+      <label for="setting-username">My Username</label>
+      <div style="display:flex; width:100%; gap:8px;">
+        <input type="text" id="setting-username" placeholder="Choose username..." maxlength="20" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0 12px; height:36px; color:var(--text-main); font-size:0.9rem;">
+        <button class="btn btn-secondary" id="btn-save-username" style="width:auto; height:36px; border-radius:8px; padding:0 14px; font-size:0.85rem; margin-top:0;">Save</button>
+      </div>
+      <span id="settings-username-status" style="font-size:0.75rem; min-height:16px; font-weight:500;"></span>
+    </div>
+
+            <div class="setting-row" style="margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
+                <label style="color:var(--text-muted); font-size:0.85rem;">Reset All Data</label>
+                <button id="btn-reset-app" class="btn-reset-app" title="Reset all app data" onclick="if(confirm('Delete all local data? This cannot be undone.')){localStorage.clear(); location.reload();}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+                <!-- Sign out — shown when logged in -->
+                <button id="btn-signout-footer" class="btn-signout-footer" style="display:none;" title="Sign out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign out
+                </button>
+            </div>
+  </div>
+</details>
+<div class="developer-credit">
+    <span class="developer-text">Developed by Nikolas.dam</span>
+    <div class="social-links">
+        <a class="social-btn social-ig" href="https://www.instagram.com/nikolas.dam/" target="_blank" rel="noreferrer">Instagram</a>
+        <a class="social-btn social-li" href="https://www.linkedin.com/in/nikolaos-damdounis-486239300/" target="_blank" rel="noreferrer">LinkedIn</a>
+    </div>
+</div>
+        </main>
+
+        <!-- Stats Tab -->
+        <main class="tab-content" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats">
+            <div class="stats-empty-state" id="stats-empty-state" style="display:none;">
+    <span class="stats-empty-icon">🌱</span>
+    <div class="stats-empty-title">No sessions yet</div>
+    <div class="stats-empty-desc">Complete your first focus session to start tracking your progress here.</div>
+    <button class="btn btn-primary stats-empty-btn" onclick="app.switchTab('timer')" style="border-radius:20px; width:auto; padding:0 24px; height:44px; margin-top:8px; font-size:0.9rem;">Start Focusing</button>
+</div>
+            <div class="stats-overview" id="stats-overview-grid">
+                <div class="stat-card stat-today-card">
+                    <div class="goal-ring-container">
+                        <svg class="goal-ring" viewBox="0 0 60 60"><circle cx="30" cy="30" r="28"/><circle class="goal-ring-path" cx="30" cy="30" r="28" id="goal-progress"/></svg>
+                        <span class="stat-value goal-value" id="stat-today">0</span>
+                    </div>
+                    <span class="stat-label">Today</span>
+                </div>
+                <div class="stat-card"><span class="stat-value" id="stat-week">0</span><span class="stat-label">This Week</span></div>
+                <div class="stat-card"><span class="stat-value" id="stat-total">0</span><span class="stat-label">All Time</span></div>
+                <div class="stat-card"><span class="stat-value" id="stat-rank-display" style="font-size: 1.1rem; padding-top: 6px;">Novice</span><span class="stat-label">Current Rank</span></div>
+            </div>
+
+            <!-- Focus Insights Dashoard -->
+            <section class="insights-section glass-card" aria-label="Focus Insights">
+                <h2><span aria-hidden="true">💡</span> Focus Insights</h2>
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <div class="insight-icon">📈</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Productivity Score</div>
+                            <div class="insight-val" id="insight-score">0/100</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon">⏰</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Best Focus Hour</div>
+                            <div class="insight-val" id="insight-hour">N/A</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon">🔥</div>
+                        <div class="insight-info">
+                            <div class="insight-label">Weekly Trend</div>
+                            <div class="insight-val" id="insight-trend">Neutral</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="insight-tip" id="insight-tip">Complete more sessions to get personalized tips!</div>
+            </section>
+
+            <!-- Focus Heatmap (30-day Grid) -->
+            <section class="heatmap-section glass-card" aria-label="30-Day Focus Heatmap">
+                <h2><span aria-hidden="true">📅</span> 30-Day Heatmap</h2>
+                <div class="heatmap-container">
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="heatmap-keys">
+                        <div class="h-cell level-0"></div>
+                        <div class="h-cell level-1"></div>
+                        <div class="h-cell level-2"></div>
+                        <div class="h-cell level-3"></div>
+                        <div class="h-cell level-4"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </section>
+
+            <!-- Achievements -->
+            <section class="achievements-section glass-card" aria-label="Achievements">
+                <h2><span aria-hidden="true">🏆</span> Achievements</h2>
+                <div class="achievements-grid" id="achievements-grid"></div>
+            </section>
+
+            <!-- 2-Column charts and history -->
+            <div class="stats-split">
+                <div class="charts-col">
+                    <div class="chart-container glass-card">
+                        <div class="chart-header"><h2>Focus Sessions</h2>
+                            <div class="chart-range-btns">
+                                <button class="chart-range active" data-range="7">7d</button>
+                                <button class="chart-range" data-range="14">14d</button>
+                                <button class="chart-range" data-range="30">30d</button>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper" style="position:relative; height:180px; width:100%;">
+                            <canvas id="sessions-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container glass-card">
+                        <div class="chart-header"><h2>Focus Minutes</h2></div>
+                        <div class="canvas-wrapper" style="position:relative; height:180px; width:100%;">
+                            <canvas id="minutes-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="history-col">
+                    <section class="history-section glass-card" aria-label="Session History">
+                        <h2>Session History</h2>
+                        <div class="history-list" id="history-list">
+                            <p class="empty-state">No sessions yet. Start your first focus session!</p>
+                        </div>
+                    </section>
+                </div>
+                            <!-- Tag Breakdown -->
+            <div class="chart-container glass-card" style="margin-top:1rem;">
+                <div class="chart-header"><h2>Tag Breakdown</h2></div>
+                <div id="tag-breakdown-list"><p class="empty-state">No tagged sessions yet.</p></div>
+            </div>
+            </div>
+        </main>
+
+        <!-- Notes Tab -->
+        <main class="tab-content" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes">
+    <div class="notebook-wrap">
+        <div class="notebook-cover" id="notebook-cover">
+            <div class="notebook-cover-inner">
+                <div class="notebook-emblem">📖</div>
+                <div class="notebook-title" id="notebook-cover-title">My Journal</div>
+                <div class="notebook-subtitle">Tap to open</div>
+            </div>
+        </div>
+        <div class="notebook-open" id="notebook-open" style="display:none;">
+            <div class="notebook-pages">
+                <!-- Left page — write -->
+                <div class="notebook-page notebook-page-left">
+                    <div class="notebook-page-title">New Entry</div>
+                    <textarea id="note-input" placeholder="Write your thought..." rows="6"></textarea>
+                    <div class="notebook-actions">
+                        <div id="tags-filter" class="tags-filter-container"></div>
+                        <button class="btn btn-primary btn-add-note" id="btn-add-note">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Save Entry
+                        </button>
+                        <button class="btn btn-secondary btn-dl-journal" id="btn-dl-journal" onclick="app.downloadNotes()" title="Download all entries as .docx">⬇ Export</button>
+                    </div>
+                </div>
+                <!-- Spine -->
+                <div class="notebook-spine"></div>
+                <!-- Right page — read -->
+                <div class="notebook-page notebook-page-right">
+                    <div class="notebook-page-title">Entries</div>
+                    <div class="notes-list" id="notes-list">
+                        <p class="empty-state">No entries yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+    <!-- Medical Study Panel -->
+<main class="tab-content" id="panel-medical" role="tabpanel" aria-labelledby="tab-medical">
+  <div class="med-dashboard">
+    <div class="med-status-bar">
+      <div class="med-status-item">
+        <span class="med-status-label">TOPIC</span>
+        <span class="med-status-val" id="med-current-topic">—</span>
+      </div>
+      <div class="med-timer-display">
+        <span id="med-timer-time">00:00</span>
+        <span class="med-status-label" style="display:block;margin-top:2px;">SESSION</span>
+      </div>
+      <div class="med-status-item">
+        <span class="med-status-label">CARDS</span>
+        <span class="med-status-val" id="med-card-count">—</span>
+      </div>
+    </div>
+
+    <div id="med-view-plan" class="med-view">
+      <div class="med-exam-row">
+        <label for="med-exam-date">Exam date</label>
+        <input type="date" id="med-exam-date" class="med-date-input">
+        <span id="med-exam-countdown"></span>
+      </div>
+      <div class="med-section">
+        <div class="med-section-title">Topic</div>
+        <div class="med-topic-grid" id="med-topic-grid"></div>
+      </div>
+      <div class="med-section">
+        <div class="med-section-title">Study Mode</div>
+        <div class="med-mode-list" id="med-mode-list"></div>
+      </div>
+      <div class="med-section" id="med-source-section">
+        <div class="med-section-title">Cards</div>
+        <div class="med-card-source">
+          <button class="med-source-btn active" data-source="manual">✏️ Manual</button>
+          <button class="med-source-btn" data-source="import">📂 Import CSV/TSV</button>
+        </div>
+        <div id="med-manual-entry">
+          <div id="med-manual-list"></div>
+          <button class="btn-med-add" id="btn-med-add-card">+ Add Card</button>
+        </div>
+        <div id="med-import-area" style="display:none">
+          <textarea class="med-import-text" id="med-import-text" placeholder="Paste cards — one per line:&#10;Question, Answer&#10;or front[Tab]back&#10;(Anki TSV exports work directly)"></textarea>
+          <div class="med-import-controls">
+            <label class="med-file-label" for="med-import-file">📂 Open file</label>
+            <input type="file" id="med-import-file" accept=".csv,.txt,.tsv" hidden>
+            <button class="btn-med-parse" id="btn-med-parse">Parse</button>
+          </div>
+          <div class="med-import-preview" id="med-import-preview" style="display:none"></div>
+        </div>
+      </div>
+      <div class="med-missed-info" id="med-missed-info" style="display:none">
+        🔄 <span><strong id="med-missed-count">0</strong> cards in missed queue</span>
+      </div>
+      <button class="btn-med-start" id="btn-med-start">▶ Start Study Block</button>
+    </div>
+
+    <div id="med-view-review" class="med-view" style="display:none">
+      <div class="med-progress-bar"><div class="med-progress-fill" id="med-progress-fill"></div></div>
+      <div class="med-rapid-countdown" id="med-rapid-countdown"></div>
+      <div class="med-card-wrapper">
+        <div class="med-card" id="med-card">
+          <div class="med-card-face med-card-front">
+            <div class="med-card-category" id="med-card-category"></div>
+            <div class="med-card-question" id="med-card-question"></div>
+            <div class="med-card-hint">Press Space to reveal</div>
+          </div>
+          <div class="med-card-face med-card-back">
+            <div class="med-card-answer" id="med-card-answer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="med-actions" id="med-actions-reveal">
+        <button class="med-btn-reveal" id="btn-med-reveal">Reveal Answer</button>
+      </div>
+      <div class="med-actions" id="med-actions-confidence" style="display:none">
+        <button class="med-conf-btn med-conf-easy" data-confidence="easy">✓ Easy</button>
+        <button class="med-conf-btn med-conf-unsure" data-confidence="unsure">⚡ Unsure</button>
+        <button class="med-conf-btn med-conf-missed" data-confidence="missed">✗ Missed</button>
+        <button class="med-conf-btn med-conf-flag" id="btn-med-flag" data-confidence="flag">🚩 Flag</button>
+      </div>
+      <div class="med-shortcuts-hint">Space · 1 Easy · 2 Unsure · 3 Missed · F Flag</div>
+      <button class="med-btn-end" id="btn-med-end">End Session Early</button>
+    </div>
+
+    <div id="med-view-summary" class="med-view" style="display:none">
+      <div class="med-summary-header">
+        <div class="med-summary-grade" id="med-summary-grade">—</div>
+        <div class="med-summary-meta" id="med-summary-meta">Session complete</div>
+      </div>
+      <div class="med-summary-stats">
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-easy">0</span><span class="med-stat-lbl">Easy ✓</span></div>
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-unsure">0</span><span class="med-stat-lbl">Unsure ⚡</span></div>
+        <div class="med-stat-card"><span class="med-stat-num" id="med-stat-missed">0</span><span class="med-stat-lbl">Missed ✗</span></div>
+        <div class="med-stat-card med-stat-flag"><span class="med-stat-num" id="med-stat-flag">0</span><span class="med-stat-lbl">Flagged 🚩</span></div>
+      </div>
+      <div class="med-missed-list" id="med-missed-list" style="display:none"></div>
+      <div class="med-missed-list med-flagged-list" id="med-flagged-list" style="display:none"></div>
+      <div class="med-summary-actions">
+        <button class="med-btn-retry" id="btn-med-retry" style="display:none">🔄 Review Missed</button>
+        <button class="med-btn-retry med-btn-flag-retry" id="btn-med-flag-retry" style="display:none">🚩 Review Flagged</button>
+        <button class="med-btn-new" id="btn-med-new">New Session</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+        <!-- Social Tab -->
+        <main class="tab-content" id="panel-social" role="tabpanel" aria-labelledby="tab-social">
+            <div class="social-auth-gate glass-card" id="social-auth-gate">
+                <div class="social-gate-icon">👥</div>
+                <h2>Connect with Friends</h2>
+                <p>Sign in with Google to add friends, share your stats, and compete on the daily leaderboard!</p>
+                <button class="btn btn-primary" id="btn-social-signin" style="border-radius:20px; width:auto; padding:0 32px; height:48px; font-size:1rem; margin-top:12px;">Sign in with Google</button>
+            </div>
+            
+            <div class="social-app-content" id="social-app-content" style="display:none;">
+                <div class="social-grid">
+                    <!-- Left Column: Search & Profile -->
+                    <div class="social-left-col">
+                        <!-- Add Friend -->
+                        <div class="social-card glass-card">
+                            <h3>➕ Add Friend</h3>
+                            <form id="add-friend-form" style="display:flex; gap:8px; margin-top:12px; width:100%;">
+                                <input type="text" id="friend-email-input" placeholder="Username or email..." required style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:0 14px; height:40px; color:var(--text-main); font-size:0.9rem;">
+                                <button type="submit" class="btn btn-primary" style="width:auto; height:40px; border-radius:12px; padding:0 16px; font-size:0.9rem; margin-top:0;">Add</button>
+                            </form>
+                            <div id="add-friend-msg" style="margin-top:8px; font-size:0.85rem; min-height:18px; font-weight:500;"></div>
+                        </div>
+                        
+                        <!-- My Profile Summary -->
+                        <div class="social-card glass-card" style="margin-top:20px;">
+                            <div class="user-profile-summary" style="display:flex; align-items:center; gap:12px;">
+                                <img id="social-user-avatar" class="auth-avatar" style="width:48px; height:48px; border-radius:50%; margin:0;" src="" alt="Avatar">
+                                <div style="flex:1; overflow:hidden;">
+                                    <div id="social-user-name" style="font-weight:600; font-size:1.1rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                    <div id="social-user-username" style="font-size:0.85rem; color:var(--accent); font-weight:500;"></div>
+                                </div>
+                            </div>
+                            <div class="user-profile-stats-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:16px;">
+                                <div class="profile-stat-box" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px; border-radius:12px; text-align:center;">
+                                    <span style="display:block; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Level</span>
+                                    <span id="social-user-level" style="font-weight:700; font-size:1.4rem; color:var(--accent);">1</span>
+                                </div>
+                                <div class="profile-stat-box" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px; border-radius:12px; text-align:center;">
+                                    <span style="display:block; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total XP</span>
+                                    <span id="social-user-xp" style="font-weight:700; font-size:1.4rem; color:var(--text-main);">0</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" id="btn-copy-invite" style="width:100%; border-radius:12px; margin-top:16px; font-size:0.85rem; height:38px; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                🔗 Copy Invite Link
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Leaderboard -->
+                    <div class="social-right-col">
+                        <div class="social-card glass-card leaderboard-card" style="height:100%; display:flex; flex-direction:column;">
+                            <div class="leaderboard-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+                                <h2 style="margin:0; font-size:1.4rem;"><span aria-hidden="true">🏆</span> Leaderboard</h2>
+                                <div class="leaderboard-toggle" style="display:flex; background:rgba(255,255,255,0.05); padding:2px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                                    <button class="leaderboard-toggle-btn active" id="btn-lb-today" style="background:transparent; border:none; color:var(--text-main); font-size:0.8rem; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:500; transition:all 0.2s;">Today</button>
+                                    <button class="leaderboard-toggle-btn" id="btn-lb-alltime" style="background:transparent; border:none; color:var(--text-muted); font-size:0.8rem; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:500; transition:all 0.2s;">All-Time</button>
+                                </div>
+                            </div>
+                            
+                            <div class="leaderboard-list" id="leaderboard-list" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto; max-height:480px; padding-right:4px;">
+                                <!-- Dynamically filled list -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+  <!-- Shortcut Modal -->
+<div id="shortcut-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card">
+    <h3 style="margin-top:0; margin-bottom:1rem;">⌨️ Keyboard Shortcuts</h3>
+    <div class="shortcut-list" style="display:flex; flex-direction:column; gap:8px;">
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Space</kbd></span><span>Play / Pause</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>I</kbd></span><span>Set Intention</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>N</kbd></span><span>Skip Session</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Z</kbd></span><span>Zen Mode</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>W</kbd></span><span>Hyperspace Warp (SW Theme)</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>?</kbd></span><span>Show this menu</span></div>
+      <div class="shortcut-item" style="display:flex; justify-content:space-between;"><span><kbd>Esc</kbd></span><span>Close menu</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Intention Modal -->
+<div id="intention-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card intention-modal-card">
+    <h3 class="intention-modal-title">🎯 What are you focusing on?</h3>
+    <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input">
+    <div class="subtasks-section">
+      <div class="subtasks-label">Subtasks <span style="color:var(--text-muted); font-weight:400;">(optional)</span></div>
+      <div class="subtask-list" id="subtask-list">
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 1..." maxlength="60">
+        </div>
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 2..." maxlength="60">
+        </div>
+        <div class="subtask-row">
+          <span class="subtask-dot">◦</span>
+          <input type="text" class="subtask-input" placeholder="Subtask 3..." maxlength="60">
+        </div>
+      </div>
+      <div class="subtasks-label" style="margin-top:12px;">Session Type</div>
+      <div class="label-picker" id="label-picker">
+        <button class="label-btn active" data-label="work" style="--lc:#a78bfa">Deep Work</button>
+        <button class="label-btn" data-label="study" style="--lc:#38bdf8">Study</button>
+        <button class="label-btn" data-label="creative" style="--lc:#fb923c">Creative</button>
+        <button class="label-btn" data-label="admin" style="--lc:#94a3b8">Admin</button>
+        <button class="label-btn" data-label="other" style="--lc:#4ecdc4">Other</button>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:center; gap:10px; margin-top:1rem;">
+      <button class="btn btn-secondary" id="btn-skip-intention" style="border-radius:20px; width:auto; padding:0 20px;">Skip</button>
+      <button class="btn btn-primary" id="btn-start-intention" style="border-radius:20px; width:auto; height:48px; padding:0 20px; font-size:1rem;">Start Focus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Achievement Toast -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
+    authDomain: "nikolakas.github.io",
+    projectId: "pomodoro-focus-f105a",
+    storageBucket: "pomodoro-focus-f105a.firebasestorage.app",
+    messagingSenderId: "146119283270",
+    appId: "1:146119283270:web:f03ea370c7dcb995f0b047"
+  };
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+await setPersistence(auth, browserLocalPersistence);
+
+window.firebaseAuth = auth;
+window.firebaseDb = db;
+  window.GoogleAuthProvider = GoogleAuthProvider;
+  window.signInWithPopup = signInWithPopup;
+  window.signInWithRedirect = signInWithRedirect;
+  window.getRedirectResult = getRedirectResult;
+  window.signOutFb = signOut;
+  window.onAuthStateChanged = onAuthStateChanged;
+  window.firestoreDoc = doc;
+  window.firestoreSetDoc = setDoc;
+  window.firestoreGetDoc = getDoc;
+  window.firestoreOnSnapshot = onSnapshot;
+  window.firestoreCollection = collection;
+  window.firestoreQuery = query;
+  window.firestoreWhere = where;
+  window.firestoreGetDocs = getDocs;
+  window.firestoreDeleteDoc = deleteDoc;
+
+  // Handle invite search parameter
+  const params = new URLSearchParams(window.location.search);
+  const invite = params.get('invite');
+  if (invite) {
+      localStorage.setItem('pending_invite', invite.toLowerCase().trim());
+      window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  window.dispatchEvent(new CustomEvent('firebase-ready'));
+</script>
+
+<!-- End of Day Summary Modal -->
+<div id="eod-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card eod-modal-content">
+    <div class="eod-header">
+      <span class="eod-icon">🌙</span>
+      <h2>Day Complete</h2>
+      <p class="eod-subtitle" id="eod-subtitle">Great work today!</p>
+    </div>
+    <div class="eod-stats">
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-sessions">0</span>
+        <span class="eod-stat-label">Sessions</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-minutes">0m</span>
+        <span class="eod-stat-label">Focus Time</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-xp">+0</span>
+        <span class="eod-stat-label">XP Earned</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-val" id="eod-hour">—</span>
+        <span class="eod-stat-label">Best Hour</span>
+      </div>
+    </div>
+    <div class="eod-bar-wrap">
+      <div class="eod-bar-label">
+        <span>Daily Goal</span>
+        <span id="eod-goal-text">0 / 8</span>
+      </div>
+      <div class="eod-bar-bg">
+        <div class="eod-bar-fill" id="eod-bar-fill"></div>
+      </div>
+    </div>
+    <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
+      Keep Going 💪
+    </button>
+  </div>
+</div>
+
+<!-- Onboarding Overlay -->
+<div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
+  <div class="onboarding-card glass-card">
+    <div class="onboarding-step" id="onboarding-step">
+      <div class="onboarding-icon" id="onboarding-icon">🍅</div>
+      <h3 class="onboarding-title" id="onboarding-title">Welcome to Pomodoro Focus</h3>
+      <p class="onboarding-desc" id="onboarding-desc">The Pomodoro technique helps you focus in short, powerful bursts. Work 25 minutes, then take a 5-minute break. Simple. Effective.</p>
+    </div>
+    <div class="onboarding-dots" id="onboarding-dots">
+      <span class="ob-dot active"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+    </div>
+    <div class="onboarding-actions">
+      <button class="btn-ob-skip" id="btn-ob-skip">Skip</button>
+      <button class="btn-ob-next btn-primary btn" id="btn-ob-next">Next →</button>
+    </div>
+  </div>
+</div>
+
+    <!-- Intention Modal -->
+    <div id="intention-modal" class="intention-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div class="intention-card glass-card" style="background:var(--glass-bg,rgba(20,20,40,0.95)); border-radius:20px; padding:2rem; max-width:480px; width:90%; border:1px solid rgba(255,255,255,0.1);">
+            <h3 style="margin:0 0 0.5rem; font-size:1.3rem;">🎯 What are you focusing on?</h3>
+            <p style="margin:0 0 1.2rem; opacity:0.7; font-size:0.9rem;">Set your intention for this session</p>
+            <input type="text" id="intention-input" placeholder="e.g. Finish the report..." class="intention-main-input" style="width:100%; padding:0.75rem 1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:inherit; font-size:1rem; box-sizing:border-box; margin-bottom:1rem;" />
+            <div id="subtasks-container" style="margin-bottom:1rem;">
+                <p style="font-size:0.85rem; opacity:0.6; margin:0 0 0.5rem;">Subtasks (optional)</p>
+                <input type="text" class="subtask-input" placeholder="Subtask 1..." style="width:100%; padding:0.5rem 0.75rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:inherit; font-size:0.9rem; box-sizing:border-box; margin-bottom:0.4rem;" />
+            </div>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button class="btn btn-secondary" id="btn-skip-intention" style="padding:0.6rem 1.2rem; border-radius:10px;">Skip</button>
+                <button class="btn btn-primary" id="btn-start-intention" style="padding:0.6rem 1.4rem; border-radius:10px;">Start Focus</button>
+            </div>
+        </div>
+    </div>
+
+        <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+        <script src="ambience.js"></script>
+<script src="medical.js"></script>
+<script src="app.js"></script>
+
+<!-- Medical ECG background — canvas-based real-time PQRST -->
+<canvas id="med-ecg-canvas" aria-hidden="true"></canvas>
+
+<!-- Medical motivation post-it container -->
+<div id="med-postits" aria-live="polite"></div>
+
+<!-- Medical motivation button (fixed, only in medical theme) -->
+<button id="btn-med-motivate" onclick="window.MedicalModule && window.MedicalModule.addPostIt()" aria-label="I need some motivation">
+  <span class="motivate-icon">📌</span>
+  <span class="motivate-label">I need some motivation</span>
+</button>
+
+<!-- Universal thought notes layer (all themes) -->
+<div id="thinknotes-layer" aria-label="Thought notes"></div>
+<button id="btn-add-thinknote" onclick="app.addThinkNote()" title="Add a thought note">
+  <span>✏️</span>
+  <span class="thinknote-btn-label">Note</span>
+</button>
+</body>
+</html>
