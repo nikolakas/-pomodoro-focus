@@ -879,7 +879,11 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 
-await setPersistence(auth, browserLocalPersistence);
+try {
+  await setPersistence(auth, browserLocalPersistence);
+} catch (err) {
+  console.warn("Firebase setPersistence failed:", err);
+}
 
 window.firebaseAuth = auth;
 window.firebaseDb = db;

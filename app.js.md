@@ -111,6 +111,12 @@ async initFirebase() {
 
     if (this.authStateUnsub) this.authStateUnsub();
 
+    if (window.getRedirectResult) {
+        window.getRedirectResult(window.firebaseAuth).catch(err => {
+            console.error("Redirect result error:", err);
+        });
+    }
+
     this.authStateUnsub = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
         const socialAuthGate = document.getElementById('social-auth-gate');
         const socialAppContent = document.getElementById('social-app-content');
@@ -699,11 +705,15 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   if (btnModalGoogle) {
       btnModalGoogle.addEventListener('click', async () => {
           try {
-              if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
+              if (!window.firebaseAuth || !window.GoogleAuthProvider) return;
               const provider = new window.GoogleAuthProvider();
               const authModal = document.getElementById('auth-modal');
               if (authModal) authModal.style.display = 'none';
-              await window.signInWithPopup(window.firebaseAuth, provider);
+              if (window.signInWithRedirect) {
+                  await window.signInWithRedirect(window.firebaseAuth, provider);
+              } else if (window.signInWithPopup) {
+                  await window.signInWithPopup(window.firebaseAuth, provider);
+              }
           } catch (err) {
               console.error('Google sign-in failed:', err);
               const msgEl = document.getElementById('auth-modal-msg');
