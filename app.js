@@ -1680,6 +1680,7 @@ if (user) this.saveToFirestore(user.uid);
 
         this.state.totalSessions = parseInt(localStorage.getItem('pomodoro_total')) || 0;
         this.state.xp = parseInt(localStorage.getItem('pomodoro_xp')) || 0;
+        this.state.username = localStorage.getItem('pomodoro_username') || '';
         this.updateLevel();
 
         const h = localStorage.getItem('pomodoro_history');
@@ -1690,6 +1691,7 @@ if (user) this.saveToFirestore(user.uid);
         localStorage.setItem('pomodoro_today', this.state.sessionsToday);
         localStorage.setItem('pomodoro_total', this.state.totalSessions);
         localStorage.setItem('pomodoro_xp', this.state.xp);
+        localStorage.setItem('pomodoro_username', this.state.username || '');
         this.renderStats();
     },
 
@@ -2982,14 +2984,18 @@ initOnboarding() {
 
         const usersRef = window.firestoreCollection(window.firebaseDb, 'users');
         const q = window.firestoreQuery(usersRef, window.firestoreWhere('username', '==', sanitized));
-        const snap = await window.firestoreGetDocs(q);
         
         let isTaken = false;
-        snap.forEach(doc => {
-            if (doc.id !== currentUser.uid) {
-                isTaken = true;
-            }
-        });
+        try {
+            const snap = await window.firestoreGetDocs(q);
+            snap.forEach(doc => {
+                if (doc.id !== currentUser.uid) {
+                    isTaken = true;
+                }
+            });
+        } catch (err) {
+            console.warn("Username uniqueness query failed (ignoring uniqueness check):", err);
+        }
 
         if (isTaken) {
             throw new Error("Username is already taken by another user!");
@@ -2999,6 +3005,7 @@ initOnboarding() {
         await window.firestoreSetDoc(ref, { username: sanitized }, { merge: true });
         
         this.state.username = sanitized;
+        this.saveStats();
 
         const socialUserUsername = document.getElementById('social-user-username');
         if (socialUserUsername) socialUserUsername.textContent = `@${sanitized}`;
