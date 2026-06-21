@@ -959,6 +959,7 @@ switchTab(target) {
         this.initNotebook();
     }
     if (target === 'social') {
+        this.renderLeaderboard();
         const user = window.firebaseAuth?.currentUser;
         if (user) {
             this.loadFriends();
@@ -1682,6 +1683,13 @@ if (user) this.saveToFirestore(user.uid);
         this.state.xp = parseInt(localStorage.getItem('pomodoro_xp')) || 0;
         this.state.username = localStorage.getItem('pomodoro_username') || '';
         this.updateLevel();
+
+        const cachedProfiles = localStorage.getItem('pomodoro_friends_profiles');
+        try {
+            this.state.friendsProfiles = cachedProfiles ? JSON.parse(cachedProfiles) : [];
+        } catch(e) {
+            this.state.friendsProfiles = [];
+        }
 
         const h = localStorage.getItem('pomodoro_history');
         if (h) this.state.history = JSON.parse(h);
@@ -2855,6 +2863,7 @@ initOnboarding() {
                 }
 
                 this.state.friendsProfiles = uniqueUsers;
+                localStorage.setItem('pomodoro_friends_profiles', JSON.stringify(uniqueUsers));
                 this.renderLeaderboard();
             } catch (err) {
                 console.error("Error loading friends stats:", err);
