@@ -146,8 +146,12 @@ async initFirebase() {
                 }
             }
 
-            await this.loadFromFirestore(user.uid);
-            await this.saveToFirestore(user.uid);
+            try {
+                await this.loadFromFirestore(user.uid);
+                await this.saveToFirestore(user.uid);
+            } catch (err) {
+                console.error("Firestore sync failed:", err);
+            }
 
             if (socialAuthGate) socialAuthGate.style.display = 'none';
             if (socialAppContent) socialAppContent.style.display = 'block';

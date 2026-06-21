@@ -859,7 +859,7 @@
 
   const firebaseConfig = {
     apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
-    authDomain: "nikolakas.github.io",
+    authDomain: "pomodoro-focus-f105a.firebaseapp.com",
     projectId: "pomodoro-focus-f105a",
     storageBucket: "pomodoro-focus-f105a.firebasestorage.app",
     messagingSenderId: "146119283270",
