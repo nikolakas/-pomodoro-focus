@@ -93,19 +93,8 @@ async initFirebase() {
 
     if (btnAuth) {
         btnAuth.style.display = 'inline-flex';
-        btnAuth.textContent = 'Sign in with Google';
-        btnAuth.onclick = async () => {
-            try {
-                if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) {
-                    console.error('Firebase auth not ready');
-                    return;
-                }
-                const provider = new window.GoogleAuthProvider();
-                await window.signInWithPopup(window.firebaseAuth, provider);
-            } catch (err) {
-                console.error('Google sign-in failed:', err);
-            }
-        };
+        btnAuth.textContent = 'Sign in';
+        btnAuth.onclick = () => this.openAuthModal();
     }
 
     if (
@@ -218,16 +207,8 @@ async initFirebase() {
             }
 
             if (btnAuth) {
-                btnAuth.textContent = 'Sign in with Google';
-                btnAuth.onclick = async () => {
-                    try {
-                        if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
-                        const provider = new window.GoogleAuthProvider();
-                        await window.signInWithPopup(window.firebaseAuth, provider);
-                    } catch (err) {
-                        console.error('Google sign-in failed:', err);
-                    }
-                };
+                btnAuth.textContent = 'Sign in';
+                btnAuth.onclick = () => this.openAuthModal();
             }
 
             if (authName) authName.textContent = '';
@@ -707,13 +688,104 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
 
   const btnSocialSignin = document.getElementById('btn-social-signin');
   if (btnSocialSignin) {
-      btnSocialSignin.addEventListener('click', async () => {
+      btnSocialSignin.addEventListener('click', () => this.openAuthModal());
+  }
+
+  // Auth Modal events
+  const btnModalGoogle = document.getElementById('btn-modal-google');
+  if (btnModalGoogle) {
+      btnModalGoogle.addEventListener('click', async () => {
           try {
               if (!window.firebaseAuth || !window.GoogleAuthProvider || !window.signInWithPopup) return;
               const provider = new window.GoogleAuthProvider();
+              const authModal = document.getElementById('auth-modal');
+              if (authModal) authModal.style.display = 'none';
               await window.signInWithPopup(window.firebaseAuth, provider);
           } catch (err) {
-              console.error('Social Google sign-in failed:', err);
+              console.error('Google sign-in failed:', err);
+              const msgEl = document.getElementById('auth-modal-msg');
+              if (msgEl) msgEl.textContent = err.message;
+          }
+      });
+  }
+
+  const linkAuthSwitch = document.getElementById('link-auth-switch');
+  if (linkAuthSwitch) {
+      linkAuthSwitch.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.state.authMode = this.state.authMode === 'signin' ? 'signup' : 'signin';
+          const titleEl = document.getElementById('auth-modal-title');
+          const submitEl = document.getElementById('btn-modal-submit');
+          const switchTextEl = document.getElementById('auth-switch-text');
+          
+          if (this.state.authMode === 'signin') {
+              if (titleEl) titleEl.textContent = 'Sign In';
+              if (submitEl) submitEl.textContent = 'Sign In';
+              if (switchTextEl) switchTextEl.textContent = "Don't have an account?";
+              linkAuthSwitch.textContent = 'Sign Up';
+          } else {
+              if (titleEl) titleEl.textContent = 'Create Account';
+              if (submitEl) submitEl.textContent = 'Sign Up';
+              if (switchTextEl) switchTextEl.textContent = "Already have an account?";
+              linkAuthSwitch.textContent = 'Sign In';
+          }
+      });
+  }
+
+  const emailAuthForm = document.getElementById('email-auth-form');
+  if (emailAuthForm) {
+      emailAuthForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = document.getElementById('auth-email')?.value;
+          const password = document.getElementById('auth-password')?.value;
+          const msgEl = document.getElementById('auth-modal-msg');
+          const submitEl = document.getElementById('btn-modal-submit');
+          
+          if (!email || !password || !msgEl) return;
+          msgEl.style.color = '#ffeb3b';
+          msgEl.textContent = 'Processing...';
+          
+          if (submitEl) submitEl.disabled = true;
+
+          try {
+              if (this.state.authMode === 'signin') {
+                  try {
+                      await window.firestoreSignInWithEmail(window.firebaseAuth, email, password);
+                  } catch (err) {
+                      // If user doesn't exist, try to sign them up automatically to keep it simple!
+                      if (err.code === 'auth/user-not-found') {
+                          msgEl.textContent = 'Account not found. Registering new user...';
+                          await window.firestoreCreateUserWithEmail(window.firebaseAuth, email, password);
+                      } else {
+                          throw err;
+                      }
+                  }
+              } else {
+                  await window.firestoreCreateUserWithEmail(window.firebaseAuth, email, password);
+              }
+              const authModal = document.getElementById('auth-modal');
+              if (authModal) authModal.style.display = 'none';
+          } catch (err) {
+              console.error('Email authentication failed:', err);
+              msgEl.style.color = '#ff6b6b';
+              let displayError = err.message;
+              if (err.code === 'auth/invalid-email') displayError = "Invalid email address format.";
+              else if (err.code === 'auth/user-disabled') displayError = "This user account has been disabled.";
+              else if (err.code === 'auth/wrong-password') displayError = "Incorrect password.";
+              else if (err.code === 'auth/email-already-in-use') displayError = "This email is already in use.";
+              else if (err.code === 'auth/weak-password') displayError = "Password should be at least 6 characters.";
+              msgEl.textContent = displayError;
+          } finally {
+              if (submitEl) submitEl.disabled = false;
+          }
+      });
+  }
+
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) {
+      authModal.addEventListener('click', (e) => {
+          if (e.target === authModal) {
+              authModal.style.display = 'none';
           }
       });
   }
@@ -2905,6 +2977,30 @@ initOnboarding() {
         if (settingsUsername) settingsUsername.value = sanitized;
 
         this.showToast('Social', 'Username updated successfully!', '👤');
+    },
+
+    openAuthModal() {
+        const authModal = document.getElementById('auth-modal');
+        if (!authModal) return;
+        authModal.style.display = 'flex';
+        
+        this.state.authMode = 'signin';
+        const titleEl = document.getElementById('auth-modal-title');
+        const submitEl = document.getElementById('btn-modal-submit');
+        const switchTextEl = document.getElementById('auth-switch-text');
+        const switchLinkEl = document.getElementById('link-auth-switch');
+        const msgEl = document.getElementById('auth-modal-msg');
+        
+        if (titleEl) titleEl.textContent = 'Sign In';
+        if (submitEl) submitEl.textContent = 'Sign In';
+        if (switchTextEl) switchTextEl.textContent = "Don't have an account?";
+        if (switchLinkEl) switchLinkEl.textContent = 'Sign Up';
+        if (msgEl) msgEl.textContent = '';
+        
+        const emailInput = document.getElementById('auth-email');
+        const passInput = document.getElementById('auth-password');
+        if (emailInput) emailInput.value = '';
+        if (passInput) passInput.value = '';
     }
 };
 

@@ -854,7 +854,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -880,6 +880,8 @@ window.firebaseDb = db;
   window.getRedirectResult = getRedirectResult;
   window.signOutFb = signOut;
   window.onAuthStateChanged = onAuthStateChanged;
+  window.firestoreSignInWithEmail = signInWithEmailAndPassword;
+  window.firestoreCreateUserWithEmail = createUserWithEmailAndPassword;
   window.firestoreDoc = doc;
   window.firestoreSetDoc = setDoc;
   window.firestoreGetDoc = getDoc;
@@ -939,6 +941,45 @@ window.firebaseDb = db;
     <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
       Keep Going 💪
     </button>
+  </div>
+</div>
+
+<!-- Auth Modal -->
+<div id="auth-modal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1100; align-items:center; justify-content:center;">
+  <div class="modal-content glass-card auth-modal-card" style="max-width:380px; width:90%; padding:24px; border-radius:20px; text-align:center; border: 1px solid rgba(255, 255, 255, 0.1);">
+    <h3 id="auth-modal-title" style="margin-top:0; margin-bottom:16px; font-size:1.3rem;">Sign In</h3>
+    
+    <!-- Google Login -->
+    <button class="btn btn-primary" id="btn-modal-google" style="width:100%; border-radius:12px; height:44px; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px; font-size:0.95rem; margin-top:0;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.986 0-.745-.079-1.3-.178-1.864H12.24z"/></svg>
+      Sign in with Google
+    </button>
+    
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; color:var(--text-muted); font-size:0.8rem;">
+      <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+      <span>or email</span>
+      <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+    </div>
+    
+    <!-- Email Login Form -->
+    <form id="email-auth-form" style="display:flex; flex-direction:column; gap:12px; text-align:left; width: 100%;">
+      <div>
+        <label for="auth-email" style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Email Address</label>
+        <input type="email" id="auth-email" required placeholder="name@example.com" style="width:100%; box-sizing:border-box; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0 12px; height:38px; color:var(--text-main); font-size:0.9rem;">
+      </div>
+      <div>
+        <label for="auth-password" style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px;">Password</label>
+        <input type="password" id="auth-password" required placeholder="••••••••" style="width:100%; box-sizing:border-box; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0 12px; height:38px; color:var(--text-main); font-size:0.9rem;">
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-modal-submit" style="width:100%; border-radius:12px; height:40px; margin-top:8px; font-size:0.9rem;">Sign In</button>
+    </form>
+    
+    <div id="auth-modal-msg" style="margin-top:12px; font-size:0.8rem; min-height:16px; color:#ff6b6b; font-weight:500;"></div>
+    
+    <div style="margin-top:16px; font-size:0.85rem; color:var(--text-muted);">
+      <span id="auth-switch-text">Don't have an account?</span>
+      <a href="#" id="link-auth-switch" style="color:var(--accent); text-decoration:none; font-weight:500; margin-left:4px;">Sign Up</a>
+    </div>
   </div>
 </div>
 
