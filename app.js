@@ -69,6 +69,7 @@ currentSubtasks: [],
         this.renderNotes();
         this.renderHeatmap();
         this.renderInsights();
+        this.updateMainExamWidget();
 
         this.setMode('work');
         this.updateSessionCounter();
@@ -118,6 +119,7 @@ async initFirebase() {
         const btnSignoutFooter = document.getElementById('btn-signout-footer');
 
         if (user) {
+            localStorage.setItem('user_logged_in', 'true');
             if (btnAuth) {
                 btnAuth.textContent = 'Sign out';
                 btnAuth.onclick = () => window.signOutFb(window.firebaseAuth);
@@ -197,6 +199,7 @@ async initFirebase() {
                 this.renderInsights();
             });
         } else {
+            localStorage.setItem('user_logged_in', 'false');
             if (this.userUnsub) {
                 this.userUnsub();
                 this.userUnsub = null;
@@ -752,10 +755,17 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
                   try {
                       await window.firestoreSignInWithEmail(window.firebaseAuth, email, password);
                   } catch (err) {
-                      // If user doesn't exist, try to sign them up automatically to keep it simple!
-                      if (err.code === 'auth/user-not-found') {
-                          msgEl.textContent = 'Account not found. Registering new user...';
-                          await window.firestoreCreateUserWithEmail(window.firebaseAuth, email, password);
+                      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                          // Try auto-registration if account doesn't exist
+                          try {
+                              await window.firestoreCreateUserWithEmail(window.firebaseAuth, email, password);
+                          } catch (signUpErr) {
+                              if (signUpErr.code === 'auth/email-already-in-use') {
+                                  throw new Error("Incorrect password.");
+                              } else {
+                                  throw signUpErr;
+                              }
+                          }
                       } else {
                           throw err;
                       }
@@ -771,9 +781,10 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
               let displayError = err.message;
               if (err.code === 'auth/invalid-email') displayError = "Invalid email address format.";
               else if (err.code === 'auth/user-disabled') displayError = "This user account has been disabled.";
-              else if (err.code === 'auth/wrong-password') displayError = "Incorrect password.";
+              else if (err.code === 'auth/wrong-password' || err.message === "Incorrect password.") displayError = "Incorrect password.";
               else if (err.code === 'auth/email-already-in-use') displayError = "This email is already in use.";
               else if (err.code === 'auth/weak-password') displayError = "Password should be at least 6 characters.";
+              else if (err.code === 'auth/operation-not-allowed') displayError = "Email/Password sign-in is not enabled in your Firebase project. Please use Google Sign-in.";
               msgEl.textContent = displayError;
           } finally {
               if (submitEl) submitEl.disabled = false;
@@ -3001,6 +3012,41 @@ initOnboarding() {
         const passInput = document.getElementById('auth-password');
         if (emailInput) emailInput.value = '';
         if (passInput) passInput.value = '';
+    },
+
+    updateMainExamWidget() {
+        const examDate = localStorage.getItem('med_exam_date');
+        const widget = document.getElementById('exam-countdown-widget');
+        const textEl = document.getElementById('main-exam-text');
+        if (!widget || !textEl) return;
+        
+        if (!examDate) {
+            widget.style.display = 'none';
+            return;
+        }
+        
+        const parts = examDate.split('-');
+        if (parts.length !== 3) {
+            widget.style.display = 'none';
+            return;
+        }
+        
+        const examDateTime = new Date(parts[0], parts[1] - 1, parts[2]);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const diffDays = Math.round((examDateTime - today) / (1000 * 60 * 60 * 24));
+        
+        widget.style.display = 'block';
+        if (diffDays > 0) {
+            textEl.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''} left until exam`;
+            textEl.style.color = diffDays <= 7 ? '#ff6b6b' : diffDays <= 21 ? '#fb923c' : 'var(--text-primary)';
+        } else if (diffDays === 0) {
+            textEl.textContent = `Today is the exam day! 🍀`;
+            textEl.style.color = '#10b981';
+        } else {
+            textEl.textContent = `Exam passed!`;
+            textEl.style.color = 'var(--text-muted)';
+        }
     }
 };
 

@@ -158,6 +158,17 @@
                 </div>
             </div>
 
+            <!-- Exam Countdown Widget -->
+            <div class="exam-countdown-widget glass-card" id="exam-countdown-widget" style="display:none; margin: 16px auto; padding: 14px 20px; border-radius: 14px; width: 100%; max-width: 320px; box-sizing: border-box; text-align: left; border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size: 1.4rem;">🗓️</span>
+                    <div>
+                        <span style="display:block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700;">Upcoming Exam</span>
+                        <span id="main-exam-text" style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Exam in -- days</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Motivational Quote -->
             <div class="quote-display" id="quote-display">
                 <p id="quote-text">"Focus is a matter of deciding what things you're not going to do."</p>
@@ -642,14 +653,7 @@
         <input type="date" id="med-exam-date" class="med-date-input">
         <span id="med-exam-countdown"></span>
       </div>
-      <div class="med-section">
-        <div class="med-section-title">Topic</div>
-        <div class="med-topic-grid" id="med-topic-grid"></div>
-      </div>
-      <div class="med-section">
-        <div class="med-section-title">Study Mode</div>
-        <div class="med-mode-list" id="med-mode-list"></div>
-      </div>
+
       <div class="med-section" id="med-source-section">
         <div class="med-section-title">Cards</div>
         <div class="med-card-source">
@@ -728,11 +732,16 @@
 
         <!-- Social Tab -->
         <main class="tab-content" id="panel-social" role="tabpanel" aria-labelledby="tab-social">
+            <script>
+                if (localStorage.getItem('user_logged_in') === 'true') {
+                    document.write('<style>#social-auth-gate { display: none !important; } #social-app-content { display: block !important; }</style>');
+                }
+            </script>
             <div class="social-auth-gate glass-card" id="social-auth-gate">
                 <div class="social-gate-icon">👥</div>
                 <h2>Connect with Friends</h2>
-                <p>Sign in with Google to add friends, share your stats, and compete on the daily leaderboard!</p>
-                <button class="btn btn-primary" id="btn-social-signin" style="border-radius:20px; width:auto; padding:0 32px; height:48px; font-size:1rem; margin-top:12px;">Sign in with Google</button>
+                <p>Sign in to your Pomodoro Focus account to add friends, share your stats, and compete on the daily leaderboard.</p>
+                <button class="btn btn-primary" id="btn-social-signin" style="border-radius:20px; width:auto; padding:0 32px; height:48px; font-size:1rem; margin-top:12px;">Sign In / Sign Up</button>
             </div>
             
             <div class="social-app-content" id="social-app-content" style="display:none;">
