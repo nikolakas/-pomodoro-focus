@@ -163,7 +163,9 @@ async initFirebase() {
             const socialUserXp = document.getElementById('social-user-xp');
             const settingsUsername = document.getElementById('setting-username');
 
-            if (socialUserAvatar && user.photoURL) socialUserAvatar.src = user.photoURL;
+            if (socialUserAvatar) {
+                socialUserAvatar.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+            }
             if (socialUserName) socialUserName.textContent = user.displayName || '';
             if (socialUserUsername) socialUserUsername.textContent = this.state.username ? `@${this.state.username}` : '';
             if (socialUserLevel) socialUserLevel.textContent = this.state.level || '1';
@@ -192,11 +194,18 @@ async initFirebase() {
                     ...(remote.settings || {})
                 };
 
+                if (socialUserAvatar) {
+                    socialUserAvatar.src = remote.photoURL || user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+                }
+                if (socialUserName) {
+                    socialUserName.textContent = remote.displayName || user.displayName || '';
+                }
                 if (socialUserLevel) socialUserLevel.textContent = this.state.level;
                 if (socialUserXp) socialUserXp.textContent = this.state.xp;
                 if (socialUserUsername) socialUserUsername.textContent = this.state.username ? `@${this.state.username}` : '';
                 if (settingsUsername) settingsUsername.value = this.state.username || '';
 
+                this.updateLevel();
                 this.saveStats();
                 this.saveSettings();
                 this.renderStats();
@@ -2903,7 +2912,7 @@ initOnboarding() {
 
             row.innerHTML = `
                 <div class="rank-badge${rankClass}">${idx + 1}</div>
-                <img class="lb-avatar" src="${avatarUrl}" alt="Avatar">
+                <img class="lb-avatar" src="${avatarUrl}" alt="Avatar" referrerpolicy="no-referrer">
                 <div class="lb-name-container">
                     <div class="lb-name">${displayName}</div>
                     <div class="lb-username">${usernameText}</div>

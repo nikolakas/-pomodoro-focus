@@ -36,7 +36,7 @@
             <span class="friend-hearts" id="marianna-hearts" aria-hidden="true"></span>
             <span class="friend-terea-tag" id="terea-tag" aria-hidden="true">for Maria 💨</span>
             <div class="auth-bar" id="auth-bar">
-  <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
+  <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;" referrerpolicy="no-referrer">
   <span id="auth-name" class="auth-name"></span>
   <button class="btn btn-secondary btn-signin" id="btn-auth">Sign in</button>
 </div>
@@ -761,7 +761,7 @@
                         <!-- My Profile Summary -->
                         <div class="social-card glass-card" style="margin-top:20px;">
                             <div class="user-profile-summary" style="display:flex; align-items:center; gap:12px;">
-                                <img id="social-user-avatar" class="auth-avatar" style="width:48px; height:48px; border-radius:50%; margin:0;" src="" alt="Avatar">
+                                <img id="social-user-avatar" class="auth-avatar" style="width:48px; height:48px; border-radius:50%; margin:0;" referrerpolicy="no-referrer" src="" alt="Avatar">
                                 <div style="flex:1; overflow:hidden;">
                                     <div id="social-user-name" style="font-weight:600; font-size:1.1rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
                                     <div id="social-user-username" style="font-size:0.85rem; color:var(--accent); font-weight:500;"></div>
