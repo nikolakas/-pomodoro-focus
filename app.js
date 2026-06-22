@@ -212,6 +212,7 @@ async initFirebase() {
                 this.renderNotes();
                 this.renderHeatmap();
                 this.renderInsights();
+                this.renderLeaderboard();
             });
         } else {
             localStorage.setItem('user_logged_in', 'false');
@@ -222,6 +223,10 @@ async initFirebase() {
             if (this.friendsUnsub) {
                 this.friendsUnsub();
                 this.friendsUnsub = null;
+            }
+            if (this.profilesUnsub) {
+                this.profilesUnsub();
+                this.profilesUnsub = null;
             }
 
             if (btnAuth) {
@@ -961,7 +966,7 @@ switchTab(target) {
     if (target === 'social') {
         this.renderLeaderboard();
         const user = window.firebaseAuth?.currentUser;
-        if (user) {
+        if (user && !this.friendsUnsub) {
             this.loadFriends();
         }
     }
@@ -2817,40 +2822,33 @@ initOnboarding() {
             this.friendsUnsub();
             this.friendsUnsub = null;
         }
+        if (this.profilesUnsub) {
+            this.profilesUnsub();
+            this.profilesUnsub = null;
+        }
 
         const friendsColl = window.firestoreCollection(window.firebaseDb, 'users', currentUser.uid, 'friends');
-        this.friendsUnsub = window.firestoreOnSnapshot(friendsColl, async (friendsSnapshot) => {
-            try {
-                const fetchPromises = friendsSnapshot.docs.map(async (friendDoc) => {
-                    const fUid = friendDoc.id;
-                    const userRef = window.firestoreDoc(window.firebaseDb, 'users', fUid);
-                    const userSnap = await window.firestoreGetDoc(userRef);
-                    if (userSnap.exists()) {
-                        return { uid: fUid, ...userSnap.data() };
-                    }
-                    return null;
-                });
+        this.friendsUnsub = window.firestoreOnSnapshot(friendsColl, (friendsSnapshot) => {
+            const friendUids = friendsSnapshot.docs.map(doc => doc.id);
 
-                const resolved = await Promise.all(fetchPromises);
-                const activeFriends = resolved.filter(f => f !== null);
+            if (this.profilesUnsub) {
+                this.profilesUnsub();
+                this.profilesUnsub = null;
+            }
 
-                // Add current user
-                const meRef = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
-                const meSnap = await window.firestoreGetDoc(meRef);
-                if (meSnap.exists()) {
-                    activeFriends.push({ uid: currentUser.uid, ...meSnap.data() });
-                } else {
-                    activeFriends.push({
-                        uid: currentUser.uid,
-                        displayName: currentUser.displayName || '',
-                        photoURL: currentUser.photoURL || '',
-                        username: this.state.username || '',
-                        xp: this.state.xp || 0,
-                        level: this.state.level || 1,
-                        sessionsToday: this.state.sessionsToday || 0,
-                        totalSessions: this.state.totalSessions || 0
-                    });
-                }
+            const updateLeaderboard = (friendProfiles) => {
+                const meData = {
+                    uid: currentUser.uid,
+                    displayName: currentUser.displayName || '',
+                    photoURL: currentUser.photoURL || '',
+                    username: this.state.username || '',
+                    xp: this.state.xp || 0,
+                    level: this.state.level || 1,
+                    sessionsToday: this.state.sessionsToday || 0,
+                    totalSessions: this.state.totalSessions || 0
+                };
+
+                const activeFriends = [...friendProfiles, meData];
 
                 // De-duplicate
                 const uniqueUsers = [];
@@ -2865,9 +2863,28 @@ initOnboarding() {
                 this.state.friendsProfiles = uniqueUsers;
                 localStorage.setItem('pomodoro_friends_profiles', JSON.stringify(uniqueUsers));
                 this.renderLeaderboard();
-            } catch (err) {
-                console.error("Error loading friends stats:", err);
+            };
+
+            if (friendUids.length === 0) {
+                updateLeaderboard([]);
+                return;
             }
+
+            // Listen to friends' profiles in real-time
+            const usersRef = window.firestoreCollection(window.firebaseDb, 'users');
+            const q = window.firestoreQuery(
+                usersRef,
+                window.firestoreWhere(window.firestoreDocumentId(), 'in', friendUids.slice(0, 30))
+            );
+
+            this.profilesUnsub = window.firestoreOnSnapshot(q, (profilesSnapshot) => {
+                const friendProfiles = profilesSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+                updateLeaderboard(friendProfiles);
+            }, (err) => {
+                console.error("Error listening to friends profiles:", err);
+            });
+        }, (err) => {
+            console.error("Error listening to friends list:", err);
         });
     },
 
@@ -2885,8 +2902,27 @@ initOnboarding() {
             return;
         }
 
+        const currentUser = window.firebaseAuth?.currentUser;
+
+        // Map profiles to overlay current user details from local state
+        const mappedProfiles = profiles.map(item => {
+            if (currentUser && item.uid === currentUser.uid) {
+                return {
+                    ...item,
+                    xp: this.state.xp || 0,
+                    level: this.state.level || 1,
+                    sessionsToday: this.state.sessionsToday || 0,
+                    totalSessions: this.state.totalSessions || 0,
+                    username: this.state.username || item.username || '',
+                    displayName: currentUser.displayName || item.displayName || '',
+                    photoURL: currentUser.photoURL || item.photoURL || ''
+                };
+            }
+            return item;
+        });
+
         // Sort profiles
-        const sorted = [...profiles].sort((a, b) => {
+        const sorted = [...mappedProfiles].sort((a, b) => {
             if (this.state.leaderboardType === 'today') {
                 const diff = (b.sessionsToday || 0) - (a.sessionsToday || 0);
                 if (diff !== 0) return diff;
@@ -2897,8 +2933,6 @@ initOnboarding() {
                 return (b.totalSessions || 0) - (a.totalSessions || 0);
             }
         });
-
-        const currentUser = window.firebaseAuth?.currentUser;
 
         sorted.forEach((item, idx) => {
             const isSelf = currentUser && item.uid === currentUser.uid;

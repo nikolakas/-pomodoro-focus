@@ -260,7 +260,7 @@ body.theme-terea .friend-terea-tag { display: inline; }
 .tab:hover { color: var(--text-primary); }
 .tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-.tab-content { display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s ease; }
+.tab-content { display: none; opacity: 0; transform: translateY(6px); transition: opacity 0.15s ease-out, transform 0.15s ease-out; }
 .tab-content.active { display: block; opacity: 1; transform: translateY(0); }
 
 /* Theme card strip */
