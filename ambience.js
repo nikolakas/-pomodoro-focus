@@ -44,6 +44,11 @@ window.AmbienceModule = (() => {
     if (sceneGains[sceneKey] && ctx) {
       sceneGains[sceneKey].gain.setTargetAtTime(sceneVolumes[sceneKey], ctx.currentTime, 0.05);
     }
+    if (sceneKey === 'bouzoukia') {
+      if (ytPlayer && ytPlayerReady && typeof ytPlayer.setVolume === 'function') {
+        try { ytPlayer.setVolume(vol * 100); } catch(e) {}
+      }
+    }
   }
 
   // ---- Generators ----
@@ -197,453 +202,21 @@ window.AmbienceModule = (() => {
   //  CAFÉ
   // ============================================
   function buildCafe(dest) {
-    const nodes = [];
-    const state = { active: true };
-
-    const murmur = createNoise('pink');
-    murmur.connect(createFilter('bandpass', 500, 0.6)).connect(createGainNode(0.14)).connect(dest);
-    murmur.start(); nodes.push(murmur);
-
-    const speech = createNoise('pink'), sg = createGainNode(0.06);
-    speech.connect(createFilter('bandpass', 1200, 0.8)).connect(createFilter('bandpass', 2500, 0.5)).connect(sg).connect(dest);
-    speech.start(); nodes.push(speech);
-    nodes.push(createLFO(0.07, 0.02, 0.08, sg.gain));
-
-    const speechHigh = createNoise('white'), shg = createGainNode(0.02);
-    speechHigh.connect(createFilter('bandpass', 3000, 1.2)).connect(shg).connect(dest);
-    speechHigh.start(); nodes.push(speechHigh);
-    nodes.push(createLFO(0.08, 0.005, 0.03, shg.gain));
-
-    const clinkDelay = getCtx().createDelay();
-    clinkDelay.delayTime.value = 0.08;
-    const clinkGain = createGainNode(0.3);
-    clinkDelay.connect(clinkGain).connect(dest);
-
-    function loopClink() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      const freq = 2500 + Math.random() * 2500;
-      o.frequency.setValueAtTime(freq, t);
-      o.frequency.exponentialRampToValueAtTime(freq * 0.7, t + 0.08);
-      g.gain.setValueAtTime(0.015 + Math.random() * 0.01, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-      o.connect(g).connect(dest);
-      g.connect(clinkDelay);
-      o.start(t); o.stop(t + 0.15);
-      if (Math.random() < 0.4) {
-        const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-        o2.frequency.value = freq * 1.3;
-        g2.gain.setValueAtTime(0.008, t + 0.06);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-        o2.connect(g2).connect(dest);
-        g2.connect(clinkDelay);
-        o2.start(t + 0.06); o2.stop(t + 0.16);
-      }
-      setTimeout(loopClink, 2000 + Math.random() * 4000);
-    }
-    setTimeout(loopClink, 1000);
-
-    function loopMachine() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.6) {
-        const t = ctx.currentTime;
-        const steam = createNoise('white');
-        const bp = createFilter('bandpass', 4000 + Math.random() * 2000, 1.5);
-        const g = ctx.createGain();
-        const dur = 2 + Math.random() * 4;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.04, t + 0.5);
-        g.gain.setValueAtTime(0.04, t + dur - 1);
-        g.gain.linearRampToValueAtTime(0, t + dur);
-        steam.connect(bp).connect(g).connect(dest);
-        steam.start(t); steam.stop(t + dur + 0.5);
-      }
-      if (Math.random() <= 0.3) {
-        const t = ctx.currentTime;
-        const grinder = createNoise('brown');
-        const lp = createFilter('lowpass', 250, 1);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.06, t + 0.8);
-        g.gain.setValueAtTime(0.06, t + 3);
-        g.gain.linearRampToValueAtTime(0, t + 4);
-        grinder.connect(lp).connect(g).connect(dest);
-        grinder.start(t); grinder.stop(t + 4.5);
-      }
-      setTimeout(loopMachine, 12000 + Math.random() * 15000);
-    }
-    setTimeout(loopMachine, 3000);
-
-    function loopSteps() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.5) {
-        const t = ctx.currentTime;
-        const stepCount = 3 + Math.floor(Math.random() * 5);
-        const stepInterval = 0.35 + Math.random() * 0.15;
-        for (let i = 0; i < stepCount; i++) {
-          const st = t + i * stepInterval;
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.frequency.setValueAtTime(80 + Math.random() * 40, st);
-          o.frequency.exponentialRampToValueAtTime(30, st + 0.08);
-          g.gain.setValueAtTime(0.015 + Math.random() * 0.008, st);
-          g.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
-          o.connect(g).connect(dest); o.start(st); o.stop(st + 0.12);
-          const n = createNoise('white'), fg = ctx.createGain();
-          fg.gain.setValueAtTime(0.008, st);
-          fg.gain.exponentialRampToValueAtTime(0.001, st + 0.04);
-          n.connect(createFilter('highpass', 3000, 0.5)).connect(fg).connect(dest);
-          n.start(st); n.stop(st + 0.05);
-        }
-      }
-      setTimeout(loopSteps, 6000 + Math.random() * 10000);
-    }
-    setTimeout(loopSteps, 2000);
-
-    function loopPaper() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.4) {
-        const t = ctx.currentTime;
-        const crinkles = 2 + Math.floor(Math.random() * 4);
-        for (let i = 0; i < crinkles; i++) {
-          const ct = t + i * (0.04 + Math.random() * 0.06);
-          const n = createNoise('white'), g = ctx.createGain();
-          g.gain.setValueAtTime(0, ct);
-          g.gain.linearRampToValueAtTime(0.012, ct + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.001, ct + 0.08);
-          n.connect(createFilter('bandpass', 5000 + Math.random() * 3000, 2)).connect(g).connect(dest);
-          n.start(ct); n.stop(ct + 0.1);
-        }
-      }
-      setTimeout(loopPaper, 8000 + Math.random() * 15000);
-    }
-    setTimeout(loopPaper, 5000);
-
-    function loopBell() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const o1 = ctx.createOscillator(), g1 = ctx.createGain();
-      o1.type = 'sine'; o1.frequency.value = 1200;
-      g1.gain.setValueAtTime(0.018, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-      o1.connect(g1).connect(dest); o1.start(t); o1.stop(t + 1);
-      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-      o2.type = 'sine'; o2.frequency.value = 900;
-      g2.gain.setValueAtTime(0.018, t + 0.08); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.88);
-      o2.connect(g2).connect(dest); o2.start(t + 0.08); o2.stop(t + 1);
-      setTimeout(loopBell, 45000 + Math.random() * 45000);
-    }
-    setTimeout(loopBell, 15000);
-
-    function loopCafeCreak() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(180, t);
-      o.frequency.exponentialRampToValueAtTime(60, t + 0.3);
-      g.gain.setValueAtTime(0.012, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      o.connect(g).connect(dest);
-      o.start(t); o.stop(t + 0.4);
-      setTimeout(loopCafeCreak, 20000 + Math.random() * 20000);
-    }
-    setTimeout(loopCafeCreak, 5000 + Math.random() * 5000);
-
-    nodes.push({ stop: () => { state.active = false; } });
-    return nodes;
+    return buildAudioStream('https://upload.wikimedia.org/wikipedia/commons/e/e0/Cafe_ambiance.ogg', dest);
   }
 
   // ============================================
   //  LIBRARY
   // ============================================
   function buildLibrary(dest) {
-    const nodes = [];
-    const state = { active: true };
-
-    const room = createNoise('brown');
-    const roomGain = createGainNode(0.1);
-    room.connect(createFilter('lowpass', 150, 0.5)).connect(roomGain).connect(dest);
-    room.start(); nodes.push(room);
-    nodes.push(createLFO(0.05, 0.08, 0.12, roomGain.gain));
-
-    const hum = getCtx().createOscillator();
-    hum.type = 'sine'; hum.frequency.value = 60;
-    const humGain = createGainNode(0.015);
-    hum.connect(humGain).connect(dest);
-    hum.start(); nodes.push(hum);
-    nodes.push(createLFO(0.5, 58, 62, hum.frequency));
-
-    const air = createNoise('pink');
-    air.connect(createFilter('bandpass', 2500, 0.3)).connect(createGainNode(0.012)).connect(dest);
-    air.start(); nodes.push(air);
-
-    function loopPages() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const n = createNoise('white'), g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.015, t + 0.04);
-      g.gain.linearRampToValueAtTime(0.02, t + 0.12);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      n.connect(createFilter('bandpass', 5500, 2)).connect(g).connect(dest);
-      n.start(t); n.stop(t + 0.35);
-      const n2 = createNoise('white'), g2 = ctx.createGain();
-      g2.gain.setValueAtTime(0, t + 0.05);
-      g2.gain.linearRampToValueAtTime(0.008, t + 0.1);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      n2.connect(createFilter('bandpass', 7000, 1.5)).connect(g2).connect(dest);
-      n2.start(t + 0.05); n2.stop(t + 0.3);
-      setTimeout(loopPages, 5000 + Math.random() * 10000);
-    }
-    setTimeout(loopPages, 2000);
-
-    function loopBooks() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.5) {
-        const t = ctx.currentTime;
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.frequency.setValueAtTime(100 + Math.random() * 40, t);
-        o.frequency.exponentialRampToValueAtTime(35, t + 0.15);
-        g.gain.setValueAtTime(0.06, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-        o.connect(g).connect(dest); o.start(t); o.stop(t + 0.25);
-        const n = createNoise('brown'), ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.03, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        n.connect(createFilter('lowpass', 400, 0.8)).connect(ng).connect(dest);
-        n.start(t); n.stop(t + 0.15);
-      }
-      setTimeout(loopBooks, 10000 + Math.random() * 12000);
-    }
-    setTimeout(loopBooks, 6000);
-
-    function loopSteps() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.4) {
-        const t = ctx.currentTime;
-        const stepCount = 4 + Math.floor(Math.random() * 6);
-        const stepInterval = 0.5 + Math.random() * 0.2;
-        for (let i = 0; i < stepCount; i++) {
-          const st = t + i * stepInterval;
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.frequency.setValueAtTime(60 + Math.random() * 20, st);
-          o.frequency.exponentialRampToValueAtTime(25, st + 0.06);
-          g.gain.setValueAtTime(0.008, st);
-          g.gain.exponentialRampToValueAtTime(0.001, st + 0.08);
-          o.connect(g).connect(dest); o.start(st); o.stop(st + 0.1);
-        }
-      }
-      setTimeout(loopSteps, 12000 + Math.random() * 15000);
-    }
-    setTimeout(loopSteps, 4000);
-
-    function loopTyping() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.5) {
-        const t = ctx.currentTime;
-        const keyCount = 5 + Math.floor(Math.random() * 15);
-        for (let i = 0; i < keyCount; i++) {
-          const kt = t + i * (0.06 + Math.random() * 0.1);
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.frequency.value = 3000 + Math.random() * 3000;
-          g.gain.setValueAtTime(0.004 + Math.random() * 0.003, kt);
-          g.gain.exponentialRampToValueAtTime(0.001, kt + 0.02);
-          o.connect(g).connect(dest); o.start(kt); o.stop(kt + 0.03);
-        }
-      }
-      setTimeout(loopTyping, 4000 + Math.random() * 8000);
-    }
-    setTimeout(loopTyping, 3000);
-
-    const whisper = createNoise('pink'), wg = createGainNode(0.008);
-    whisper.connect(createFilter('bandpass', 1800, 1.5)).connect(wg).connect(dest);
-    whisper.start(); nodes.push(whisper);
-    nodes.push(createLFO(0.12, 0.002, 0.012, wg.gain));
-
-    function loopCreak() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.3) {
-        const t = ctx.currentTime;
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sawtooth';
-        o.frequency.setValueAtTime(200 + Math.random() * 100, t);
-        o.frequency.exponentialRampToValueAtTime(80 + Math.random() * 50, t + 0.15);
-        g.gain.setValueAtTime(0.006, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-        o.connect(createFilter('lowpass', 500, 0.5)).connect(g).connect(dest);
-        o.start(t); o.stop(t + 0.2);
-      }
-      setTimeout(loopCreak, 15000 + Math.random() * 20000);
-    }
-    setTimeout(loopCreak, 8000);
-
-    const clockInt = setInterval(() => {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const n = createNoise('white'), g = ctx.createGain();
-      g.gain.setValueAtTime(0.01, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.008);
-      n.connect(createFilter('highpass', 6000, 1)).connect(g).connect(dest);
-      n.start(t); n.stop(t + 0.01);
-    }, 1000);
-    nodes.push({ stop: () => clearInterval(clockInt) });
-
-    function loopTyping2() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      if (Math.random() <= 0.5) {
-        const t = ctx.currentTime + 0.8;
-        const keyCount = 5 + Math.floor(Math.random() * 15);
-        for (let i = 0; i < keyCount; i++) {
-          const kt = t + i * (0.06 + Math.random() * 0.1);
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.frequency.value = 3000 + Math.random() * 3000;
-          g.gain.setValueAtTime((0.004 + Math.random() * 0.003) * 0.4, kt);
-          g.gain.exponentialRampToValueAtTime(0.001, kt + 0.02);
-          o.connect(g).connect(dest); o.start(kt); o.stop(kt + 0.03);
-        }
-      }
-      setTimeout(loopTyping2, 4000 + Math.random() * 8000);
-    }
-    setTimeout(loopTyping2, 3800);
-
-    function loopCough() {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const t = ctx.currentTime;
-      const n = createNoise('pink'), g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.02, t + 0.1);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-      n.connect(createFilter('bandpass', 600, 1)).connect(g).connect(dest);
-      n.start(t); n.stop(t + 0.5);
-      setTimeout(loopCough, 60000 + Math.random() * 60000);
-    }
-    setTimeout(loopCough, 60000);
-
-    nodes.push({ stop: () => { state.active = false; } });
-    return nodes;
+    return buildAudioStream('https://upload.wikimedia.org/wikipedia/commons/0/01/Computer_keyboard.ogg', dest);
   }
 
   // ============================================
   //  JAZZ
   // ============================================
   function buildJazz(dest) {
-    const nodes = [];
-    const state = { active: true };
-
-const chords = [
-    // ii-V-I in C — standard jazz turnaround
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-    [196.00, 246.94, 293.66, 349.23],   // G7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7 hold
-
-    // iii-VI-ii-V — bird-style bridge
-    [164.81, 196.00, 246.94, 293.66],   // Em7
-    [220.00, 277.18, 329.63, 415.30],   // A7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-    [196.00, 246.94, 293.66, 349.23],   // G7
-
-    // IV-III-VI-II — minor excursion
-    [174.61, 220.00, 261.63, 329.63],   // Fmaj7
-    [164.81, 196.00, 246.94, 293.66],   // Em7
-    [220.00, 261.63, 329.63, 392.00],   // Am7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7
-
-    // Back home
-    [196.00, 246.94, 293.66, 349.23],   // G7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [130.81, 164.81, 196.00, 246.94],   // Cmaj7
-    [146.83, 174.61, 220.00, 261.63],   // Dm7 (loop back)
-];
-let idx = 0;
-
-    const playChord = () => {
-      if (!ctx || ctx.state === 'closed' || !state.active) return;
-      const chord = chords[idx++ % chords.length];
-      const t = ctx.currentTime;
-
-      chord.forEach((fq, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = fq;
-        const vol = 0.05 - i * 0.005;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(vol, t + 0.15);
-        g.gain.setValueAtTime(vol, t + 3.2);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 3.8);
-        o.connect(g).connect(dest); o.start(t); o.stop(t + 4);
-
-        const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-        o2.type = 'sine'; o2.frequency.value = fq * 1.003;
-        g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(vol * 0.3, t + 0.2);
-        g2.gain.setValueAtTime(vol * 0.3, t + 3.0);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 3.6);
-        o2.connect(g2).connect(dest); o2.start(t); o2.stop(t + 4);
-      });
-
-      const bassRoot = chord[0] * 0.5;
-      const bassNotes = [bassRoot, chord[1] * 0.5, chord[2] * 0.5, bassRoot * 1.06];
-      bassNotes.forEach((bf, bi) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.value = bf;
-        const s = bi * 0.95;
-        g.gain.setValueAtTime(0, t + s);
-        g.gain.linearRampToValueAtTime(0.08, t + s + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.001, t + s + 0.85);
-        o.connect(g).connect(dest); o.start(t + s); o.stop(t + s + 0.9);
-      });
-
-      if (Math.random() > 0.25) {
-        const saxNotes = [chord[2], chord[3], chord[1] * 2, chord[0] * 2];
-        const noteIdx = Math.floor(Math.random() * saxNotes.length);
-        const saxFreq = saxNotes[noteIdx] * (Math.random() > 0.5 ? 2 : 1);
-        const delay = 0.5 + Math.random() * 2.5;
-        const dur = 0.4 + Math.random() * 1.0;
-
-        const sax = ctx.createOscillator(), saxG = ctx.createGain();
-        sax.type = 'sine'; sax.frequency.value = saxFreq;
-        const vib = ctx.createOscillator(), vibG = ctx.createGain();
-        vib.type = 'sine'; vib.frequency.value = 5 + Math.random() * 2;
-        vibG.gain.value = saxFreq * 0.015;
-        vib.connect(vibG); vibG.connect(sax.frequency);
-
-        saxG.gain.setValueAtTime(0, t + delay);
-        saxG.gain.linearRampToValueAtTime(0.03, t + delay + 0.08);
-        saxG.gain.setValueAtTime(0.03, t + delay + dur - 0.1);
-        saxG.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
-
-        sax.connect(saxG).connect(dest);
-        sax.start(t + delay); sax.stop(t + delay + dur + 0.05);
-        vib.start(t + delay); vib.stop(t + delay + dur + 0.05);
-      }
-
-      if (Math.random() > 0.35) {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = chord[Math.floor(Math.random() * chord.length)] * (2 + Math.floor(Math.random() * 2));
-        const d = 0.8 + Math.random() * 2.2;
-        g.gain.setValueAtTime(0, t + d);
-        g.gain.linearRampToValueAtTime(0.02, t + d + 0.06);
-        g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.7);
-        o.connect(g).connect(dest); o.start(t + d); o.stop(t + d + 0.8);
-      }
-    };
-
-    playChord();
-    const iv = setInterval(playChord, 4800);
-    nodes.push({ stop: () => { clearInterval(iv); state.active = false; } });
-
-    const brush = createNoise('pink'), bg = createGainNode(0.005);
-    brush.connect(createFilter('bandpass', 6000, 2)).connect(bg).connect(dest);
-    brush.start(); nodes.push(brush);
-    nodes.push(createLFO(2.2, 0.006, 0.028, bg.gain));
-
-    const hihat = createNoise('white'), hg = createGainNode(0.002);
-    hihat.connect(createFilter('highpass', 8000, 0.5)).connect(hg).connect(dest);
-    hihat.start(); nodes.push(hihat);
-    nodes.push(createLFO(3.3, 0.003, 0.012, hg.gain));
-
-    return nodes;
+    return buildAudioStream('https://upload.wikimedia.org/wikipedia/commons/transcoded/a/ad/Raspberrymusic_-_Lofi_Hip_Hop_Upbeat.ogg/Raspberrymusic_-_Lofi_Hip_Hop_Upbeat.ogg.mp3', dest);
   }
 
   // ============================================
@@ -713,6 +286,165 @@ let idx = 0;
     return nodes;
   }
 
+  // Helper for direct audio streams
+  function buildAudioStream(url, dest) {
+    const audio = new Audio();
+    audio.src = url;
+    audio.crossOrigin = "anonymous";
+    audio.loop = true;
+
+    let source = null;
+    try {
+      source = getCtx().createMediaElementSource(audio);
+      source.connect(dest);
+    } catch (err) {
+      console.warn("Web Audio Routing failed for element source:", err);
+    }
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn("Audio playback failed on autoplay, will play on interaction:", err);
+      });
+    }
+
+    return [
+      {
+        stop: () => {
+          try { audio.pause(); } catch(e) {}
+          audio.src = "";
+        },
+        disconnect: () => {
+          if (source) {
+            try { source.disconnect(); } catch(e) {}
+          }
+        }
+      }
+    ];
+  }
+
+  // ---- YouTube Player Integration (for Bouzoukia) ----
+  let ytPlayer = null;
+  let ytPlayerReady = false;
+  let ytLoadingPromise = null;
+
+  function loadYoutubeAPI() {
+    if (window.YT) return Promise.resolve();
+    if (ytLoadingPromise) return ytLoadingPromise;
+
+    ytLoadingPromise = new Promise((resolve) => {
+      // Check if tag already exists
+      const scripts = document.getElementsByTagName('script');
+      for (let i = 0; i < scripts.length; i++) {
+        if (scripts[i].src === "https://www.youtube.com/iframe_api") {
+          const prevCallback = window.onYouTubeIframeAPIReady;
+          window.onYouTubeIframeAPIReady = () => {
+            if (prevCallback) prevCallback();
+            resolve();
+          };
+          return;
+        }
+      }
+
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      const prevCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prevCallback) prevCallback();
+        resolve();
+      };
+    });
+
+    return ytLoadingPromise;
+  }
+
+  function initYTPlayer() {
+    return new Promise((resolve) => {
+      if (ytPlayerReady) {
+        resolve(ytPlayer);
+        return;
+      }
+
+      let container = document.getElementById('yt-player-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'yt-player-container';
+        container.style.position = 'absolute';
+        container.style.width = '1px';
+        container.style.height = '1px';
+        container.style.opacity = '0';
+        container.style.pointerEvents = 'none';
+        container.style.overflow = 'hidden';
+        container.style.bottom = '0';
+        container.style.left = '0';
+        document.body.appendChild(container);
+      }
+
+      let playerDiv = document.getElementById('yt-player');
+      if (!playerDiv) {
+        playerDiv = document.createElement('div');
+        playerDiv.id = 'yt-player';
+        container.appendChild(playerDiv);
+      }
+
+      loadYoutubeAPI().then(() => {
+        ytPlayer = new window.YT.Player('yt-player', {
+          height: '1',
+          width: '1',
+          videoId: 'F77_FkRzR_k', // Greek Bouzoukia Instrumental Mix (1h15m)
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            loop: 1,
+            playlist: 'F77_FkRzR_k'
+          },
+          events: {
+            onReady: (event) => {
+              ytPlayerReady = true;
+              const vol = sceneVolumes['bouzoukia'] !== undefined ? sceneVolumes['bouzoukia'] : 0.7;
+              ytPlayer.setVolume(vol * 100);
+              resolve(ytPlayer);
+            },
+            onStateChange: (event) => {
+              if (event.data === window.YT.PlayerState.ENDED) {
+                ytPlayer.playVideo();
+              }
+            }
+          }
+        });
+      });
+    });
+  }
+
+  function buildBouzoukia(dest) {
+    initYTPlayer().then((player) => {
+      if (player && typeof player.playVideo === 'function') {
+        player.playVideo();
+        const vol = sceneVolumes['bouzoukia'] !== undefined ? sceneVolumes['bouzoukia'] : 0.7;
+        player.setVolume(vol * 100);
+      }
+    });
+
+    return [
+      {
+        stop: () => {
+          if (ytPlayer && ytPlayerReady && typeof ytPlayer.pauseVideo === 'function') {
+            try { ytPlayer.pauseVideo(); } catch(e) {}
+          }
+        },
+        disconnect: () => {}
+      }
+    ];
+  }
+
   const SCENES = {
     rain:          { build: buildRain },
     waves:         { build: buildWaves },
@@ -721,6 +453,7 @@ let idx = 0;
     cafe:          { build: buildCafe },
     library:       { build: buildLibrary },
     jazz:          { build: buildJazz },
+    bouzoukia:     { build: buildBouzoukia },
     binary_sunset: { build: buildBinarySunset }
   };
 

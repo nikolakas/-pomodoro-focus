@@ -143,12 +143,10 @@ async initFirebase() {
                 }
             }
 
-            try {
-                await this.loadFromFirestore(user.uid);
-                await this.saveToFirestore(user.uid);
-            } catch (err) {
-                console.error("Firestore sync failed:", err);
-            }
+            // Load Firestore data in background to speed up login UI transition
+            this.loadFromFirestore(user.uid).catch(err => {
+                console.error("Firestore background sync failed:", err);
+            });
 
             if (socialAuthGate) socialAuthGate.style.display = 'none';
             if (socialAppContent) socialAppContent.style.display = 'block';
@@ -3044,11 +3042,11 @@ initOnboarding() {
             throw new Error("Username is already taken by another user!");
         }
 
-        const ref = window.firestoreDoc(window.firebaseDb, 'users', currentUser.uid);
-        await window.firestoreSetDoc(ref, { username: sanitized }, { merge: true });
-        
         this.state.username = sanitized;
         this.saveStats();
+
+        // Write the full profile to Firestore to satisfy validation rules
+        await this.saveToFirestore(currentUser.uid);
 
         const socialUserUsername = document.getElementById('social-user-username');
         if (socialUserUsername) socialUserUsername.textContent = `@${sanitized}`;
