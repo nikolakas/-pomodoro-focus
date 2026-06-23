@@ -1,0 +1,9 @@
+# Claude Code local state / worktrees
+.claude/
+
+# Local debug harness
+.verify.mjs
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

@@ -327,12 +327,16 @@ async initFirebase() {
                 this.renderHeatmap();
                 this.renderInsights();
             });
+
+            this.initSocial(user);
         } else {
             if (authBarEl) authBarEl.classList.remove('signed-in');
             if (signoutFooter) signoutFooter.style.display = 'none';
             if (authName) authName.textContent = '';
             if (authAvatar) { authAvatar.src = ''; authAvatar.style.display = 'none'; }
             if (this.userUnsub) { this.userUnsub(); this.userUnsub = null; }
+            this.state.friendCode = null;
+            this.loadSocial();
         }
     });
 },
@@ -392,6 +396,219 @@ async loadFromFirestore(uid) {
     this.renderInsights();
 },
 
+    // ===================================
+    // SOCIAL: friends + leaderboards
+    // ===================================
+    // Data model (Firestore):
+    //   social/{uid}      = { code, friends: [uid,...] }  (owner-only)
+    //   codes/{CODE}      = { uid }                        (authed-readable lookup)
+    //   leaderboard/{uid} = { name, code, totalHours, level, daily:{YYYY-MM-DD:hrs}, updatedAt }
+    // Friendship is one-directional: your board = you + people you added by code.
+    SOCIAL_HOURS_PER_LEVEL: 5,
+
+    escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    },
+
+    localDayKey(d) {
+        const dt = (d instanceof Date) ? d : new Date(d);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    },
+
+    // Map of last 14 local day-keys -> focus hours (from session history)
+    computeDailyHoursMap() {
+        const map = {};
+        const cutoff = Date.now() - 14 * 86400000;
+        for (const s of (this.state.history || [])) {
+            if (s.type !== 'focus' || !s.date) continue;
+            const t = new Date(s.date).getTime();
+            if (isNaN(t) || t < cutoff) continue;
+            const key = this.localDayKey(s.date);
+            map[key] = (map[key] || 0) + (Number(s.duration) || 0) / 60;
+        }
+        for (const k of Object.keys(map)) map[k] = Math.round(map[k] * 100) / 100;
+        return map;
+    },
+
+    computeTotalFocusHours() {
+        const mins = (this.state.history || [])
+            .filter(s => s.type === 'focus')
+            .reduce((sum, s) => sum + (Number(s.duration) || 0), 0);
+        return Math.round((mins / 60) * 100) / 100;
+    },
+
+    levelFromHours(hours) {
+        return Math.floor((Number(hours) || 0) / this.SOCIAL_HOURS_PER_LEVEL) + 1;
+    },
+
+    _genFriendCode() {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
+        let c = '';
+        for (let i = 0; i < 6; i++) c += alphabet[Math.floor(Math.random() * alphabet.length)];
+        return c;
+    },
+
+    async _getSocialDoc(uid) {
+        const ref = window.firestoreDoc(window.firebaseDb, 'social', uid);
+        const snap = await window.firestoreGetDoc(ref);
+        if (!snap.exists()) {
+            await window.firestoreSetDoc(ref, { code: null, friends: [] });
+            return { ref, data: { code: null, friends: [] } };
+        }
+        return { ref, data: snap.data() };
+    },
+
+    async ensureFriendCode(uid) {
+        const { ref, data } = await this._getSocialDoc(uid);
+        if (data.code) { this.state.friendCode = data.code; return data.code; }
+        // Claim a unique code (a few attempts; collisions are unlikely)
+        let code = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const cand = this._genFriendCode();
+            const codeRef = window.firestoreDoc(window.firebaseDb, 'codes', cand);
+            const existing = await window.firestoreGetDoc(codeRef);
+            if (!existing.exists()) {
+                await window.firestoreSetDoc(codeRef, { uid });
+                code = cand;
+                break;
+            }
+        }
+        if (!code) return null;
+        await window.firestoreUpdateDoc(ref, { code });
+        this.state.friendCode = code;
+        return code;
+    },
+
+    async publishLeaderboard(uid) {
+        if (!uid || !window.firebaseDb) return;
+        const user = window.firebaseAuth?.currentUser;
+        const name = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'Anonymous';
+        const totalHours = this.computeTotalFocusHours();
+        const ref = window.firestoreDoc(window.firebaseDb, 'leaderboard', uid);
+        try {
+            await window.firestoreSetDoc(ref, {
+                name,
+                code: this.state.friendCode || null,
+                totalHours,
+                level: this.levelFromHours(totalHours),
+                daily: this.computeDailyHoursMap(),
+                updatedAt: new Date().toISOString()
+            });
+        } catch (e) { /* offline / rules — non-fatal */ }
+    },
+
+    async initSocial(user) {
+        if (!user) return;
+        try {
+            await this.ensureFriendCode(user.uid);
+            await this.publishLeaderboard(user.uid);
+        } catch (e) { /* non-fatal */ }
+        this.renderFriendCode();
+    },
+
+    renderFriendCode() {
+        const el = document.getElementById('my-friend-code');
+        if (el) el.textContent = this.state.friendCode || '——————';
+    },
+
+    async addFriendByCode() {
+        const input = document.getElementById('add-friend-input');
+        const status = document.getElementById('add-friend-status');
+        const setStatus = (msg, ok) => { if (status) { status.textContent = msg; status.className = 'friends-status' + (ok ? ' ok' : ' err'); } };
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) { setStatus('Sign in first.', false); return; }
+        const code = (input?.value || '').trim().toUpperCase();
+        if (!code || code.length < 4) { setStatus('Enter a valid code.', false); return; }
+        if (code === this.state.friendCode) { setStatus("That's your own code.", false); return; }
+        try {
+            const codeSnap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'codes', code));
+            if (!codeSnap.exists()) { setStatus('No one found with that code.', false); return; }
+            const friendUid = codeSnap.data().uid;
+            if (friendUid === user.uid) { setStatus("That's your own code.", false); return; }
+            const { ref, data } = await this._getSocialDoc(user.uid);
+            if ((data.friends || []).includes(friendUid)) { setStatus('Already friends.', true); return; }
+            await window.firestoreUpdateDoc(ref, { friends: window.firestoreArrayUnion(friendUid) });
+            if (input) input.value = '';
+            setStatus('Friend added! 🎉', true);
+            await this.loadSocial();
+        } catch (e) {
+            setStatus('Could not add friend. Try again.', false);
+        }
+    },
+
+    async loadSocial() {
+        const user = window.firebaseAuth?.currentUser;
+        const signedOut = document.getElementById('friends-signedout');
+        const content = document.getElementById('friends-content');
+        if (!user) {
+            if (signedOut) signedOut.style.display = 'block';
+            if (content) content.style.display = 'none';
+            return;
+        }
+        if (signedOut) signedOut.style.display = 'none';
+        if (content) content.style.display = 'block';
+
+        if (!this.state.friendCode) await this.ensureFriendCode(user.uid);
+        await this.publishLeaderboard(user.uid);
+        this.renderFriendCode();
+
+        // Collect uids: me + friends
+        let friends = [];
+        try {
+            const { data } = await this._getSocialDoc(user.uid);
+            friends = data.friends || [];
+        } catch (e) { /* ignore */ }
+        const uids = [user.uid, ...friends];
+
+        const entries = [];
+        for (const uid of uids) {
+            try {
+                const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'leaderboard', uid));
+                if (snap.exists()) entries.push({ uid, ...snap.data(), isMe: uid === user.uid });
+            } catch (e) { /* ignore unreadable */ }
+        }
+        this.renderLeaderboards(entries);
+    },
+
+    renderLeaderboards(entries) {
+        const today = this.localDayKey(new Date());
+        const weekKeys = [];
+        for (let i = 0; i < 7; i++) weekKeys.push(this.localDayKey(new Date(Date.now() - i * 86400000)));
+
+        const dailyVal = e => (e.daily && e.daily[today]) || 0;
+        const weekVal = e => weekKeys.reduce((s, k) => s + ((e.daily && e.daily[k]) || 0), 0);
+
+        const fmt = h => {
+            const r = Math.round(h * 10) / 10;
+            return r >= 1 ? `${r}h` : `${Math.round(h * 60)}m`;
+        };
+
+        const render = (listId, valueFn) => {
+            const ol = document.getElementById(listId);
+            if (!ol) return;
+            const ranked = entries.slice().sort((a, b) => valueFn(b) - valueFn(a));
+            if (!ranked.length || ranked.every(e => valueFn(e) <= 0)) {
+                ol.innerHTML = '<li class="leaderboard-empty">No focus time logged yet.</li>';
+                return;
+            }
+            const medals = ['🥇', '🥈', '🥉'];
+            ol.innerHTML = ranked.map((e, i) => {
+                const v = valueFn(e);
+                const rank = medals[i] || `${i + 1}`;
+                const name = (e.name || 'Anonymous') + (e.isMe ? ' (you)' : '');
+                return `<li class="leaderboard-row${e.isMe ? ' is-me' : ''}">
+                    <span class="lb-rank">${rank}</span>
+                    <span class="lb-name">${this.escapeHtml ? this.escapeHtml(name) : name}</span>
+                    <span class="lb-level">Lv ${e.level || 1}</span>
+                    <span class="lb-value">${fmt(v)}</span>
+                </li>`;
+            }).join('');
+        };
+
+        render('leaderboard-daily', dailyVal);
+        render('leaderboard-weekly', weekVal);
+    },
+
     cacheDOM() {
         this.elements = {
             time: document.getElementById('timer-time'),
@@ -443,6 +660,23 @@ bindEvents() {
   if (this.elements.btnStart) {
 this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
   }
+
+  // Friends / leaderboard
+  const copyCodeBtn = document.getElementById('copy-code-btn');
+  if (copyCodeBtn) {
+    copyCodeBtn.addEventListener('click', () => {
+      const code = this.state.friendCode;
+      if (!code) return;
+      navigator.clipboard?.writeText(code).then(() => {
+        copyCodeBtn.textContent = 'Copied!';
+        setTimeout(() => { copyCodeBtn.textContent = 'Copy'; }, 1500);
+      }).catch(() => {});
+    });
+  }
+  const addFriendBtn = document.getElementById('add-friend-btn');
+  if (addFriendBtn) addFriendBtn.addEventListener('click', () => this.addFriendByCode());
+  const addFriendInput = document.getElementById('add-friend-input');
+  if (addFriendInput) addFriendInput.addEventListener('keydown', e => { if (e.key === 'Enter') this.addFriendByCode(); });
 
   if (this.elements.btnReset) {
     this.elements.btnReset.addEventListener('click', () => {
@@ -988,6 +1222,9 @@ switchTab(target) {
     if (target === 'medical' && window.MedicalModule) {
         window.MedicalModule.init();
     }
+    if (target === 'friends') {
+        this.loadSocial();
+    }
 },
 
     // ===================================
@@ -1128,6 +1365,7 @@ toggleTimer() {
     this.saveSessionState();
 
         this.state.sessionStartTime = Date.now();
+		clearInterval(this.state.timer);
 		this.state.timer = setInterval(() => {
         this.state.timeLeft--;
         this.saveSessionState();
@@ -1157,7 +1395,8 @@ toggleTimer() {
     this.saveSessionState();
     this.elements.container.classList.remove('running');
     document.body.classList.remove('timer-running');
-    if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'block'; this.elements.btnStart.classList.remove('running'); this.elements.btnStart.classList.add('heart-mode');
+    if (this.elements.iconPlay) this.elements.iconPlay.style.display = 'block';
+    this.elements.btnStart.classList.remove('running');
     if (this.elements.iconPause) this.elements.iconPause.style.display = 'none';
     const reminder = document.getElementById('intention-reminder');
     if (reminder) reminder.style.display = 'none';
@@ -1219,7 +1458,7 @@ toggleTimer() {
             this.updateRepCounter();
             this.addXp(15);
             this.saveStats();
-	            const user = window.firebaseAuth?.currentUser; if (user) this.saveToFirestore(user.uid);
+	            const user = window.firebaseAuth?.currentUser; if (user) { this.saveToFirestore(user.uid); this.publishLeaderboard(user.uid); }
             const completedIntention = this.state.currentIntention;
             const effectiveMinutes = this.state.elapsedFocusMinutes != null
                 ? this.state.elapsedFocusMinutes
@@ -1460,18 +1699,6 @@ el.addEventListener('click', () => {
 
 		setTimeout(() => el.remove(), 2800);
 	},
-	  createHearts() {
-		      for (let i = 0; i < 22; i++) {
-				        const h = document.createElement('div');
-				        h.className = 'heart-particle';
-				        h.style.left = Math.random() * 100 + 'vw';
-				        h.style.animationDuration = (1.5 + Math.random() * 2) + 's';
-				        h.style.animationDelay = (Math.random() * 1.2) + 's';
-				        h.style.fontSize = (16 + Math.random() * 24) + 'px';
-				        document.body.appendChild(h);
-				        setTimeout(() => h.remove(), 4000);
-				      }
-		    },
     createConfetti() {
         const isTerea = this.state.settings.theme === 'terea';
         const colors = isTerea
@@ -1915,7 +2142,8 @@ el.addEventListener('click', () => {
         oceanbreeze: { waves: 70, nature: 45, rain: 0, brown: 0, cafe: 0, jazz: 0, library: 0 }
     };
 
-    const volumes = presets[moodKey];
+    const customMoods = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
+    const volumes = presets[moodKey] || customMoods[moodKey];
     if (!volumes) return;
 
     const applyMood = () => {
@@ -2028,7 +2256,7 @@ this.state.history.push({
     duration: duration,
     type: type,
     intention: type === 'focus' ? this.state.currentIntention : null,
-    label: type === 'focus' ? this._sessionLabel || null : null
+    label: type === 'focus' ? this.sessionLabel || null : null
 });
         if (type === 'focus') this.state.currentIntention = null;
         const inp = document.getElementById('intention-input');
@@ -2817,12 +3045,12 @@ async downloadAsDocx(title, textContent) {
 },
 
 downloadNotes() {
-    const notes = this.state.notes || [];
+    const notes = JSON.parse(localStorage.getItem('pomodoro_notes') || '[]');
     if (!notes.length) { this.showToast('No journal entries to download', '', '📭'); return; }
     const text = notes.map((n, i) => {
-        const date = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : '';
+        const date = n.date ? new Date(n.date).toLocaleDateString() : '';
         const header = `Entry ${i + 1}${date ? ' — ' + date : ''}`;
-        return `${header}\n${n.text || n.content || ''}`;
+        return `${header}\n${n.text || ''}`;
     }).join('\n\n---\n\n');
     this.downloadAsDocx('My Journal', text);
 },

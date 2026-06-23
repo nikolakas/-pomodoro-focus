@@ -49,6 +49,10 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Study
                 </button>
+                <button class="tab" data-tab="friends" role="tab" aria-selected="false" id="tab-friends">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Friends
+                </button>
                 <button class="tab" data-tab="settings" role="tab" aria-selected="false" id="tab-settings">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     Settings
@@ -376,6 +380,56 @@
             </div>
         </div>
     </div>
+</main>
+
+<!-- Friends / Leaderboard Tab -->
+<main class="tab-content" id="panel-friends" role="tabpanel" aria-labelledby="tab-friends">
+  <div class="friends-page">
+    <h2 class="settings-page-title">Friends</h2>
+
+    <!-- Signed-out notice -->
+    <div class="friends-signedout glass-card" id="friends-signedout" style="display:none;">
+      <p>Sign in to add friends and compete on the leaderboard.</p>
+    </div>
+
+    <div id="friends-content">
+      <!-- Your code -->
+      <section class="settings-section-card glass-card">
+        <h3 class="settings-section-title">Your friend code</h3>
+        <p class="friends-hint">Share this code so friends can add you.</p>
+        <div class="friend-code-row">
+          <span class="friend-code" id="my-friend-code">——————</span>
+          <button class="friend-btn" id="copy-code-btn" type="button">Copy</button>
+        </div>
+      </section>
+
+      <!-- Add a friend -->
+      <section class="settings-section-card glass-card">
+        <h3 class="settings-section-title">Add a friend</h3>
+        <div class="friend-add-row">
+          <input type="text" id="add-friend-input" class="friend-input" placeholder="Enter friend code" maxlength="8" autocomplete="off" />
+          <button class="friend-btn friend-btn-primary" id="add-friend-btn" type="button">Add</button>
+        </div>
+        <p class="friends-status" id="add-friend-status"></p>
+      </section>
+
+      <!-- Daily leaderboard -->
+      <section class="settings-section-card glass-card">
+        <h3 class="settings-section-title">Today · focus hours</h3>
+        <ol class="leaderboard" id="leaderboard-daily">
+          <li class="leaderboard-empty">No data yet — start a focus session.</li>
+        </ol>
+      </section>
+
+      <!-- Weekly leaderboard -->
+      <section class="settings-section-card glass-card">
+        <h3 class="settings-section-title">This week · focus hours</h3>
+        <ol class="leaderboard" id="leaderboard-weekly">
+          <li class="leaderboard-empty">No data yet — start a focus session.</li>
+        </ol>
+      </section>
+    </div>
+  </div>
 </main>
 
 <!-- Settings Tab -->
@@ -788,7 +842,7 @@
     createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
     sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
@@ -821,6 +875,9 @@
   window.firestoreSetDoc = setDoc;
   window.firestoreGetDoc = getDoc;
   window.firestoreOnSnapshot = onSnapshot;
+  window.firestoreUpdateDoc = updateDoc;
+  window.firestoreArrayUnion = arrayUnion;
+  window.firestoreArrayRemove = arrayRemove;
   window.dispatchEvent(new CustomEvent('firebase-ready'));
 </script>
 
