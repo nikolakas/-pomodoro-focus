@@ -549,15 +549,44 @@ async loadFromFirestore(uid) {
         if (!user) return;
         try {
             await this.loadUsername(user.uid);
+            // Auto-assign a username if the user has none — makes them findable immediately.
+            if (!this.state.username) await this._autoAssignUsername(user);
             await this.publishLeaderboard(user.uid);
         } catch (e) { /* non-fatal */ }
         this.renderUsername();
+        this.listenForFriendRequests(user);
         // Consume an invite that arrived via a shared ?add= link.
         if (this._pendingInvite) {
             const handle = this._pendingInvite;
             this._pendingInvite = null;
             this.switchTab('friends');
             await this.addFriendByUsername(handle);
+        }
+    },
+
+    // Derive a username from email / display name and claim it automatically.
+    async _autoAssignUsername(user) {
+        if (!window.firebaseDb) return;
+        const raw = ((user.displayName || user.email || '').split('@')[0])
+            .toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+        const base = raw.length >= 3 ? raw : 'user' + Date.now().toString().slice(-4);
+        for (let i = 0; i <= 9; i++) {
+            const candidate = i === 0 ? base : `${base.slice(0, 14)}${i}`;
+            if (!this.USERNAME_RE.test(candidate)) continue;
+            try {
+                const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'usernames', candidate));
+                if (!snap.exists()) {
+                    const result = await this.setUsername(user.uid, candidate);
+                    if (result.ok) {
+                        this.showToast(`Your username is @${candidate}`, 'Friends can now find and add you!', '✓');
+                        return;
+                    }
+                } else if (snap.data()?.uid === user.uid) {
+                    this.state.username = candidate;
+                    this.renderUsername();
+                    return;
+                }
+            } catch (e) { break; }
         }
     },
 
@@ -623,19 +652,43 @@ async loadFromFirestore(uid) {
             if (!snap.exists()) { this._setFriendStatus('add-friend-status', `No user @${name} found.`, false); return; }
             const friendUid = snap.data().uid;
             if (friendUid === user.uid) { this._setFriendStatus('add-friend-status', "That's you.", false); return; }
+
+            // Already friends?
             const pairRef = window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, friendUid));
             const existing = await window.firestoreGetDoc(pairRef);
             if (existing.exists()) { this._setFriendStatus('add-friend-status', `Already friends with @${name}.`, true); return; }
-            // One shared doc, listing both members → mutual by construction.
-            await window.firestoreSetDoc(pairRef, { users: [user.uid, friendUid] });
+
+            // Did they already send ME a request? → auto-accept = instant friendship.
+            const theirReqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${friendUid}_${user.uid}`);
+            const theirReq = await window.firestoreGetDoc(theirReqRef);
+            if (theirReq.exists()) {
+                await this.acceptFriendRequest(friendUid);
+                this._setFriendStatus('add-friend-status', `Matched! You and @${name} are now friends 🎉`, true);
+                return;
+            }
+
+            // Already sent them a request?
+            const myReqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${user.uid}_${friendUid}`);
+            const myReq = await window.firestoreGetDoc(myReqRef);
+            if (myReq.exists()) { this._setFriendStatus('add-friend-status', `Request already sent to @${name}.`, true); return; }
+
+            // Send a friend request — the other user will accept/decline.
+            await window.firestoreSetDoc(myReqRef, {
+                from: user.uid,
+                to: friendUid,
+                fromUsername: this.state.username || null,
+                fromName: user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'Someone',
+                toUsername: name,
+                sentAt: new Date().toISOString()
+            });
+
             const input = document.getElementById('add-friend-input');
             if (input) input.value = '';
             const results = document.getElementById('friend-search-results');
             if (results) results.innerHTML = '';
-            this._setFriendStatus('add-friend-status', `Added @${name}! 🎉`, true);
-            await this.loadSocial();
+            this._setFriendStatus('add-friend-status', `Friend request sent to @${name}! 📨`, true);
         } catch (e) {
-            this._setFriendStatus('add-friend-status', 'Could not add friend. Try again.', false);
+            this._setFriendStatus('add-friend-status', 'Could not send request. Try again.', false);
         }
     },
 
@@ -690,10 +743,15 @@ async loadFromFirestore(uid) {
             <div class="friend-row">
                 <span class="friend-row-name">${this.escapeHtml(f.name || 'Anonymous')}</span>
                 ${f.username ? `<span class="friend-row-handle">@${this.escapeHtml(f.username)}</span>` : ''}
-                <button class="friend-remove-btn" type="button" data-uid="${this.escapeHtml(f.uid)}">Remove</button>
+                <div class="friend-row-actions">
+                    <button class="friend-msg-btn" type="button" data-uid="${this.escapeHtml(f.uid)}" data-username="${this.escapeHtml(f.username || '')}" title="Message">💬</button>
+                    <button class="friend-remove-btn" type="button" data-uid="${this.escapeHtml(f.uid)}">Remove</button>
+                </div>
             </div>`).join('');
         el.querySelectorAll('.friend-remove-btn').forEach(btn =>
             btn.addEventListener('click', () => this.removeFriend(btn.dataset.uid)));
+        el.querySelectorAll('.friend-msg-btn').forEach(btn =>
+            btn.addEventListener('click', () => this.openChat(btn.dataset.uid, btn.dataset.username)));
     },
 
     async loadSocial() {
@@ -1270,6 +1328,27 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   document.querySelectorAll('.atm-preset-btn').forEach(card => {
     card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
   });
+
+  // Chat modal
+  const chatModal = document.getElementById('chat-modal');
+  const chatClose = document.getElementById('chat-modal-close');
+  const chatSend = document.getElementById('chat-send-btn');
+  const chatInput = document.getElementById('chat-input');
+  const closeChatModal = () => {
+    if (chatModal) chatModal.style.display = 'none';
+    if (this._chatUnsub) { this._chatUnsub(); this._chatUnsub = null; }
+  };
+  if (chatClose) chatClose.addEventListener('click', closeChatModal);
+  if (chatModal) chatModal.addEventListener('click', e => { if (e.target === chatModal) closeChatModal(); });
+  if (chatSend) chatSend.addEventListener('click', () => this.sendChatMessage());
+  if (chatInput) chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChatMessage(); } });
+
+  // Cat companion — click / tap to meow
+  const catEl = document.getElementById('cat-companion');
+  if (catEl) {
+    catEl.addEventListener('click', () => this.playMeow());
+    catEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') this.playMeow(); });
+  }
 },
 
 
@@ -1395,6 +1474,9 @@ initMixer() {
             this._updateSoundsActiveIndicator();
         });
     }
+
+    // Build visual knob dials over each mixer card.
+    this._initKnobs();
 
     // Greek laïká — verified YouTube IDs from official channels
     this._initYTChannel('bouzoukia', [
@@ -2388,6 +2470,7 @@ el.addEventListener('click', () => {
             if (!slider || !channel) return;
 
             slider.value = vol;
+            slider.dispatchEvent(new Event('input', { bubbles: true })); // syncs knob visual
             this.state.mixerVolumes[scene] = vol;
             channel.querySelector('.mixer-vol').textContent = `${vol}%`;
 
@@ -2772,6 +2855,7 @@ setThemePreview(theme) {
     },
 
     renderStats() {
+        this.updateLevel(); // keep level bar in sync whenever stats repaint
 		 // Empty state check
     const emptyState = document.getElementById('stats-empty-state');
     const statsGrid = document.getElementById('stats-overview-grid');
@@ -3557,6 +3641,329 @@ initOnboarding() {
 		this.showToast('Mix deleted', key, '🗑️');
 		this.renderSavedMixes();
 	},
+    // ===================================
+    // FRIEND REQUESTS
+    // ===================================
+    listenForFriendRequests(user) {
+        if (this._reqUnsub) this._reqUnsub();
+        if (!window.firebaseDb || !window.firestoreQuery || !window.firestoreWhere) return;
+        const q = window.firestoreQuery(
+            window.firestoreCollection(window.firebaseDb, 'friendRequests'),
+            window.firestoreWhere('to', '==', user.uid)
+        );
+        let firstLoad = true;
+        this._reqUnsub = window.firestoreOnSnapshot(q, (snap) => {
+            this._pendingRequests = [];
+            snap.forEach(d => this._pendingRequests.push({ id: d.id, ...d.data() }));
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+            if (!firstLoad && this._pendingRequests.length > 0) {
+                const newest = this._pendingRequests[this._pendingRequests.length - 1];
+                const sender = newest.fromUsername ? `@${newest.fromUsername}` : newest.fromName || 'Someone';
+                this.showToast(`Friend request from ${sender}!`, 'Go to Friends tab to accept.', '👋');
+                this.sendNotification(`Friend request from ${sender}!`, 'Open the app to accept.');
+            }
+            firstLoad = false;
+        }, () => {});
+    },
+
+    _renderFriendRequests() {
+        const section = document.getElementById('friend-requests-section');
+        const list = document.getElementById('friend-requests-list');
+        const badge = document.getElementById('req-count-badge');
+        const reqs = this._pendingRequests || [];
+        if (section) section.style.display = reqs.length ? '' : 'none';
+        if (badge) badge.textContent = reqs.length > 0 ? reqs.length : '';
+        if (!list) return;
+        list.innerHTML = reqs.map(r => {
+            const name = r.fromUsername ? `@${this.escapeHtml(r.fromUsername)}` : this.escapeHtml(r.fromName || 'Someone');
+            return `<div class="friend-req-row">
+                <span class="friend-req-name">${name}</span>
+                <div class="friend-req-btns">
+                    <button class="friend-req-accept" data-uid="${this.escapeHtml(r.from)}">Accept</button>
+                    <button class="friend-req-decline" data-uid="${this.escapeHtml(r.from)}">Decline</button>
+                </div>
+            </div>`;
+        }).join('');
+        list.querySelectorAll('.friend-req-accept').forEach(btn =>
+            btn.addEventListener('click', () => this.acceptFriendRequest(btn.dataset.uid)));
+        list.querySelectorAll('.friend-req-decline').forEach(btn =>
+            btn.addEventListener('click', () => this.declineFriendRequest(btn.dataset.uid)));
+    },
+
+    _updateFriendRequestBadge() {
+        const count = (this._pendingRequests || []).length;
+        const badge = document.getElementById('friends-tab-badge');
+        if (badge) {
+            badge.textContent = count > 0 ? count : '';
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    },
+
+    async acceptFriendRequest(fromUid) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !fromUid) return;
+        try {
+            const pairRef = window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, fromUid));
+            const reqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${fromUid}_${user.uid}`);
+            await window.firestoreSetDoc(pairRef, { users: [user.uid, fromUid] });
+            await window.firestoreDeleteDoc(reqRef);
+            this._pendingRequests = (this._pendingRequests || []).filter(r => r.from !== fromUid);
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+            await this.loadSocial();
+        } catch (e) { /* non-fatal */ }
+    },
+
+    async declineFriendRequest(fromUid) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !fromUid) return;
+        try {
+            const reqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${fromUid}_${user.uid}`);
+            await window.firestoreDeleteDoc(reqRef);
+            this._pendingRequests = (this._pendingRequests || []).filter(r => r.from !== fromUid);
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+        } catch (e) { /* non-fatal */ }
+    },
+
+    // ===================================
+    // DIRECT MESSAGES
+    // ===================================
+    openChat(friendUid, friendUsername) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) { this.showToast('Sign in first', 'You need to be signed in to chat.', '🔒'); return; }
+        const modal = document.getElementById('chat-modal');
+        const title = document.getElementById('chat-modal-title');
+        if (!modal) return;
+        const name = friendUsername ? `@${friendUsername}` : 'Friend';
+        if (title) title.textContent = name;
+        this._activeChatPairId = this._friendshipId(user.uid, friendUid);
+        this._activeChatMyUid = user.uid;
+        modal.style.display = 'flex';
+        // Unsubscribe any previous chat listener
+        if (this._chatUnsub) { this._chatUnsub(); this._chatUnsub = null; }
+        const chatRef = window.firestoreDoc(window.firebaseDb, 'chat', this._activeChatPairId);
+        this._chatUnsub = window.firestoreOnSnapshot(chatRef, (snap) => {
+            const msgs = snap.exists() ? (snap.data().messages || []) : [];
+            this._renderChatMessages(msgs);
+        }, () => this._renderChatMessages([]));
+        setTimeout(() => document.getElementById('chat-input')?.focus(), 80);
+    },
+
+    async sendChatMessage() {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !this._activeChatPairId) return;
+        const input = document.getElementById('chat-input');
+        const text = (input?.value || '').trim();
+        if (!text) return;
+        input.value = '';
+        const msg = {
+            sender: user.uid,
+            senderName: user.displayName?.split(' ')[0] || this.state.username || 'You',
+            text,
+            sentAt: new Date().toISOString()
+        };
+        try {
+            const chatRef = window.firestoreDoc(window.firebaseDb, 'chat', this._activeChatPairId);
+            await window.firestoreUpdateDoc(chatRef, {
+                messages: window.firestoreArrayUnion(msg)
+            }).catch(async () => {
+                await window.firestoreSetDoc(chatRef, { messages: [msg] });
+            });
+        } catch (e) { /* non-fatal */ }
+    },
+
+    _renderChatMessages(msgs) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        if (!msgs.length) {
+            container.innerHTML = '<div class="chat-empty">No messages yet. Say hi! 👋</div>';
+            return;
+        }
+        const sorted = [...msgs].sort((a, b) => (a.sentAt || '').localeCompare(b.sentAt || ''));
+        const myUid = this._activeChatMyUid;
+        container.innerHTML = sorted.map(m => {
+            const isMe = m.sender === myUid;
+            const time = m.sentAt ? new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            return `<div class="chat-msg ${isMe ? 'chat-msg-me' : 'chat-msg-them'}">
+                <div class="chat-bubble">${this.escapeHtml(m.text)}</div>
+                <div class="chat-time">${isMe ? '' : this.escapeHtml(m.senderName || '') + ' · '}${time}</div>
+            </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    },
+
+    // ===================================
+    // VOLUME DIAL KNOBS
+    // ===================================
+    _initKnobs() {
+        const circ = 150.796;  // 2π × 24
+        const arcLen = circ * (270 / 360); // 113.097 = 270° arc length
+
+        // Single shared drag state — only one knob drags at a time.
+        let drag = null;
+        let didDrag = false; // prevents the mouseup→click from toggling after a drag
+
+        const onMoveGlobal = (clientY) => {
+            if (!drag) return;
+            const dy = drag.startY - clientY;
+            if (Math.abs(dy) > 3) didDrag = true;
+            drag.setVal(drag.startVal + Math.round(dy * 0.9));
+        };
+        const onEndGlobal = () => { drag = null; };
+        document.addEventListener('mousemove', (e) => onMoveGlobal(e.clientY));
+        document.addEventListener('mouseup', onEndGlobal);
+        document.addEventListener('touchmove', (e) => { if (drag) onMoveGlobal(e.touches[0].clientY); }, { passive: true });
+        document.addEventListener('touchend', onEndGlobal);
+
+        document.querySelectorAll('.atm-card[data-scene]').forEach(card => {
+            const scene = card.dataset.scene;
+            const slider = card.querySelector('.mixer-slider');
+            const faceBtn = card.querySelector('.atm-card-face');
+            const oldVolLabel = card.querySelector('.mixer-vol');
+            if (!slider) return;
+
+            // Hide native elements — keep them in DOM for audio logic.
+            slider.classList.add('knob-hidden');
+            if (faceBtn) faceBtn.classList.add('knob-hidden');
+
+            // Find the emoji icon and name from the existing face button.
+            const icon = faceBtn?.querySelector('.atm-icon')?.textContent || '';
+            const name = faceBtn?.querySelector('.atm-name')?.textContent || scene;
+
+            // Build knob HTML.
+            const layout = document.createElement('div');
+            layout.className = 'knob-card-layout';
+            layout.innerHTML = `
+              <div class="knob-icon-top">${icon}</div>
+              <div class="knob-wrap" data-scene="${scene}">
+                <svg class="knob-arc-svg" viewBox="0 0 62 62">
+                  <circle class="knob-track" cx="31" cy="31" r="24"
+                    stroke-dasharray="${arcLen.toFixed(2)} ${circ.toFixed(2)}"
+                    transform="rotate(135 31 31)"/>
+                  <circle class="knob-arc-fill" cx="31" cy="31" r="24"
+                    stroke-dasharray="0 ${circ.toFixed(2)}"
+                    transform="rotate(135 31 31)"/>
+                </svg>
+                <div class="knob-center">
+                  <div class="knob-dot"></div>
+                </div>
+              </div>
+              <span class="knob-name">${name}</span>
+              <span class="knob-vol">0%</span>`;
+            card.insertBefore(layout, card.firstChild);
+
+            const knobEl = layout.querySelector('.knob-wrap');
+            const arcFill = layout.querySelector('.knob-arc-fill');
+            const dotEl = layout.querySelector('.knob-dot');
+            const volEl = layout.querySelector('.knob-vol');
+
+            const updateVisual = (val) => {
+                const fillLen = (val / 100) * arcLen;
+                arcFill.setAttribute('stroke-dasharray', `${fillLen.toFixed(2)} ${circ.toFixed(2)}`);
+                dotEl.style.setProperty('--angle', `${-135 + (val / 100) * 270}deg`);
+                if (volEl) volEl.textContent = `${val}%`;
+            };
+
+            // Keep knob in sync when slider is changed externally (mood presets, stop-all).
+            let _fromKnob = false;
+            const setVal = (raw) => {
+                const val = Math.max(0, Math.min(100, Math.round(raw)));
+                updateVisual(val);
+                _fromKnob = true;
+                slider.value = val;
+                slider.dispatchEvent(new Event('input', { bubbles: true }));
+                _fromKnob = false;
+                if (oldVolLabel) oldVolLabel.textContent = `${val}%`;
+            };
+
+            slider.addEventListener('input', () => {
+                if (_fromKnob) return;
+                updateVisual(parseInt(slider.value) || 0);
+            });
+
+            // Drag to adjust.
+            knobEl.addEventListener('mousedown', (e) => {
+                didDrag = false;
+                drag = { startY: e.clientY, startVal: parseInt(slider.value) || 0, setVal };
+                e.preventDefault();
+            });
+            knobEl.addEventListener('touchstart', (e) => {
+                didDrag = false;
+                drag = { startY: e.touches[0].clientY, startVal: parseInt(slider.value) || 0, setVal };
+                e.preventDefault();
+            }, { passive: false });
+
+            // Click (no drag) → toggle on/off.
+            knobEl.addEventListener('click', (e) => {
+                if (didDrag) { didDrag = false; return; }
+                const cur = parseInt(slider.value) || 0;
+                if (cur > 0) {
+                    this.state.mixerVolumes[`_prev_${scene}`] = cur;
+                    setVal(0);
+                } else {
+                    setVal(this.state.mixerVolumes[`_prev_${scene}`] || 70);
+                }
+            });
+
+            // Scroll wheel support.
+            knobEl.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const cur = parseInt(slider.value) || 0;
+                setVal(cur + (e.deltaY < 0 ? 5 : -5));
+            }, { passive: false });
+
+            // Initialize visual from current state.
+            updateVisual(parseInt(slider.value) || 0);
+        });
+    },
+
+    // ===================================
+    // CAT MEOW SOUND
+    // ===================================
+    playMeow() {
+        try {
+            if (!this.toneCtx) this.toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.toneCtx.state === 'suspended') this.toneCtx.resume();
+            const ctx = this.toneCtx;
+            const t = ctx.currentTime;
+
+            // Fundamental "mee-ow" pitch sweep.
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            const filt = ctx.createBiquadFilter();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(580, t);
+            osc.frequency.linearRampToValueAtTime(880, t + 0.11);
+            osc.frequency.exponentialRampToValueAtTime(420, t + 0.45);
+            osc.frequency.exponentialRampToValueAtTime(360, t + 0.78);
+            filt.type = 'bandpass';
+            filt.frequency.setValueAtTime(1400, t);
+            filt.frequency.linearRampToValueAtTime(650, t + 0.4);
+            filt.Q.value = 3.5;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.28, t + 0.07);
+            g.gain.setValueAtTime(0.28, t + 0.38);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.82);
+            osc.connect(filt).connect(g).connect(ctx.destination);
+            osc.start(t); osc.stop(t + 0.85);
+
+            // Softer upper harmonic.
+            const osc2 = ctx.createOscillator();
+            const g2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1160, t);
+            osc2.frequency.linearRampToValueAtTime(1760, t + 0.11);
+            osc2.frequency.exponentialRampToValueAtTime(840, t + 0.45);
+            g2.gain.setValueAtTime(0, t);
+            g2.gain.linearRampToValueAtTime(0.1, t + 0.07);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+            osc2.connect(g2).connect(ctx.destination);
+            osc2.start(t); osc2.stop(t + 0.6);
+        } catch (e) { /* non-fatal */ }
+    },
+
 	updateRingGradient() {
 				const grad = document.getElementById('timer-grad');
 				const progressEl = document.getElementById('timer-progress');
