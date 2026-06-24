@@ -672,6 +672,14 @@ async loadFromFirestore(uid) {
         if (signedOut) signedOut.style.display = 'none';
         if (content) content.style.display = 'block';
 
+        // Instant paint from last-known cache so the Social tab is never blank
+        // while we refresh from Firestore in the background.
+        const cached = this._readSocialCache(user.uid);
+        if (cached) {
+            this.renderFriendsList(cached.friendsList);
+            this.renderLeaderboards(cached.entries);
+        }
+
         if (this.state.username == null) await this.loadUsername(user.uid);
         await this.publishLeaderboard(user.uid);
         this.renderUsername();
@@ -690,24 +698,49 @@ async loadFromFirestore(uid) {
             });
         } catch (e) { /* ignore */ }
 
-        // Fetch each member's public leaderboard doc once.
+        // Fetch every member's public leaderboard doc in parallel (was a sequential
+        // loop — one round trip per friend; now a single batched wait).
+        const ids = [user.uid, ...friends];
         const lb = {};
-        for (const uid of [user.uid, ...friends]) {
+        await Promise.all(ids.map(async uid => {
             try {
                 const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'leaderboard', uid));
                 if (snap.exists()) lb[uid] = snap.data();
             } catch (e) { /* ignore unreadable */ }
-        }
+        }));
 
-        const entries = [user.uid, ...friends]
+        const entries = ids
             .filter(uid => lb[uid])
             .map(uid => ({ uid, ...lb[uid], isMe: uid === user.uid }));
 
         // Friends list shows everyone you've added, even if they have no stats yet.
-        this.renderFriendsList(friends.map(uid => ({
+        const friendsList = friends.map(uid => ({
             uid, name: lb[uid]?.name, username: lb[uid]?.username
-        })));
+        }));
+
+        this.renderFriendsList(friendsList);
         this.renderLeaderboards(entries);
+
+        // Persist so the next open paints instantly.
+        this._writeSocialCache(user.uid, { friendsList, entries });
+    },
+
+    // Per-user cache of the social/leaderboard view for instant paint on reopen.
+    // Scoped by uid so a shared device never shows one account's friends to another.
+    _socialCacheKey(uid) { return `pomodoro_social_cache_${uid}`; },
+
+    _readSocialCache(uid) {
+        try {
+            const raw = localStorage.getItem(this._socialCacheKey(uid));
+            if (!raw) return null;
+            const c = JSON.parse(raw);
+            if (!c || !Array.isArray(c.entries) || !Array.isArray(c.friendsList)) return null;
+            return c;
+        } catch (e) { return null; }
+    },
+
+    _writeSocialCache(uid, data) {
+        try { localStorage.setItem(this._socialCacheKey(uid), JSON.stringify(data)); } catch (e) {}
     },
 
     renderLeaderboards(entries) {
