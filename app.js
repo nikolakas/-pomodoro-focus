@@ -492,21 +492,26 @@ async loadFromFirestore(uid) {
         const current = this.state.username;
         if (name === current) return { ok: true };
         const newRef = window.firestoreDoc(window.firebaseDb, 'usernames', name);
-        const existing = await window.firestoreGetDoc(newRef);
+        let existing;
+        try {
+            existing = await window.firestoreGetDoc(newRef);
+        } catch (e) {
+            // Firestore rules may not be published yet — tell the user clearly
+            const isPerms = e?.code === 'permission-denied';
+            throw new Error(isPerms
+                ? 'Permission denied — Firestore rules may not be published yet.'
+                : 'Could not reach the database. Check your connection.');
+        }
         if (existing.exists()) {
-            if (existing.data().uid !== uid) return { ok: false, error: 'That username is taken.' };
-            // already ours (state was out of sync) — fall through to record it locally
+            if (existing.data().uid !== uid) return { ok: false, error: 'That username is already taken.' };
         } else {
             await window.firestoreSetDoc(newRef, { uid });
         }
         this.state.username = name;
-        // Once the handle is claimed, the remaining writes don't depend on each
-        // other — run them in parallel instead of three sequential round trips.
         const writes = [
             window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'social', uid), { username: name }),
             this.publishLeaderboard(uid)
         ];
-        // Free the previous handle so others can claim it.
         if (current && current !== name) {
             writes.push(window.firestoreDeleteDoc(window.firestoreDoc(window.firebaseDb, 'usernames', current)).catch(() => {}));
         }
@@ -571,9 +576,23 @@ async loadFromFirestore(uid) {
         const user = window.firebaseAuth?.currentUser;
         if (!user) { this._setFriendStatus('username-status', 'Sign in first.', false); return; }
         const input = document.getElementById('username-input');
-        const res = await this.setUsername(user.uid, input?.value || '');
+        const btn = document.getElementById('save-username-btn');
+
+        // Show saving state
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        this._setFriendStatus('username-status', '', true);
+
+        let res;
+        try {
+            res = await this.setUsername(user.uid, input?.value || '');
+        } catch (e) {
+            res = { ok: false, error: 'Could not save — check your connection and try again.' };
+        }
+
+        if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+
         if (res.ok) {
-            this._setFriendStatus('username-status', 'Username saved ✓', true);
+            this._setFriendStatus('username-status', '✓ Username saved!', true);
             this.renderUsername();
         } else {
             this._setFriendStatus('username-status', res.error, false);
