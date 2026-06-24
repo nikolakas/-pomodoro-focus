@@ -134,17 +134,11 @@
                 <span class="rep-counter" id="rep-counter" style="display:none;"></span>
             </div>
 
-            <!-- Focus companion -->
-            <div class="focus-cat" id="focus-cat">
-                <dotlottie-wc src="https://lottie.host/09c3e19b-f231-470e-8f95-6cf39fb0419f/eub1T03U84.lottie" autoplay loop></dotlottie-wc>
-            </div>
-
             <!-- Focus Leveling System -->
             <div class="level-progress-container" id="level-container">
                 <div class="level-info">
                     <span class="level-rank" id="level-rank">Novice (Lvl 1)</span>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <dotlottie-wc class="streak-anim" id="streak-anim" src="https://lottie.host/62940978-fe94-41db-885a-c77722f687ff/2hzisATZ7r.lottie" autoplay loop></dotlottie-wc>
                         <span class="streak-badge" id="streak-badge" style="display:none;"></span>
                         <span class="level-xp" id="level-xp">0 / 100 XP</span>
                     </div>
@@ -168,16 +162,6 @@
     <div class="atmosphere-header">
       <h2 class="atmosphere-title">🎵 Atmosphere</h2>
       <button class="atmosphere-close" id="btn-close-atmosphere" aria-label="Close">✕</button>
-    </div>
-
-    <!-- Master volume dial -->
-    <div class="atm-master">
-      <dotlottie-wc class="atm-master-dial" id="atm-master-dial" src="https://lottie.host/fa2cc6ee-5c68-438f-b7e4-502ada690bc0/YmXeMFbUtD.lottie" stateMachineId="StateMachine3" autoplay></dotlottie-wc>
-      <div class="atm-master-row">
-        <span class="atm-master-label">Volume</span>
-        <input type="range" class="atm-master-slider" id="atm-master-slider" min="0" max="100" value="50" aria-label="Master volume">
-        <span class="atm-master-val" id="atm-master-val">50%</span>
-      </div>
     </div>
 
     <div class="atm-presets-label">Quick Presets</div>
@@ -997,6 +981,14 @@
   <span class="motivate-icon">📌</span>
   <span class="motivate-label">I need some motivation</span>
 </button>
+
+<!-- Cat companion — fixed right side, speech bubble shows the current quote -->
+<div class="cat-companion" id="cat-companion">
+  <div class="cat-bubble" id="cat-bubble">
+    <p id="cat-bubble-text">"Focus is a matter of deciding what things you're not going to do."</p>
+  </div>
+  <dotlottie-wc class="cat-lottie" src="https://lottie.host/09c3e19b-f231-470e-8f95-6cf39fb0419f/eub1T03U84.lottie" autoplay loop></dotlottie-wc>
+</div>
 
 </body>
 </html>

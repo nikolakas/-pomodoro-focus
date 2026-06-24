@@ -1358,23 +1358,6 @@ initMixer() {
         });
     }
 
-    // Master volume dial — scales the whole ambient mix via AmbienceModule's masterGain.
-    const masterSlider = document.getElementById('atm-master-slider');
-    const masterVal = document.getElementById('atm-master-val');
-    if (masterSlider) {
-        const saved = parseInt(localStorage.getItem('pomodoro_master_vol'), 10);
-        const initial = isNaN(saved) ? 50 : saved;
-        masterSlider.value = initial;
-        if (masterVal) masterVal.textContent = `${initial}%`;
-        if (window.AmbienceModule) window.AmbienceModule.setVolume(initial / 100);
-        masterSlider.addEventListener('input', e => {
-            const v = parseInt(e.target.value, 10);
-            if (masterVal) masterVal.textContent = `${v}%`;
-            if (window.AmbienceModule) window.AmbienceModule.setVolume(v / 100);
-            localStorage.setItem('pomodoro_master_vol', String(v));
-        });
-    }
-
     // Greek laïká — verified YouTube IDs from official channels
     this._initYTChannel('bouzoukia', [
         // Antonis Remos
@@ -2572,7 +2555,10 @@ updateTheme() {
 				'Diagnosis is the first step. Understanding is the destination.',
 				'Sleep is a luxury. Knowledge is not.',
 			];
-			quoteEl.textContent = medQuotes[Math.floor(Math.random() * medQuotes.length)];
+			const chosen = medQuotes[Math.floor(Math.random() * medQuotes.length)];
+			quoteEl.textContent = chosen;
+			const bubble = document.getElementById('cat-bubble-text');
+			if (bubble) bubble.textContent = chosen;
 		}
 
 		// ECG canvas — start in medical, stop otherwise
@@ -2737,8 +2723,11 @@ setThemePreview(theme) {
                 '"The successful warrior is the average man, with laser-like focus."',
                 '"Starve your distractions, feed your focus."'
             ];
-            text.textContent = arr[Math.floor(Math.random() * arr.length)];
+            const chosen = arr[Math.floor(Math.random() * arr.length)];
+            text.textContent = chosen;
             text.style.opacity = 1;
+            const bubble = document.getElementById('cat-bubble-text');
+            if (bubble) bubble.textContent = chosen;
         }, 500);
     },
 
@@ -2793,18 +2782,15 @@ setThemePreview(theme) {
             checkDate -= 86400000;
         }
         const b = document.getElementById('streak-badge');
-        const anim = document.getElementById('streak-anim');
         if (b) {
             if (currentStreak > 0) {
                 const isTerea = this.state.settings.theme === 'terea';
                 b.textContent = isTerea
                     ? `💨 ${currentStreak} day streak`
-                    : `${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
+                    : `🔥 ${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
                 b.style.display = 'inline-flex';
-                if (anim) anim.classList.add('is-active');
             } else {
                 b.style.display = 'none';
-                if (anim) anim.classList.remove('is-active');
             }
         }
 

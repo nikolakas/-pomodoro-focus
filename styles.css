@@ -540,7 +540,8 @@ body.timer-running .btn-time-adjust:hover .adjust-label { color: #fff; }
 .level-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-glow-intense)); border-radius: 3px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
 
 /* Quote */
-.quote-display { text-align: center; min-height: 40px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; padding: 0 1rem; }
+/* Quote text is shown via the cat bubble instead; keep the element for JS targeting but hide it visually. */
+.quote-display { display: none; }
 .quote-display p { font-size: 0.9rem; font-style: italic; color: var(--text-secondary); line-height: 1.4; transition: opacity 0.5s; }
 
 /* Timer Display */
@@ -824,20 +825,57 @@ textarea:focus { border-color: var(--accent); }
 /* Streak, pulse */
 .streak-badge { font-size: 0.75rem; font-weight: 700; background: var(--accent-muted); color: var(--accent-soft); padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.4); display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); letter-spacing: 0.02em; }
 /* Streak Lottie sits beside the badge, only while a streak is alive */
-.streak-anim { width: 30px; height: 30px; display: none; }
-.streak-anim.is-active { display: inline-block; }
+.streak-anim { display: none; }
 
-/* ── Lottie companions (Minimalist Dark) ── */
-.focus-cat { display: flex; justify-content: center; margin: 4px 0 -8px; pointer-events: none; }
-.focus-cat dotlottie-wc { width: 130px; height: 130px; filter: drop-shadow(0 0 24px rgba(59,130,246,0.18)); }
+/* ── Cat companion — fixed bottom-right, speech bubble shows the current quote ── */
+.cat-companion {
+    position: fixed; bottom: 16px; right: 16px; z-index: 90;
+    display: flex; flex-direction: column; align-items: flex-end;
+    pointer-events: none;
+    gap: 0;
+}
+.cat-bubble {
+    position: relative;
+    max-width: 220px;
+    background: var(--bg-elevated, #161e2e);
+    border: 1px solid var(--border);
+    border-radius: 14px 14px 4px 14px;
+    padding: 10px 13px;
+    margin-bottom: -6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(59,130,246,0.08);
+    backdrop-filter: blur(8px);
+    animation: bubble-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.cat-bubble p {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+/* Speech bubble tail pointing down-right toward the cat */
+.cat-bubble::after {
+    content: '';
+    position: absolute; bottom: -8px; right: 18px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 0px solid transparent;
+    border-top: 8px solid var(--bg-elevated, #161e2e);
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+}
+.cat-lottie {
+    width: 110px; height: 110px;
+    filter: drop-shadow(0 0 18px rgba(59,130,246,0.2));
+    align-self: flex-end;
+}
+@keyframes bubble-in {
+    from { opacity: 0; transform: scale(0.85) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 
-/* Master volume dial in the Atmosphere panel */
-.atm-master { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px auto 14px; }
-.atm-master-dial { width: 120px; height: 120px; cursor: pointer; }
-.atm-master-row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 240px; }
-.atm-master-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.atm-master-slider { flex: 1; accent-color: var(--accent); height: 4px; }
-.atm-master-val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent-soft); min-width: 34px; text-align: right; }
+/* Hide on very small screens or in zen mode */
+body.zen-mode .cat-companion { display: none; }
+@media (max-width: 400px) { .cat-companion { display: none; } }
 .timer-container.timer-pulse .timer-ring-glow { animation: focusPulse 1s cubic-bezier(0.1,0.8,0.3,1) forwards; }
 @keyframes focusPulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.3); opacity: 1; filter: brightness(1.5); } 100% { transform: scale(1); opacity: 0; } }
 
