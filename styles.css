@@ -1,11 +1,16 @@
 :root {
-    --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-card: rgba(30,41,59,0.7);
+    /* Minimalist Dark — blue tones. Three layered slate surfaces + cool blue accent. */
+    --bg-primary: #0a0e1a; --bg-secondary: #121826; --bg-card: rgba(22,30,46,0.6);
+    --bg-elevated: #161e2e;
     --text-primary: #f8fafc; --text-secondary: #94a3b8; --text-muted: #64748b;
-    --accent: #4ecdc4; --accent-glow: rgba(78,205,196,0.5); --accent-glow-intense: rgba(78,205,196,0.8);
+    --accent: #3b82f6; --accent-soft: #60a5fa;
+    --accent-glow: rgba(59,130,246,0.5); --accent-glow-intense: rgba(59,130,246,0.85);
+    --accent-muted: rgba(59,130,246,0.15);
+    --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.15);
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
     --font-sans: 'Inter', -apple-system, sans-serif;
-    --font-mono: 'Space Mono', monospace;
-    --font-display: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+    --font-display: 'Space Grotesk', 'Inter', sans-serif;
     --border-radius: 16px; --transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Starfield star shadows — used by .stars::after */
@@ -115,6 +120,24 @@ body {
     font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary);
     min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; transition: var(--transition);
 }
+
+/* ── Atmospheric depth: ambient blue orbs glowing through the darkness ── */
+body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+        radial-gradient(60% 50% at 50% -10%, rgba(59,130,246,0.10) 0%, transparent 60%),
+        radial-gradient(45% 45% at 90% 100%, rgba(96,165,250,0.08) 0%, transparent 55%),
+        radial-gradient(40% 40% at 5% 80%, rgba(59,130,246,0.06) 0%, transparent 55%);
+    filter: blur(40px);
+}
+/* Subtle noise so the dark surfaces never look flat */
+body::after {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Terea brings its own backdrop (higher-specificity ::before overrides the orbs);
+   just suppress the default noise layer under it. */
+body.theme-terea::after { display: none; }
 
 /* Wallpaper layer */
 .wallpaper-layer {
@@ -332,8 +355,9 @@ body.hide-logo .header { margin-bottom: 0; }
 
 .glass-card {
     background: var(--bg-card); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.05); border-radius: var(--border-radius);
+    border: 1px solid var(--border); border-radius: var(--border-radius);
     padding: 1.5rem; transition: var(--transition);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
 }
 
 /* Controls & Buttons */
@@ -647,7 +671,7 @@ body.theme-terea.bouzoukia-hours .timer-container::after {
     padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.3s; text-align: left;
 }
 .mood-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.1); transform: translateY(-2px); }
-.mood-card.active { border-color: var(--accent); background: rgba(78,205,196,0.1); box-shadow: 0 4px 12px var(--accent-glow); }
+.mood-card.active { border-color: var(--accent); background: rgba(59,130,246,0.1); box-shadow: 0 4px 12px var(--accent-glow); }
 .mood-icon { font-size: 1.5rem; }
 .mood-info { display: flex; flex-direction: column; }
 .mood-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
@@ -663,7 +687,7 @@ body.theme-terea.bouzoukia-hours .timer-container::after {
 .ambient-pill.active + .scene-vol-slider { display: block; }
 .ambient-pill { background: var(--bg-secondary); border: 1px solid transparent; color: var(--text-secondary); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 6px; }
 .ambient-pill:hover { background: var(--bg-primary); color: var(--text-primary); border-color: rgba(255,255,255,0.1); }
-.ambient-pill.active { background: rgba(78,205,196,0.15); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.ambient-pill.active { background: rgba(59,130,246,0.15); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
 .ambient-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: var(--bg-secondary); border-radius: 2px; outline: none; }
 .ambient-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.2s; }
 .ambient-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
@@ -712,7 +736,7 @@ select { background: var(--bg-secondary); color: var(--text-primary); border: 1p
 .insight-info { display: flex; flex-direction: column; }
 .insight-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
 .insight-val { font-size: 0.9rem; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
-.insight-tip { background: rgba(78,205,196,0.1); color: var(--text-primary); padding: 10px 14px; border-radius: 8px; border-left: 3px solid var(--accent); font-size: 0.85rem; font-style: italic; }
+.insight-tip { background: rgba(59,130,246,0.1); color: var(--text-primary); padding: 10px 14px; border-radius: 8px; border-left: 3px solid var(--accent); font-size: 0.85rem; font-style: italic; }
 
 /* Heatmap */
 .heatmap-section { margin-bottom: 1.5rem; }
@@ -722,9 +746,9 @@ select { background: var(--bg-secondary); color: var(--text-primary); border: 1p
 .h-cell { width: 14px; height: 14px; border-radius: 3px; background: rgba(255,255,255,0.05); transition: 0.2s; cursor: help; }
 .h-cell:hover { transform: scale(1.2); outline: 1px solid rgba(255,255,255,0.5); z-index: 10; }
 .h-cell.level-0 { background: rgba(255,255,255,0.05); }
-.h-cell.level-1 { background: rgba(78,205,196,0.3); }
-.h-cell.level-2 { background: rgba(78,205,196,0.6); }
-.h-cell.level-3 { background: rgba(78,205,196,0.85); box-shadow: 0 0 4px var(--accent-glow); }
+.h-cell.level-1 { background: rgba(59,130,246,0.3); }
+.h-cell.level-2 { background: rgba(59,130,246,0.6); }
+.h-cell.level-3 { background: rgba(59,130,246,0.85); box-shadow: 0 0 4px var(--accent-glow); }
 .h-cell.level-4 { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow-intense); }
 .heatmap-legend { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 0.75rem; color: var(--text-muted); }
 .heatmap-keys { display: flex; gap: 4px; }
@@ -734,7 +758,7 @@ select { background: var(--bg-secondary); color: var(--text-primary); border: 1p
 .achievements-section h2 { font-size: 1.1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
 .achievement-card { background: var(--bg-secondary); border-radius: 12px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); opacity: 0.5; filter: grayscale(100%); transition: 0.4s; }
-.achievement-card.unlocked { opacity: 1; filter: grayscale(0%); border-color: rgba(78,205,196,0.3); background: rgba(78,205,196,0.05); }
+.achievement-card.unlocked { opacity: 1; filter: grayscale(0%); border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
 .achievement-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
 .achievement-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
 .achievement-desc { font-size: 0.65rem; color: var(--text-muted); line-height: 1.2; }
@@ -798,7 +822,22 @@ textarea:focus { border-color: var(--accent); }
 .toast-recap .toast-desc { font-size: 0.85rem; line-height: 1.4; color: var(--text-primary); }
 
 /* Streak, pulse */
-.streak-badge { font-size: 0.75rem; font-weight: 700; background: rgba(245,158,11,0.2); color: var(--warning); padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(245,158,11,0.4); display: inline-flex; align-items: center; gap: 4px; }
+.streak-badge { font-size: 0.75rem; font-weight: 700; background: var(--accent-muted); color: var(--accent-soft); padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.4); display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); letter-spacing: 0.02em; }
+/* Streak Lottie sits beside the badge, only while a streak is alive */
+.streak-anim { width: 30px; height: 30px; display: none; }
+.streak-anim.is-active { display: inline-block; }
+
+/* ── Lottie companions (Minimalist Dark) ── */
+.focus-cat { display: flex; justify-content: center; margin: 4px 0 -8px; pointer-events: none; }
+.focus-cat dotlottie-wc { width: 130px; height: 130px; filter: drop-shadow(0 0 24px rgba(59,130,246,0.18)); }
+
+/* Master volume dial in the Atmosphere panel */
+.atm-master { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px auto 14px; }
+.atm-master-dial { width: 120px; height: 120px; cursor: pointer; }
+.atm-master-row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 240px; }
+.atm-master-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.atm-master-slider { flex: 1; accent-color: var(--accent); height: 4px; }
+.atm-master-val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent-soft); min-width: 34px; text-align: right; }
 .timer-container.timer-pulse .timer-ring-glow { animation: focusPulse 1s cubic-bezier(0.1,0.8,0.3,1) forwards; }
 @keyframes focusPulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.3); opacity: 1; filter: brightness(1.5); } 100% { transform: scale(1); opacity: 0; } }
 
@@ -945,7 +984,7 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
 }
 .mixer-channel.active {
     border-color: var(--accent);
-    background: rgba(78,205,196,0.08);
+    background: rgba(59,130,246,0.08);
     box-shadow: 0 0 12px var(--accent-glow);
 }
 .mixer-btn {
@@ -1668,7 +1707,7 @@ body.theme-pink .logo-icon {
     font-weight: 700;
     letter-spacing: 0.03em;
     z-index: 10000;
-    box-shadow: 0 4px 24px var(--accent-glow, rgba(78,205,196,0.3));
+    box-shadow: 0 4px 24px var(--accent-glow, rgba(59,130,246,0.3));
     animation: popIn 2.8s ease forwards;
     pointer-events: none;
     white-space: nowrap;
@@ -2330,7 +2369,7 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 .atm-card.active {
   border-color: var(--accent);
   box-shadow: 0 0 18px var(--accent-glow);
-  background: rgba(78,205,196,0.08);
+  background: rgba(59,130,246,0.08);
 }
 
 .atm-card-face {
@@ -2672,7 +2711,7 @@ body.theme-terea .atm-card.terea-only-sound { display: flex; }
   border-radius: 10px;
 }
 .leaderboard-row.is-me {
-  background: var(--accent-glow, rgba(78,205,196,0.14));
+  background: var(--accent-glow, rgba(59,130,246,0.14));
   border: 1px solid var(--accent, #4ecdc4);
 }
 .lb-rank {

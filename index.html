@@ -8,10 +8,11 @@
     <meta property="og:title" content="Pomodoro Focus">
     <meta property="og:description" content="A beautiful, interactive Pomodoro timer with ambient sounds and focus tools.">
     <meta property="og:type" content="website">
-    <meta name="theme-color" content="#ff6b6b">
+    <meta name="theme-color" content="#0a0e1a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@500;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.14/dist/dotlottie-wc.js" type="module"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -78,7 +79,7 @@
                         <defs>
                             <filter id="saber-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             <filter id="saber-glow-intense"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                            <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="timer-grad" x1="0" y1="130" x2="260" y2="130" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4ecdc4"/><stop offset="100%" stop-color="#ffe66d"/></linearGradient>
+                            <filter id="soft-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="timer-grad" x1="0" y1="130" x2="260" y2="130" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#60a5fa"/></linearGradient>
                         </defs>
                         <circle class="timer-ring-bg" cx="130" cy="130" r="120"/>
                         <circle class="timer-ring-glow" cx="130" cy="130" r="120" id="timer-glow"/>
@@ -133,11 +134,17 @@
                 <span class="rep-counter" id="rep-counter" style="display:none;"></span>
             </div>
 
+            <!-- Focus companion -->
+            <div class="focus-cat" id="focus-cat">
+                <dotlottie-wc src="https://lottie.host/09c3e19b-f231-470e-8f95-6cf39fb0419f/eub1T03U84.lottie" autoplay loop></dotlottie-wc>
+            </div>
+
             <!-- Focus Leveling System -->
             <div class="level-progress-container" id="level-container">
                 <div class="level-info">
                     <span class="level-rank" id="level-rank">Novice (Lvl 1)</span>
                     <div style="display:flex; gap:8px; align-items:center;">
+                        <dotlottie-wc class="streak-anim" id="streak-anim" src="https://lottie.host/62940978-fe94-41db-885a-c77722f687ff/2hzisATZ7r.lottie" autoplay loop></dotlottie-wc>
                         <span class="streak-badge" id="streak-badge" style="display:none;"></span>
                         <span class="level-xp" id="level-xp">0 / 100 XP</span>
                     </div>
@@ -161,6 +168,16 @@
     <div class="atmosphere-header">
       <h2 class="atmosphere-title">🎵 Atmosphere</h2>
       <button class="atmosphere-close" id="btn-close-atmosphere" aria-label="Close">✕</button>
+    </div>
+
+    <!-- Master volume dial -->
+    <div class="atm-master">
+      <dotlottie-wc class="atm-master-dial" id="atm-master-dial" src="https://lottie.host/fa2cc6ee-5c68-438f-b7e4-502ada690bc0/YmXeMFbUtD.lottie" stateMachineId="StateMachine3" autoplay></dotlottie-wc>
+      <div class="atm-master-row">
+        <span class="atm-master-label">Volume</span>
+        <input type="range" class="atm-master-slider" id="atm-master-slider" min="0" max="100" value="50" aria-label="Master volume">
+        <span class="atm-master-val" id="atm-master-val">50%</span>
+      </div>
     </div>
 
     <div class="atm-presets-label">Quick Presets</div>

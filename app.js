@@ -1354,6 +1354,23 @@ initMixer() {
         });
     }
 
+    // Master volume dial — scales the whole ambient mix via AmbienceModule's masterGain.
+    const masterSlider = document.getElementById('atm-master-slider');
+    const masterVal = document.getElementById('atm-master-val');
+    if (masterSlider) {
+        const saved = parseInt(localStorage.getItem('pomodoro_master_vol'), 10);
+        const initial = isNaN(saved) ? 50 : saved;
+        masterSlider.value = initial;
+        if (masterVal) masterVal.textContent = `${initial}%`;
+        if (window.AmbienceModule) window.AmbienceModule.setVolume(initial / 100);
+        masterSlider.addEventListener('input', e => {
+            const v = parseInt(e.target.value, 10);
+            if (masterVal) masterVal.textContent = `${v}%`;
+            if (window.AmbienceModule) window.AmbienceModule.setVolume(v / 100);
+            localStorage.setItem('pomodoro_master_vol', String(v));
+        });
+    }
+
     // Greek laïká — verified YouTube IDs from official channels
     this._initYTChannel('bouzoukia', [
         // Antonis Remos
@@ -2772,15 +2789,18 @@ setThemePreview(theme) {
             checkDate -= 86400000;
         }
         const b = document.getElementById('streak-badge');
+        const anim = document.getElementById('streak-anim');
         if (b) {
             if (currentStreak > 0) {
                 const isTerea = this.state.settings.theme === 'terea';
                 b.textContent = isTerea
                     ? `💨 ${currentStreak} day streak`
-                    : `🔥 ${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
+                    : `${currentStreak} Day${currentStreak > 1 ? 's' : ''}`;
                 b.style.display = 'inline-flex';
+                if (anim) anim.classList.add('is-active');
             } else {
                 b.style.display = 'none';
+                if (anim) anim.classList.remove('is-active');
             }
         }
 
