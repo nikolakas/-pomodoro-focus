@@ -2619,7 +2619,7 @@ body.theme-terea .atm-card.terea-only-sound { display: flex; }
 .friends-status.err { color: #f87171; }
 
 /* Usernames replace the old uppercased code input */
-.username-input { text-transform: none; letter-spacing: normal; }
+.username-input { text-transform: lowercase; letter-spacing: normal; }
 .my-username {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 700;

@@ -483,7 +483,11 @@ async loadFromFirestore(uid) {
     async setUsername(uid, desired) {
         const name = this.normalizeUsername(desired);
         if (!this.USERNAME_RE.test(name)) {
-            return { ok: false, error: '3–20 chars: lowercase letters, numbers or _' };
+            const len = name.length;
+            const msg = len < 3 ? 'Too short — minimum 3 characters.'
+                      : len > 20 ? 'Too long — maximum 20 characters.'
+                      : 'Only letters, numbers, and _ allowed.';
+            return { ok: false, error: msg };
         }
         const current = this.state.username;
         if (name === current) return { ok: true };
