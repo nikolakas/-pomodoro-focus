@@ -1096,8 +1096,19 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     if (document.hidden) {
       this.ambientWasPlaying = window.AmbienceModule.getActiveSceneKeys();
       window.AmbienceModule.stopAll();
-    } else if (this.ambientWasPlaying && this.ambientWasPlaying.length > 0) {
-      this.ambientWasPlaying.forEach(k => window.AmbienceModule.play(k));
+    } else {
+      // Snap the display to real elapsed time immediately on tab focus —
+      // don't wait up to 500ms for the next interval tick.
+      if (this.state.isRunning && this.state.sessionStartTime) {
+        const elapsed = Math.floor((Date.now() - this.state.sessionStartTime) / 1000);
+        this.state.timeLeft = Math.max(0, this.state.sessionTotalSeconds - elapsed);
+        this.updateTimeDisplay();
+        this.updateRing();
+        if (this.state.timeLeft <= 0) this.onTimerComplete();
+      }
+      if (this.ambientWasPlaying && this.ambientWasPlaying.length > 0) {
+        this.ambientWasPlaying.forEach(k => window.AmbienceModule.play(k));
+      }
     }
   });
 
@@ -1579,18 +1590,20 @@ toggleTimer() {
     this.saveSessionState();
 
         this.state.sessionStartTime = Date.now();
-		clearInterval(this.state.timer);
-		this.state.timer = setInterval(() => {
-        this.state.timeLeft--;
-        this.saveSessionState();
-
-        this.updateTimeDisplay();
-        this.updateRing();
-
-        if (this.state.timeLeft <= 0) {
-            this.onTimerComplete();
-        }
-    }, 1000);
+        this.state.sessionTotalSeconds = this.state.timeLeft;
+        clearInterval(this.state.timer);
+        this.state.timer = setInterval(() => {
+            // Derive timeLeft from real wall-clock elapsed time so background
+            // tab throttling never causes the timer to drift or run slow.
+            const elapsed = Math.floor((Date.now() - this.state.sessionStartTime) / 1000);
+            this.state.timeLeft = Math.max(0, this.state.sessionTotalSeconds - elapsed);
+            this.saveSessionState();
+            this.updateTimeDisplay();
+            this.updateRing();
+            if (this.state.timeLeft <= 0) {
+                this.onTimerComplete();
+            }
+        }, 500); // Poll at 500ms so the display snaps within half a second of the real time
 },
 
     stopTimer() {
