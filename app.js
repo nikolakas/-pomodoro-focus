@@ -495,13 +495,18 @@ async loadFromFirestore(uid) {
         } else {
             await window.firestoreSetDoc(newRef, { uid });
         }
+        this.state.username = name;
+        // Once the handle is claimed, the remaining writes don't depend on each
+        // other — run them in parallel instead of three sequential round trips.
+        const writes = [
+            window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'social', uid), { username: name }),
+            this.publishLeaderboard(uid)
+        ];
         // Free the previous handle so others can claim it.
         if (current && current !== name) {
-            try { await window.firestoreDeleteDoc(window.firestoreDoc(window.firebaseDb, 'usernames', current)); } catch (e) {}
+            writes.push(window.firestoreDeleteDoc(window.firestoreDoc(window.firebaseDb, 'usernames', current)).catch(() => {}));
         }
-        await window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'social', uid), { username: name });
-        this.state.username = name;
-        await this.publishLeaderboard(uid);
+        await Promise.all(writes);
         return { ok: true };
     },
 
