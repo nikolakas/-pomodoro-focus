@@ -84,7 +84,19 @@ currentSubtasks: [],
 	setTimeout(() => this.initOnboarding(), 800);
 
 this.restoreSessionState();
+this._pendingInvite = this._parseInviteParam();
 if (window.firebaseAuth) { this.initFirebase(); } else { window.addEventListener('firebase-ready', () => this.initFirebase(), { once: true }); }
+    },
+
+    // Read & strip a ?add=<username> invite link so it isn't re-applied on refresh.
+    _parseInviteParam() {
+        try {
+            const params = new URLSearchParams(location.search);
+            const add = params.get('add');
+            if (!add) return null;
+            window.history.replaceState({}, '', location.origin + location.pathname);
+            return this.normalizeUsername(add);
+        } catch (e) { return null; }
     },
 
 async initFirebase() {
@@ -335,7 +347,7 @@ async initFirebase() {
             if (authName) authName.textContent = '';
             if (authAvatar) { authAvatar.src = ''; authAvatar.style.display = 'none'; }
             if (this.userUnsub) { this.userUnsub(); this.userUnsub = null; }
-            this.state.friendCode = null;
+            this.state.username = null;
             this.loadSocial();
         }
     });
@@ -400,11 +412,17 @@ async loadFromFirestore(uid) {
     // SOCIAL: friends + leaderboards
     // ===================================
     // Data model (Firestore):
-    //   social/{uid}      = { code, friends: [uid,...] }  (owner-only)
-    //   codes/{CODE}      = { uid }                        (authed-readable lookup)
-    //   leaderboard/{uid} = { name, code, totalHours, level, daily:{YYYY-MM-DD:hrs}, updatedAt }
-    // Friendship is one-directional: your board = you + people you added by code.
+    //   social/{uid}          = { username }                  (owner-only; the handle you picked)
+    //   usernames/{username}  = { uid }                        (authed-readable lookup; lowercase, unique)
+    //   leaderboard/{uid}     = { name, username, totalHours, level, daily:{YYYY-MM-DD:hrs}, updatedAt }
+    //   friendships/{pair}    = { users: [uidA, uidB] }         (pair = sorted uids joined by '_')
+    // Friendship is MUTUAL: one doc per pair, created by either side, readable by both.
     SOCIAL_HOURS_PER_LEVEL: 5,
+    USERNAME_RE: /^[a-z0-9_]{3,20}$/,
+
+    _friendshipId(a, b) {
+        return [a, b].sort().join('_');
+    },
 
     escapeHtml(str) {
         return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -441,42 +459,50 @@ async loadFromFirestore(uid) {
         return Math.floor((Number(hours) || 0) / this.SOCIAL_HOURS_PER_LEVEL) + 1;
     },
 
-    _genFriendCode() {
-        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
-        let c = '';
-        for (let i = 0; i < 6; i++) c += alphabet[Math.floor(Math.random() * alphabet.length)];
-        return c;
+    normalizeUsername(s) {
+        return String(s || '').trim().toLowerCase().replace(/^@+/, '');
     },
 
     async _getSocialDoc(uid) {
         const ref = window.firestoreDoc(window.firebaseDb, 'social', uid);
         const snap = await window.firestoreGetDoc(ref);
         if (!snap.exists()) {
-            await window.firestoreSetDoc(ref, { code: null, friends: [] });
-            return { ref, data: { code: null, friends: [] } };
+            await window.firestoreSetDoc(ref, { username: null });
+            return { ref, data: { username: null } };
         }
         return { ref, data: snap.data() };
     },
 
-    async ensureFriendCode(uid) {
-        const { ref, data } = await this._getSocialDoc(uid);
-        if (data.code) { this.state.friendCode = data.code; return data.code; }
-        // Claim a unique code (a few attempts; collisions are unlikely)
-        let code = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-            const cand = this._genFriendCode();
-            const codeRef = window.firestoreDoc(window.firebaseDb, 'codes', cand);
-            const existing = await window.firestoreGetDoc(codeRef);
-            if (!existing.exists()) {
-                await window.firestoreSetDoc(codeRef, { uid });
-                code = cand;
-                break;
-            }
+    async loadUsername(uid) {
+        const { data } = await this._getSocialDoc(uid);
+        this.state.username = data.username || null;
+        return this.state.username;
+    },
+
+    // Claim or change a username. Returns { ok, error }.
+    async setUsername(uid, desired) {
+        const name = this.normalizeUsername(desired);
+        if (!this.USERNAME_RE.test(name)) {
+            return { ok: false, error: '3–20 chars: lowercase letters, numbers or _' };
         }
-        if (!code) return null;
-        await window.firestoreUpdateDoc(ref, { code });
-        this.state.friendCode = code;
-        return code;
+        const current = this.state.username;
+        if (name === current) return { ok: true };
+        const newRef = window.firestoreDoc(window.firebaseDb, 'usernames', name);
+        const existing = await window.firestoreGetDoc(newRef);
+        if (existing.exists()) {
+            if (existing.data().uid !== uid) return { ok: false, error: 'That username is taken.' };
+            // already ours (state was out of sync) — fall through to record it locally
+        } else {
+            await window.firestoreSetDoc(newRef, { uid });
+        }
+        // Free the previous handle so others can claim it.
+        if (current && current !== name) {
+            try { await window.firestoreDeleteDoc(window.firestoreDoc(window.firebaseDb, 'usernames', current)); } catch (e) {}
+        }
+        await window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'social', uid), { username: name });
+        this.state.username = name;
+        await this.publishLeaderboard(uid);
+        return { ok: true };
     },
 
     async publishLeaderboard(uid) {
@@ -488,7 +514,7 @@ async loadFromFirestore(uid) {
         try {
             await window.firestoreSetDoc(ref, {
                 name,
-                code: this.state.friendCode || null,
+                username: this.state.username || null,
                 totalHours,
                 level: this.levelFromHours(totalHours),
                 daily: this.computeDailyHoursMap(),
@@ -500,40 +526,138 @@ async loadFromFirestore(uid) {
     async initSocial(user) {
         if (!user) return;
         try {
-            await this.ensureFriendCode(user.uid);
+            await this.loadUsername(user.uid);
             await this.publishLeaderboard(user.uid);
         } catch (e) { /* non-fatal */ }
-        this.renderFriendCode();
+        this.renderUsername();
+        // Consume an invite that arrived via a shared ?add= link.
+        if (this._pendingInvite) {
+            const handle = this._pendingInvite;
+            this._pendingInvite = null;
+            this.switchTab('friends');
+            await this.addFriendByUsername(handle);
+        }
     },
 
-    renderFriendCode() {
-        const el = document.getElementById('my-friend-code');
-        if (el) el.textContent = this.state.friendCode || '——————';
+    renderUsername() {
+        const el = document.getElementById('my-username');
+        if (el) el.textContent = this.state.username ? '@' + this.state.username : 'not set yet';
+        const input = document.getElementById('username-input');
+        if (input && document.activeElement !== input) input.value = this.state.username || '';
+        const linkRow = document.getElementById('invite-link-row');
+        if (linkRow) linkRow.style.display = this.state.username ? '' : 'none';
     },
 
-    async addFriendByCode() {
-        const input = document.getElementById('add-friend-input');
-        const status = document.getElementById('add-friend-status');
-        const setStatus = (msg, ok) => { if (status) { status.textContent = msg; status.className = 'friends-status' + (ok ? ' ok' : ' err'); } };
+    inviteLink() {
+        if (!this.state.username) return '';
+        return `${location.origin}${location.pathname}?add=${this.state.username}`;
+    },
+
+    _setFriendStatus(id, msg, ok) {
+        const status = document.getElementById(id);
+        if (status) { status.textContent = msg; status.className = 'friends-status' + (ok ? ' ok' : ' err'); }
+    },
+
+    async saveUsername() {
         const user = window.firebaseAuth?.currentUser;
-        if (!user) { setStatus('Sign in first.', false); return; }
-        const code = (input?.value || '').trim().toUpperCase();
-        if (!code || code.length < 4) { setStatus('Enter a valid code.', false); return; }
-        if (code === this.state.friendCode) { setStatus("That's your own code.", false); return; }
+        if (!user) { this._setFriendStatus('username-status', 'Sign in first.', false); return; }
+        const input = document.getElementById('username-input');
+        const res = await this.setUsername(user.uid, input?.value || '');
+        if (res.ok) {
+            this._setFriendStatus('username-status', 'Username saved ✓', true);
+            this.renderUsername();
+        } else {
+            this._setFriendStatus('username-status', res.error, false);
+        }
+    },
+
+    addFriendFromInput() {
+        const input = document.getElementById('add-friend-input');
+        this.addFriendByUsername(input?.value || '');
+    },
+
+    async addFriendByUsername(rawName) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) { this._setFriendStatus('add-friend-status', 'Sign in first.', false); return; }
+        const name = this.normalizeUsername(rawName);
+        if (!this.USERNAME_RE.test(name)) { this._setFriendStatus('add-friend-status', 'Enter a valid username.', false); return; }
+        if (name === this.state.username) { this._setFriendStatus('add-friend-status', "That's your own username.", false); return; }
         try {
-            const codeSnap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'codes', code));
-            if (!codeSnap.exists()) { setStatus('No one found with that code.', false); return; }
-            const friendUid = codeSnap.data().uid;
-            if (friendUid === user.uid) { setStatus("That's your own code.", false); return; }
-            const { ref, data } = await this._getSocialDoc(user.uid);
-            if ((data.friends || []).includes(friendUid)) { setStatus('Already friends.', true); return; }
-            await window.firestoreUpdateDoc(ref, { friends: window.firestoreArrayUnion(friendUid) });
+            const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'usernames', name));
+            if (!snap.exists()) { this._setFriendStatus('add-friend-status', `No user @${name} found.`, false); return; }
+            const friendUid = snap.data().uid;
+            if (friendUid === user.uid) { this._setFriendStatus('add-friend-status', "That's you.", false); return; }
+            const pairRef = window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, friendUid));
+            const existing = await window.firestoreGetDoc(pairRef);
+            if (existing.exists()) { this._setFriendStatus('add-friend-status', `Already friends with @${name}.`, true); return; }
+            // One shared doc, listing both members → mutual by construction.
+            await window.firestoreSetDoc(pairRef, { users: [user.uid, friendUid] });
+            const input = document.getElementById('add-friend-input');
             if (input) input.value = '';
-            setStatus('Friend added! 🎉', true);
+            const results = document.getElementById('friend-search-results');
+            if (results) results.innerHTML = '';
+            this._setFriendStatus('add-friend-status', `Added @${name}! 🎉`, true);
             await this.loadSocial();
         } catch (e) {
-            setStatus('Could not add friend. Try again.', false);
+            this._setFriendStatus('add-friend-status', 'Could not add friend. Try again.', false);
         }
+    },
+
+    async searchUsers(prefixRaw) {
+        const results = document.getElementById('friend-search-results');
+        if (!results) return;
+        const prefix = this.normalizeUsername(prefixRaw);
+        if (prefix.length < 2) { results.innerHTML = ''; return; }
+        const user = window.firebaseAuth?.currentUser;
+        try {
+            const snap = await window.firestoreGetDocs(window.firestoreCollection(window.firebaseDb, 'usernames'));
+            const matches = [];
+            snap.forEach(d => {
+                const uid = d.data().uid;
+                if (uid === user?.uid) return;
+                if (d.id.startsWith(prefix)) matches.push(d.id);
+            });
+            matches.sort((a, b) => a.localeCompare(b));
+            const top = matches.slice(0, 8);
+            if (!top.length) { results.innerHTML = '<div class="friend-search-empty">No users found.</div>'; return; }
+            results.innerHTML = top.map(u => `
+                <button class="friend-search-item" type="button" data-username="${this.escapeHtml(u)}">
+                    <span class="fsi-name">@${this.escapeHtml(u)}</span>
+                    <span class="fsi-add">+ Add</span>
+                </button>`).join('');
+            results.querySelectorAll('.friend-search-item').forEach(btn =>
+                btn.addEventListener('click', () => this.addFriendByUsername(btn.dataset.username)));
+        } catch (e) {
+            results.innerHTML = '';
+        }
+    },
+
+    async removeFriend(friendUid) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !friendUid) return;
+        try {
+            await window.firestoreDeleteDoc(
+                window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, friendUid))
+            );
+            await this.loadSocial();
+        } catch (e) { /* non-fatal */ }
+    },
+
+    renderFriendsList(friends) {
+        const el = document.getElementById('friends-list');
+        if (!el) return;
+        if (!friends.length) {
+            el.innerHTML = '<div class="friends-list-empty">No friends yet — add someone above.</div>';
+            return;
+        }
+        el.innerHTML = friends.map(f => `
+            <div class="friend-row">
+                <span class="friend-row-name">${this.escapeHtml(f.name || 'Anonymous')}</span>
+                ${f.username ? `<span class="friend-row-handle">@${this.escapeHtml(f.username)}</span>` : ''}
+                <button class="friend-remove-btn" type="button" data-uid="${this.escapeHtml(f.uid)}">Remove</button>
+            </div>`).join('');
+        el.querySelectorAll('.friend-remove-btn').forEach(btn =>
+            btn.addEventListener('click', () => this.removeFriend(btn.dataset.uid)));
     },
 
     async loadSocial() {
@@ -548,25 +672,41 @@ async loadFromFirestore(uid) {
         if (signedOut) signedOut.style.display = 'none';
         if (content) content.style.display = 'block';
 
-        if (!this.state.friendCode) await this.ensureFriendCode(user.uid);
+        if (this.state.username == null) await this.loadUsername(user.uid);
         await this.publishLeaderboard(user.uid);
-        this.renderFriendCode();
+        this.renderUsername();
 
-        // Collect uids: me + friends
+        // Collect uids: me + friends (from the shared friendships collection)
         let friends = [];
         try {
-            const { data } = await this._getSocialDoc(user.uid);
-            friends = data.friends || [];
+            const q = window.firestoreQuery(
+                window.firestoreCollection(window.firebaseDb, 'friendships'),
+                window.firestoreWhere('users', 'array-contains', user.uid)
+            );
+            const snap = await window.firestoreGetDocs(q);
+            snap.forEach(d => {
+                const other = (d.data().users || []).find(u => u !== user.uid);
+                if (other) friends.push(other);
+            });
         } catch (e) { /* ignore */ }
-        const uids = [user.uid, ...friends];
 
-        const entries = [];
-        for (const uid of uids) {
+        // Fetch each member's public leaderboard doc once.
+        const lb = {};
+        for (const uid of [user.uid, ...friends]) {
             try {
                 const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'leaderboard', uid));
-                if (snap.exists()) entries.push({ uid, ...snap.data(), isMe: uid === user.uid });
+                if (snap.exists()) lb[uid] = snap.data();
             } catch (e) { /* ignore unreadable */ }
         }
+
+        const entries = [user.uid, ...friends]
+            .filter(uid => lb[uid])
+            .map(uid => ({ uid, ...lb[uid], isMe: uid === user.uid }));
+
+        // Friends list shows everyone you've added, even if they have no stats yet.
+        this.renderFriendsList(friends.map(uid => ({
+            uid, name: lb[uid]?.name, username: lb[uid]?.username
+        })));
         this.renderLeaderboards(entries);
     },
 
@@ -662,21 +802,34 @@ this.elements.btnStart.addEventListener('click', () => this.toggleTimer());
   }
 
   // Friends / leaderboard
-  const copyCodeBtn = document.getElementById('copy-code-btn');
-  if (copyCodeBtn) {
-    copyCodeBtn.addEventListener('click', () => {
-      const code = this.state.friendCode;
-      if (!code) return;
-      navigator.clipboard?.writeText(code).then(() => {
-        copyCodeBtn.textContent = 'Copied!';
-        setTimeout(() => { copyCodeBtn.textContent = 'Copy'; }, 1500);
+  const saveUsernameBtn = document.getElementById('save-username-btn');
+  if (saveUsernameBtn) saveUsernameBtn.addEventListener('click', () => this.saveUsername());
+  const usernameInput = document.getElementById('username-input');
+  if (usernameInput) usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.saveUsername(); } });
+
+  const copyInviteBtn = document.getElementById('copy-invite-btn');
+  if (copyInviteBtn) {
+    copyInviteBtn.addEventListener('click', () => {
+      const link = this.inviteLink();
+      if (!link) return;
+      navigator.clipboard?.writeText(link).then(() => {
+        copyInviteBtn.textContent = 'Copied!';
+        setTimeout(() => { copyInviteBtn.textContent = 'Copy link'; }, 1500);
       }).catch(() => {});
     });
   }
+
   const addFriendBtn = document.getElementById('add-friend-btn');
-  if (addFriendBtn) addFriendBtn.addEventListener('click', () => this.addFriendByCode());
+  if (addFriendBtn) addFriendBtn.addEventListener('click', () => this.addFriendFromInput());
   const addFriendInput = document.getElementById('add-friend-input');
-  if (addFriendInput) addFriendInput.addEventListener('keydown', e => { if (e.key === 'Enter') this.addFriendByCode(); });
+  if (addFriendInput) {
+    addFriendInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.addFriendFromInput(); } });
+    let searchT;
+    addFriendInput.addEventListener('input', () => {
+      clearTimeout(searchT);
+      searchT = setTimeout(() => this.searchUsers(addFriendInput.value), 250);
+    });
+  }
 
   if (this.elements.btnReset) {
     this.elements.btnReset.addEventListener('click', () => {
@@ -1472,7 +1625,7 @@ toggleTimer() {
                 this.elements.container.classList.remove('celebrating');
                 this.elements.container.classList.remove('timer-pulse');
             }, 2000);
-            if (this.state.settings.theme === 'terea') this.createConfetti();
+            this.createConfetti();
             if (this.state.settings.theme === 'terea') {
                 const tereaToasts = [
                     ['25 λεπτά καθαρά. Τέρεα τώρα.', 'Η βασίλισσα τελείωσε.'],

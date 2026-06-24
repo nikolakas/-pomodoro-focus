@@ -2579,6 +2579,77 @@ body.theme-terea .atm-card.terea-only-sound { display: flex; }
 .friends-status.ok { color: #4ade80; }
 .friends-status.err { color: #f87171; }
 
+/* Usernames replace the old uppercased code input */
+.username-input { text-transform: none; letter-spacing: normal; }
+.my-username {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--accent, #4ecdc4);
+  margin-left: 0.4rem;
+  font-size: 0.95rem;
+}
+.invite-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.invite-link-label { font-size: 0.82rem; color: var(--text-muted, #94a3b8); }
+
+/* Username search results */
+.friend-search-results { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; }
+.friend-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  color: var(--text, #e2e8f0);
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.friend-search-item:hover { background: rgba(255,255,255,0.09); }
+.fsi-name { font-weight: 600; }
+.fsi-add { font-size: 0.8rem; font-weight: 700; color: var(--accent, #4ecdc4); }
+.friend-search-empty { font-size: 0.85rem; color: var(--text-muted, #94a3b8); padding: 0.4rem 0; }
+
+/* Friends list with remove */
+.friends-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.friends-list-empty { font-size: 0.9rem; color: var(--text-muted, #94a3b8); padding: 0.4rem 0; }
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+}
+.friend-row-name { font-weight: 600; }
+.friend-row-handle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted, #94a3b8);
+}
+.friend-remove-btn {
+  margin-left: auto;
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.friend-remove-btn:hover { background: rgba(248,113,113,0.22); }
+
 .leaderboard {
   list-style: none;
   margin: 0;

@@ -393,24 +393,39 @@
     </div>
 
     <div id="friends-content">
-      <!-- Your code -->
+      <!-- Your username -->
       <section class="settings-section-card glass-card">
-        <h3 class="settings-section-title">Your friend code</h3>
-        <p class="friends-hint">Share this code so friends can add you.</p>
-        <div class="friend-code-row">
-          <span class="friend-code" id="my-friend-code">——————</span>
-          <button class="friend-btn" id="copy-code-btn" type="button">Copy</button>
+        <h3 class="settings-section-title">Your username <span class="my-username" id="my-username">not set yet</span></h3>
+        <p class="friends-hint">Pick a unique @username so friends can find you. You can change it anytime.</p>
+        <div class="friend-add-row">
+          <input type="text" id="username-input" class="friend-input username-input" placeholder="pick a username" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button class="friend-btn friend-btn-primary" id="save-username-btn" type="button">Save</button>
+        </div>
+        <p class="friends-status" id="username-status"></p>
+        <div class="invite-link-row" id="invite-link-row" style="display:none;">
+          <span class="invite-link-label">Share your invite link so a tap adds you:</span>
+          <button class="friend-btn" id="copy-invite-btn" type="button">Copy link</button>
         </div>
       </section>
 
       <!-- Add a friend -->
       <section class="settings-section-card glass-card">
         <h3 class="settings-section-title">Add a friend</h3>
+        <p class="friends-hint">Search by username, or type a friend's exact @username.</p>
         <div class="friend-add-row">
-          <input type="text" id="add-friend-input" class="friend-input" placeholder="Enter friend code" maxlength="8" autocomplete="off" />
+          <input type="text" id="add-friend-input" class="friend-input username-input" placeholder="Search username…" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" />
           <button class="friend-btn friend-btn-primary" id="add-friend-btn" type="button">Add</button>
         </div>
+        <div class="friend-search-results" id="friend-search-results"></div>
         <p class="friends-status" id="add-friend-status"></p>
+      </section>
+
+      <!-- Your friends -->
+      <section class="settings-section-card glass-card">
+        <h3 class="settings-section-title">Your friends</h3>
+        <div class="friends-list" id="friends-list">
+          <div class="friends-list-empty">No friends yet — add someone above.</div>
+        </div>
       </section>
 
       <!-- Daily leaderboard -->
@@ -842,7 +857,7 @@
     createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
     sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB1fUdKSuSoBh87zEkbpXbVS8x3vCJVXFc",
@@ -878,6 +893,11 @@
   window.firestoreUpdateDoc = updateDoc;
   window.firestoreArrayUnion = arrayUnion;
   window.firestoreArrayRemove = arrayRemove;
+  window.firestoreCollection = collection;
+  window.firestoreQuery = query;
+  window.firestoreWhere = where;
+  window.firestoreGetDocs = getDocs;
+  window.firestoreDeleteDoc = deleteDoc;
   window.dispatchEvent(new CustomEvent('firebase-ready'));
 </script>
 
