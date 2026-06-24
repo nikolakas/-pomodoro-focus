@@ -229,11 +229,17 @@ async initFirebase() {
     // ── Google Sign-In ────────────────────────────────────────────
     if (googleBtn) {
         googleBtn.addEventListener('click', async () => {
-            if (!window.GoogleAuthProvider || !window.signInWithPopup) return;
+            if (!window.GoogleAuthProvider) return;
             if (googleError) googleError.style.display = 'none';
             const provider = new window.GoogleAuthProvider();
             googleBtn.disabled = true;
             try {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile && window.signInWithRedirect) {
+                    // Popups are blocked on mobile browsers — always use redirect flow
+                    await window.signInWithRedirect(window.firebaseAuth, provider);
+                    return; // page will reload; result handled below
+                }
                 await window.signInWithPopup(window.firebaseAuth, provider);
                 closeModal();
             } catch (err) {
@@ -250,13 +256,15 @@ async initFirebase() {
         });
     }
 
-    // Handle redirect result (Google on mobile fallback)
+    // Handle redirect result — fires on every page load after Google redirect
     if (window.getRedirectResult && window.firebaseAuth) {
-        window.getRedirectResult(window.firebaseAuth).catch(err => {
-            if (err?.code && err.code !== 'auth/no-current-user') {
-                this.showToast('Sign-in failed', AUTH_ERRORS[err.code] || err.message, '⚠️');
-            }
-        });
+        window.getRedirectResult(window.firebaseAuth)
+            .then(result => { if (result?.user) closeModal(); })
+            .catch(err => {
+                if (err?.code && err.code !== 'auth/no-current-user') {
+                    this.showToast('Sign-in failed', AUTH_ERRORS[err.code] || err.message, '⚠️');
+                }
+            });
     }
 
     // ── Forgot Password ───────────────────────────────────────────
