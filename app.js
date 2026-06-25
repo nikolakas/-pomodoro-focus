@@ -332,6 +332,10 @@ async initFirebase() {
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
             this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
                 if (!snap.exists()) return;
+                // Skip snapshots triggered by our own local writes — we already
+                // applied those changes directly. Only process server-confirmed
+                // updates (needed for multi-device sync).
+                if (snap.metadata.hasPendingWrites) return;
                 const remote = snap.data();
                 this.state.history = remote.history || [];
                 this.state.xp = remote.xp || 0;
