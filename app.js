@@ -332,22 +332,21 @@ async initFirebase() {
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
             this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
                 if (!snap.exists()) return;
-                // Skip snapshots triggered by our own local writes — we already
-                // applied those changes directly. Only process server-confirmed
-                // updates (needed for multi-device sync).
+                // Skip snapshots from our own pending writes — stats already
+                // updated locally. Only process server-confirmed remote changes
+                // (e.g. another device completing a session).
                 if (snap.metadata.hasPendingWrites) return;
                 const remote = snap.data();
+                // Only sync stats — never override settings from the snapshot.
+                // Settings are synced once at login (loadFromFirestore) and
+                // managed locally after that, so they never flicker or revert.
                 this.state.history = remote.history || [];
                 this.state.xp = remote.xp || 0;
                 this.state.level = remote.level || 1;
                 this.state.sessionsToday = remote.sessionsToday || 0;
                 this.state.totalSessions = remote.totalSessions || 0;
-                this.state.settings = { ...this.state.settings, ...(remote.settings || {}) };
                 this.saveStats();
-                localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
-                this.updateTheme();
                 this.renderStats();
-                this.renderNotes();
                 this.renderHeatmap();
                 this.renderInsights();
             });
@@ -399,7 +398,9 @@ async loadFromFirestore(uid) {
         level: Math.max(remote.level || 1, this.state.level || 1),
         sessionsToday: Math.max(remote.sessionsToday || 0, localToday),
         totalSessions: Math.max(remote.totalSessions || 0, localTotal),
-        settings: { ...this.state.settings, ...(remote.settings || {}) },
+        // Local settings win — the user's most recent choice (already in
+        // this.state.settings from loadSettings()) takes priority over remote.
+        settings: { ...(remote.settings || {}), ...this.state.settings },
         lastSynced: new Date().toISOString()
     };
 
@@ -410,10 +411,11 @@ async loadFromFirestore(uid) {
     this.state.level = merged.level;
     this.state.sessionsToday = merged.sessionsToday;
     this.state.totalSessions = merged.totalSessions;
-    this.state.settings = { ...this.state.settings, ...(merged.settings || {}) };
+    this.state.settings = merged.settings;
 
     this.saveStats();
     this.saveSettings();
+    this.updateTheme();
     this.renderStats();
     this.renderNotes();
     this.renderHeatmap();
