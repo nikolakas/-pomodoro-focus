@@ -1753,6 +1753,9 @@ toggleTimer() {
         }
 
         this.state.timeLeft = newTime;
+        // Re-anchor the wall-clock baseline so the next interval tick doesn't overwrite the adjustment.
+        this.state.sessionStartTime = Date.now();
+        this.state.sessionTotalSeconds = newTime;
         this.state.adjustedTotal += deltaSecs;
         this.state.timeAdjustment = (this.state.timeAdjustment || 0) + deltaSecs;
 
