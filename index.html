@@ -28,11 +28,6 @@
             
             <!-- Subtle friend banners — visible only in their theme -->
             <span class="friend-terea-tag" id="terea-tag" aria-hidden="true"></span>
-            <div class="auth-bar" id="auth-bar">
-  <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
-  <span id="auth-name" class="auth-name"></span>
-  <button class="btn btn-secondary btn-signin" id="btn-auth">Sign in</button>
-</div>
             <nav class="tabs" role="tablist">
                 <button class="tab active" data-tab="timer" role="tab" aria-selected="true" id="tab-timer">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -60,6 +55,12 @@
                     Settings
                 </button>
             </nav>
+
+            <div class="auth-bar" id="auth-bar">
+                <img id="auth-avatar" class="auth-avatar" alt="User avatar" style="display:none;">
+                <span id="auth-name" class="auth-name"></span>
+                <button class="btn btn-secondary btn-signin" id="btn-auth">Sign in</button>
+            </div>
         </header>
 
         <main class="tab-content active" id="panel-timer" role="tabpanel" aria-labelledby="tab-timer">
@@ -158,76 +159,43 @@
 
         </main>
 
-<div id="atmosphere-overlay" class="atmosphere-overlay" style="display:none;" role="dialog" aria-label="Atmosphere">
+<div id="atmosphere-overlay" class="atmosphere-overlay" style="display:none;" role="dialog" aria-label="Ambience">
   <div class="atmosphere-panel glass-card">
     <div class="atmosphere-header">
-      <h2 class="atmosphere-title">🎵 Atmosphere</h2>
+      <h2 class="atmosphere-title">Ambience</h2>
       <button class="atmosphere-close" id="btn-close-atmosphere" aria-label="Close">✕</button>
     </div>
 
-    <div class="atm-presets-label">Quick Presets</div>
-    <div class="atm-presets">
-      <button class="mood-card atm-preset-btn" data-mood="deepfocus"><span class="mood-icon">📚</span><div class="mood-info"><span class="mood-name">Deep Focus</span><span class="mood-desc">Library + Forest</span></div></button>
-      <button class="mood-card atm-preset-btn" data-mood="cozycafe"><span class="mood-icon">☕</span><div class="mood-info"><span class="mood-name">Rainy Café</span><span class="mood-desc">Café + Jazz</span></div></button>
-      <button class="mood-card atm-preset-btn" data-mood="oceanbreeze"><span class="mood-icon">🌊</span><div class="mood-info"><span class="mood-name">Ocean Sunset</span><span class="mood-desc">Waves + Nature</span></div></button>
-      <button class="mood-card atm-preset-btn" data-mood="rainyday"><span class="mood-icon">🌧️</span><div class="mood-info"><span class="mood-name">Rainy Day</span><span class="mood-desc">Rain + Brown</span></div></button>
-    </div>
-
-    <div class="atm-scenes-label">Sounds</div>
-    <div class="atm-scenes" id="atm-scenes-grid">
-      <div class="mixer-channel atm-card" data-scene="rain">
-        <button class="atm-card-face mixer-btn" data-scene="rain"><span class="atm-icon">🌧️</span><span class="atm-name">Rain</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="rain" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="waves">
-        <button class="atm-card-face mixer-btn" data-scene="waves"><span class="atm-icon">🌊</span><span class="atm-name">Waves</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="waves" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="brown">
-        <button class="atm-card-face mixer-btn" data-scene="brown"><span class="atm-icon">📻</span><span class="atm-name">Brown</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="brown" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="nature">
-        <button class="atm-card-face mixer-btn" data-scene="nature"><span class="atm-icon">🌲</span><span class="atm-name">Forest</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="nature" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="cafe">
-        <button class="atm-card-face mixer-btn" data-scene="cafe"><span class="atm-icon">☕</span><span class="atm-name">Café</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="cafe" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="library">
-        <button class="atm-card-face mixer-btn" data-scene="library"><span class="atm-icon">📚</span><span class="atm-name">Library</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="library" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card" data-scene="jazz">
-        <button class="atm-card-face mixer-btn" data-scene="jazz"><span class="atm-icon">🎷</span><span class="atm-name">Jazz</span></button>
-        <input type="range" class="mixer-slider atm-slider" data-scene="jazz" min="0" max="100" value="0">
-        <span class="mixer-vol atm-vol-label">0%</span>
-      </div>
-      <div class="mixer-channel atm-card terea-only-sound" data-scene="bouzoukia">
-        <button class="atm-card-face mixer-btn" data-scene="bouzoukia"><span class="atm-icon">🪗</span><span class="atm-name">Bouzoukia</span></button>
-        <div class="bz-btn-row" style="display:flex;gap:4px;justify-content:center;margin-bottom:4px;">
-          <input type="range" class="mixer-slider atm-slider" data-scene="bouzoukia" min="0" max="100" value="0">
-          <button class="bz-next-btn" id="bz-next-btn" title="Next track">⏭</button>
+    <div class="radio" id="cafe-radio">
+      <div class="radio-head">
+        <div class="radio-art" aria-hidden="true">
+          <span class="radio-art-emoji">☕</span>
+          <span class="radio-bars"><i></i><i></i><i></i><i></i></span>
         </div>
-        <span class="mixer-vol atm-vol-label">0%</span>
+        <div class="radio-meta">
+          <span class="radio-name">Coffee Shop</span>
+          <span class="radio-status" id="radio-status">Paused</span>
+        </div>
+        <button class="radio-play" id="radio-play" aria-label="Play coffee shop ambience">
+          <svg class="i-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+          <svg class="i-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        </button>
       </div>
-    </div>
 
-    <div class="atm-footer">
-      <button class="atm-stop-all" id="btn-stop-all-ambient">⬜ Stop All</button>
-      <div class="atm-save-row">
-        <input type="text" class="atm-mix-name-input" id="atm-mix-name" placeholder="Name this mix...">
-        <button class="atm-save-btn btn btn-secondary" onclick="app.saveCurrentMix()">Save Mix</button>
+      <div class="radio-volume">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <input type="range" id="radio-volume" class="radio-slider" min="0" max="100" value="60" aria-label="Ambience volume">
+        <span class="radio-vol-label" id="radio-vol-label">60%</span>
       </div>
+
+      <div class="radio-player"><div id="radio-frame"></div></div>
+
+      <div class="radio-actions">
+        <button class="radio-chip" id="radio-next" title="Skip to another café stream">Shuffle station</button>
+        <button class="radio-chip radio-chip-stop" id="btn-stop-all-ambient">Stop</button>
+      </div>
+      <p class="radio-note">Streams a lo-fi café playlist from YouTube. Nothing plays until you press play.</p>
     </div>
-    <div class="atm-saved-mixes" id="atm-saved-mixes"></div>
   </div>
 </div>
 
