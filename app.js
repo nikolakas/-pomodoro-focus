@@ -47,7 +47,6 @@ const app = {
         timeAdjustment: 0,
         adjustedTotal: null,
        sceneVolumes: {},
-mixerVolumes: { rain: 0, waves: 0, brown: 0, nature: 0, cafe: 0, library: 0, jazz: 0, bouzoukia: 0 },
       currentIntention: null,
 currentSubtasks: [],
         activeNoteFilter: null,
@@ -68,7 +67,7 @@ currentSubtasks: [],
         this.updateTheme();
         this.bindEvents();
         this.bindSteppers();
-		this.initMixer();
+		this.initCafeRadio();
         this.renderStats();
         this.renderNotes();
         this.renderHeatmap();
@@ -332,18 +331,21 @@ async initFirebase() {
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
             this.userUnsub = window.firestoreOnSnapshot(ref, (snap) => {
                 if (!snap.exists()) return;
+                // Skip snapshots from our own pending writes — stats already
+                // updated locally. Only process server-confirmed remote changes
+                // (e.g. another device completing a session).
+                if (snap.metadata.hasPendingWrites) return;
                 const remote = snap.data();
+                // Only sync stats — never override settings from the snapshot.
+                // Settings are synced once at login (loadFromFirestore) and
+                // managed locally after that, so they never flicker or revert.
                 this.state.history = remote.history || [];
                 this.state.xp = remote.xp || 0;
                 this.state.level = remote.level || 1;
                 this.state.sessionsToday = remote.sessionsToday || 0;
                 this.state.totalSessions = remote.totalSessions || 0;
-                this.state.settings = { ...this.state.settings, ...(remote.settings || {}) };
                 this.saveStats();
-                localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
-                this.updateTheme();
                 this.renderStats();
-                this.renderNotes();
                 this.renderHeatmap();
                 this.renderInsights();
             });
@@ -395,7 +397,9 @@ async loadFromFirestore(uid) {
         level: Math.max(remote.level || 1, this.state.level || 1),
         sessionsToday: Math.max(remote.sessionsToday || 0, localToday),
         totalSessions: Math.max(remote.totalSessions || 0, localTotal),
-        settings: { ...this.state.settings, ...(remote.settings || {}) },
+        // Local settings win — the user's most recent choice (already in
+        // this.state.settings from loadSettings()) takes priority over remote.
+        settings: { ...(remote.settings || {}), ...this.state.settings },
         lastSynced: new Date().toISOString()
     };
 
@@ -406,10 +410,11 @@ async loadFromFirestore(uid) {
     this.state.level = merged.level;
     this.state.sessionsToday = merged.sessionsToday;
     this.state.totalSessions = merged.totalSessions;
-    this.state.settings = { ...this.state.settings, ...(merged.settings || {}) };
+    this.state.settings = merged.settings;
 
     this.saveStats();
     this.saveSettings();
+    this.updateTheme();
     this.renderStats();
     this.renderNotes();
     this.renderHeatmap();
@@ -549,15 +554,44 @@ async loadFromFirestore(uid) {
         if (!user) return;
         try {
             await this.loadUsername(user.uid);
+            // Auto-assign a username if the user has none — makes them findable immediately.
+            if (!this.state.username) await this._autoAssignUsername(user);
             await this.publishLeaderboard(user.uid);
         } catch (e) { /* non-fatal */ }
         this.renderUsername();
+        this.listenForFriendRequests(user);
         // Consume an invite that arrived via a shared ?add= link.
         if (this._pendingInvite) {
             const handle = this._pendingInvite;
             this._pendingInvite = null;
             this.switchTab('friends');
             await this.addFriendByUsername(handle);
+        }
+    },
+
+    // Derive a username from email / display name and claim it automatically.
+    async _autoAssignUsername(user) {
+        if (!window.firebaseDb) return;
+        const raw = ((user.displayName || user.email || '').split('@')[0])
+            .toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+        const base = raw.length >= 3 ? raw : 'user' + Date.now().toString().slice(-4);
+        for (let i = 0; i <= 9; i++) {
+            const candidate = i === 0 ? base : `${base.slice(0, 14)}${i}`;
+            if (!this.USERNAME_RE.test(candidate)) continue;
+            try {
+                const snap = await window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'usernames', candidate));
+                if (!snap.exists()) {
+                    const result = await this.setUsername(user.uid, candidate);
+                    if (result.ok) {
+                        this.showToast(`Your username is @${candidate}`, 'Friends can now find and add you!', '✓');
+                        return;
+                    }
+                } else if (snap.data()?.uid === user.uid) {
+                    this.state.username = candidate;
+                    this.renderUsername();
+                    return;
+                }
+            } catch (e) { break; }
         }
     },
 
@@ -623,19 +657,43 @@ async loadFromFirestore(uid) {
             if (!snap.exists()) { this._setFriendStatus('add-friend-status', `No user @${name} found.`, false); return; }
             const friendUid = snap.data().uid;
             if (friendUid === user.uid) { this._setFriendStatus('add-friend-status', "That's you.", false); return; }
+
+            // Already friends?
             const pairRef = window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, friendUid));
             const existing = await window.firestoreGetDoc(pairRef);
             if (existing.exists()) { this._setFriendStatus('add-friend-status', `Already friends with @${name}.`, true); return; }
-            // One shared doc, listing both members → mutual by construction.
-            await window.firestoreSetDoc(pairRef, { users: [user.uid, friendUid] });
+
+            // Did they already send ME a request? → auto-accept = instant friendship.
+            const theirReqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${friendUid}_${user.uid}`);
+            const theirReq = await window.firestoreGetDoc(theirReqRef);
+            if (theirReq.exists()) {
+                await this.acceptFriendRequest(friendUid);
+                this._setFriendStatus('add-friend-status', `Matched! You and @${name} are now friends 🎉`, true);
+                return;
+            }
+
+            // Already sent them a request?
+            const myReqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${user.uid}_${friendUid}`);
+            const myReq = await window.firestoreGetDoc(myReqRef);
+            if (myReq.exists()) { this._setFriendStatus('add-friend-status', `Request already sent to @${name}.`, true); return; }
+
+            // Send a friend request — the other user will accept/decline.
+            await window.firestoreSetDoc(myReqRef, {
+                from: user.uid,
+                to: friendUid,
+                fromUsername: this.state.username || null,
+                fromName: user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'Someone',
+                toUsername: name,
+                sentAt: new Date().toISOString()
+            });
+
             const input = document.getElementById('add-friend-input');
             if (input) input.value = '';
             const results = document.getElementById('friend-search-results');
             if (results) results.innerHTML = '';
-            this._setFriendStatus('add-friend-status', `Added @${name}! 🎉`, true);
-            await this.loadSocial();
+            this._setFriendStatus('add-friend-status', `Friend request sent to @${name}! 📨`, true);
         } catch (e) {
-            this._setFriendStatus('add-friend-status', 'Could not add friend. Try again.', false);
+            this._setFriendStatus('add-friend-status', 'Could not send request. Try again.', false);
         }
     },
 
@@ -690,10 +748,15 @@ async loadFromFirestore(uid) {
             <div class="friend-row">
                 <span class="friend-row-name">${this.escapeHtml(f.name || 'Anonymous')}</span>
                 ${f.username ? `<span class="friend-row-handle">@${this.escapeHtml(f.username)}</span>` : ''}
-                <button class="friend-remove-btn" type="button" data-uid="${this.escapeHtml(f.uid)}">Remove</button>
+                <div class="friend-row-actions">
+                    <button class="friend-msg-btn" type="button" data-uid="${this.escapeHtml(f.uid)}" data-username="${this.escapeHtml(f.username || '')}" title="Message">💬</button>
+                    <button class="friend-remove-btn" type="button" data-uid="${this.escapeHtml(f.uid)}">Remove</button>
+                </div>
             </div>`).join('');
         el.querySelectorAll('.friend-remove-btn').forEach(btn =>
             btn.addEventListener('click', () => this.removeFriend(btn.dataset.uid)));
+        el.querySelectorAll('.friend-msg-btn').forEach(btn =>
+            btn.addEventListener('click', () => this.openChat(btn.dataset.uid, btn.dataset.username)));
     },
 
     async loadSocial() {
@@ -845,7 +908,6 @@ async loadFromFirestore(uid) {
 
             quoteText: document.getElementById('quote-text'),
 
-            ambientPills: document.querySelectorAll('.mixer-btn'),
 ambientVolInput: null,
 
             colorBtns: document.querySelectorAll('#color-picker .color-btn'),
@@ -859,8 +921,7 @@ ambientVolInput: null,
             wpUpload: document.getElementById('wallpaper-upload'),
             wpGallery: document.getElementById('wallpaper-gallery'),
 
-            btnPreviewSound: document.getElementById('btn-preview-sound'),
-            moodCards: document.querySelectorAll('.mood-card')
+            btnPreviewSound: document.getElementById('btn-preview-sound')
         };
     },
 
@@ -986,11 +1047,6 @@ this.elements.btnSkip.addEventListener('click', () => this.skipSession());
       const target = e.target.closest('.tab')?.dataset.tab;
       if (target) this.switchTab(target);
     });
-  });
-
-  // Focus Moods
-  this.elements.moodCards.forEach(card => {
-    card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
   });
 
 
@@ -1253,8 +1309,9 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   if (btnSounds && atmosphereOverlay) {
     btnSounds.addEventListener('click', () => {
       atmosphereOverlay.style.display = 'flex';
-      this._updateSoundsActiveIndicator();
-      this.renderSavedMixes();
+      // Build the player now that its container is actually on screen.
+      this._ensureCafePlayer();
+      this._renderRadio();
     });
   }
   if (btnCloseAtmosphere && atmosphereOverlay) {
@@ -1266,19 +1323,28 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     });
   }
 
-  // Mood cards in atmosphere overlay (atm-preset-btn)
-  document.querySelectorAll('.atm-preset-btn').forEach(card => {
-    card.addEventListener('click', e => this.activateMood(e.currentTarget.dataset.mood));
-  });
+  // Chat modal
+  const chatModal = document.getElementById('chat-modal');
+  const chatClose = document.getElementById('chat-modal-close');
+  const chatSend = document.getElementById('chat-send-btn');
+  const chatInput = document.getElementById('chat-input');
+  const closeChatModal = () => {
+    if (chatModal) chatModal.style.display = 'none';
+    if (this._chatUnsub) { this._chatUnsub(); this._chatUnsub = null; }
+  };
+  if (chatClose) chatClose.addEventListener('click', closeChatModal);
+  if (chatModal) chatModal.addEventListener('click', e => { if (e.target === chatModal) closeChatModal(); });
+  if (chatSend) chatSend.addEventListener('click', () => this.sendChatMessage());
+  if (chatInput) chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChatMessage(); } });
+
+  // Cat companion — click / tap to meow
+  const catEl = document.getElementById('cat-companion');
+  if (catEl) {
+    catEl.addEventListener('click', () => this.playMeow());
+    catEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') this.playMeow(); });
+  }
 },
 
-
-    _updateSoundsActiveIndicator() {
-        const btn = document.getElementById('btn-sounds');
-        if (!btn) return;
-        const anyActive = Object.entries(this.state.mixerVolumes).some(([k, v]) => !k.startsWith('_prev_') && typeof v === 'number' && v > 0);
-        btn.classList.toggle('sounds-active', anyActive);
-    },
 
     bindSteppers() {
         document.querySelectorAll('.stepper-btn').forEach(btn => {
@@ -1307,138 +1373,166 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
             btn.addEventListener('touchend', () => clearInterval(interval));
         });
     },
-initMixer() {
-    // Load saved volumes
-    const saved = localStorage.getItem('pomodoro_mixer');
-    if (saved) this.state.mixerVolumes = { ...this.state.mixerVolumes, ...JSON.parse(saved) };
+// ===================================
+// CAFE RADIO — one ambience channel, streamed from YouTube.
+// Volume is remembered; playback state deliberately is not, so opening the
+// app never starts making noise on its own.
+// ===================================
+CAFE_TRACKS: [
+    'h-PfBxoMq_4', // 4K Cozy Coffee Shop Piano Jazz
+    'YACyyY64X-E', // Cozy Coffee Shop Ambience smooth jazz
+    'gaGrHUekGrc', // Coffee Shop Sounds for Study
+    'BywDOO99Ia0', // Coffee Shop Music relax jazz
+    'vHcj3REfLc0', // 4K Cozy Coffee Shop
+    'X5cG44D_6-o', // Autumn Coffee Shop Ambience jazz
+    's_m1QKaQXVc', // STUDY WITH ME CAFE pomodoro
+],
 
-    document.querySelectorAll('.mixer-slider').forEach(slider => {
-        const scene = slider.dataset.scene;
-        const vol = this.state.mixerVolumes[scene] || 0;
-        slider.value = vol;
+initCafeRadio() {
+    const savedVol = parseInt(localStorage.getItem('pomodoro_cafe_volume'), 10);
+    this.cafe = {
+        player: null,
+        ready: false,
+        playing: false,
+        idx: Math.floor(Math.random() * this.CAFE_TRACKS.length),
+        volume: Number.isFinite(savedVol) ? Math.max(0, Math.min(100, savedVol)) : 60
+    };
 
-        // Restore UI state only — don't call play() on load (AudioContext needs user gesture)
-        const channel = slider.closest('.mixer-channel');
-        if (channel) {
-            channel.querySelector('.mixer-vol').textContent = `${vol}%`;
-            if (vol > 0) channel.classList.add('active');
-        }
+    const slider = document.getElementById('radio-volume');
+    const playBtn = document.getElementById('radio-play');
+    const nextBtn = document.getElementById('radio-next');
+    const stopBtn = document.getElementById('btn-stop-all-ambient');
 
-        slider.addEventListener('input', (e) => {
-            const v = parseInt(e.target.value);
-            this.state.mixerVolumes[scene] = v;
-            channel.querySelector('.mixer-vol').textContent = `${v}%`;
-
-            if (v > 0) {
-                if (!window.AmbienceModule.isActive(scene)) {
-                    window.AmbienceModule.play(scene);
-                }
-                window.AmbienceModule.setSceneVolume(scene, v / 100);
-                channel.classList.add('active');
-            } else {
-                window.AmbienceModule.stop(scene);
-                channel.classList.remove('active');
-            }
-
-            localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
-            this._updateSoundsActiveIndicator();
-        });
-    });
-
-    // Mixer icon click — toggle on/off at 70% or mute
-    document.querySelectorAll('.mixer-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const scene = btn.dataset.scene;
-            const slider = document.querySelector(`.mixer-slider[data-scene="${scene}"]`);
-            const channel = btn.closest('.mixer-channel');
-            const currentVol = parseInt(slider.value);
-
-            if (currentVol > 0) {
-                // Mute — remember last volume
-                this.state.mixerVolumes[`_prev_${scene}`] = currentVol;
-                slider.value = 0;
-                this.state.mixerVolumes[scene] = 0;
-                channel.querySelector('.mixer-vol').textContent = '0%';
-                window.AmbienceModule.stop(scene);
-                channel.classList.remove('active');
-            } else {
-                // Unmute — restore or default to 70
-                const prev = this.state.mixerVolumes[`_prev_${scene}`] || 70;
-                slider.value = prev;
-                this.state.mixerVolumes[scene] = prev;
-                channel.querySelector('.mixer-vol').textContent = `${prev}%`;
-                window.AmbienceModule.play(scene);
-                window.AmbienceModule.setSceneVolume(scene, prev / 100);
-                channel.classList.add('active');
-            }
-            localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
-            this._updateSoundsActiveIndicator();
-        });
-    });
-
-    // Stop all button
-    const stopAll = document.getElementById('btn-stop-all-ambient');
-    if (stopAll) {
-        stopAll.addEventListener('click', () => {
-            document.querySelectorAll('.mixer-slider').forEach(s => {
-                s.value = 0;
-                const ch = s.closest('.mixer-channel');
-                if (ch) {
-                    ch.querySelector('.mixer-vol').textContent = '0%';
-                    ch.classList.remove('active');
-                }
-                this.state.mixerVolumes[s.dataset.scene] = 0;
-            });
-            window.AmbienceModule.stopAll();
-            localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
-            this._updateSoundsActiveIndicator();
+    if (slider) {
+        slider.value = this.cafe.volume;
+        slider.addEventListener('input', e => {
+            this.cafe.volume = parseInt(e.target.value, 10) || 0;
+            localStorage.setItem('pomodoro_cafe_volume', String(this.cafe.volume));
+            if (this.cafe.player && this.cafe.ready) this.cafe.player.setVolume(this.cafe.volume);
+            this._renderRadio();
         });
     }
+    if (playBtn) playBtn.addEventListener('click', () => this.toggleCafeRadio());
+    if (nextBtn) nextBtn.addEventListener('click', () => this.nextCafeTrack());
+    if (stopBtn) stopBtn.addEventListener('click', () => this.stopCafeRadio());
 
-    // Greek laïká — verified YouTube IDs from official channels
-    this._initYTChannel('bouzoukia', [
-        // Antonis Remos
-        'jdeNvxLA8EQ', // Τα Σάββατα
-        'gd0Nua0I43s', // Borei na vgo
-        'sTyGh6edBRQ', // Χίλια Σπίρτα
-        'MFLZSkfA7hU', // To Kerma
-        // Nikos Oikonomopoulos
-        'KYaT3q0jfaM', // Για Παράδειγμα
-        'ycWOTNuYuxg', // Πρώτη Θέση
-        '-EzSpGMvVg4', // Κουράστηκα Να Σ'Αγαπώ
-        'q9CE6Z5fLTs', // Πάλι Γύρισα
-        // Nikos Makropoulos
-        'niUGXJR2Fp4', // De Les Kouventa (live w/ Karras)
-        // User's picks + laïká mix
-        '4oSIfj_nY6E',
-        'tEGc0KVOerk',
-        'AW3qdGNqags',
-        'yuo_HFRjuA4', // Greek Laika broken hearts mix
-    ], 'Sabanis.mp3');
-
-    // Jazz — lofi/study YouTube channels
-    this._initYTChannel('jazz', [
-        'HuFYqnbVbzY', // jazz lofi radio 🎷 beats to chill/study to
-        'CBSlu_VMS9U', // jazz lofi mix [3 hours]
-        'CfPxlb8-ZQ0', // Work & Study Lofi Jazz
-        'bz5q5gl2uZA', // Lofi Jazz Study Music
-        'qzyl0f3mRG0', // Jazz Beats lofi jazz jazzhop
-        '-R0UYHS8A_A', // Afternoon Jazz
-        'BGo4QajF1-k', // Best JazzHop Vibes 2024
-    ], null);
-
-    // Cafe — coffee shop ambience YouTube
-    this._initYTChannel('cafe', [
-        'h-PfBxoMq_4', // 4K Cozy Coffee Shop Piano Jazz
-        'YACyyY64X-E', // Cozy Coffee Shop Ambience smooth jazz
-        'gaGrHUekGrc', // Coffee Shop Sounds for Study
-        'BywDOO99Ia0', // Coffee Shop Music relax jazz
-        'vHcj3REfLc0', // 4K Cozy Coffee Shop
-        'X5cG44D_6-o', // Autumn Coffee Shop Ambience jazz
-        's_m1QKaQXVc', // STUDY WITH ME CAFE pomodoro
-    ], null);
+    // No YouTube anything at boot — the API and the player are only fetched once
+    // the ambience sheet is opened. Nothing to load, nothing that could sound off.
+    this._renderRadio();
 },
+
+// Injects the IFrame API once, then builds the (paused) player. Called when the
+// sheet opens: a player built inside a display:none panel never fires onReady,
+// so building it lazily is also the only way it reliably initialises.
+_ensureCafePlayer() {
+    if (this.cafe.player) return;
+
+    if (window.YT && window.YT.Player) { this._buildCafePlayer(); return; }
+
+    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); this._buildCafePlayer(); };
+},
+
+_buildCafePlayer() {
+    if (this.cafe.player || !window.YT || !window.YT.Player) return;
+    const frame = document.getElementById('radio-frame');
+    if (!frame) return;
+
+    this.cafe.player = new window.YT.Player('radio-frame', {
+        width: '100%', height: '100%',
+        videoId: this.CAFE_TRACKS[this.cafe.idx],
+        playerVars: { autoplay: 0, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
+        events: {
+            onReady: () => {
+                this.cafe.ready = true;
+                this.cafe.player.setVolume(this.cafe.volume);
+                // Cued only. Playback waits for a click — never for a page load.
+                // The one exception: an impatient click that landed before the
+                // API finished loading, which is still a real user gesture.
+                if (this.cafe.pendingPlay) { this.cafe.pendingPlay = false; this.playCafeRadio(); }
+                this._renderRadio();
+            },
+            onStateChange: e => {
+                if (e.data === window.YT.PlayerState.ENDED) { this.nextCafeTrack(); return; }
+                if (e.data === window.YT.PlayerState.PLAYING) this.cafe.playing = true;
+                if (e.data === window.YT.PlayerState.PAUSED)  this.cafe.playing = false;
+                this._renderRadio();
+            },
+            onError: () => {
+                // Dead or region-blocked video — roll on to the next one.
+                this.nextCafeTrack();
+            }
+        }
+    });
+},
+
+toggleCafeRadio() {
+    if (this.cafe.playing) this.stopCafeRadio();
+    else this.playCafeRadio();
+},
+
+playCafeRadio() {
+    const c = this.cafe;
+    this._ensureCafePlayer();
+    // Not wired up yet — remember the intent and let onReady honour it.
+    if (!c.player || !c.ready) { c.pendingPlay = true; this._renderRadio(); return; }
+    c.player.setVolume(c.volume);
+    c.player.playVideo();
+    c.playing = true;
+    this._renderRadio();
+},
+
+stopCafeRadio() {
+    const c = this.cafe;
+    c.pendingPlay = false;
+    if (c.player && c.ready) c.player.pauseVideo();
+    c.playing = false;
+    this._renderRadio();
+},
+
+nextCafeTrack() {
+    const c = this.cafe;
+    c.idx = (c.idx + 1) % this.CAFE_TRACKS.length;
+    if (!c.player || !c.ready) return;
+    if (c.playing) c.player.loadVideoById(this.CAFE_TRACKS[c.idx]);
+    else c.player.cueVideoById(this.CAFE_TRACKS[c.idx]);
+    this._renderRadio();
+},
+
+// Single place that paints radio state, so the button, label and the little
+// dot on the Sounds button can never disagree with each other.
+_renderRadio() {
+    const c = this.cafe;
+    if (!c) return;
+    const playing = !!c.playing;
+
+    const card = document.getElementById('cafe-radio');
+    if (card) card.classList.toggle('is-playing', playing);
+
+    const btn = document.getElementById('radio-play');
+    if (btn) {
+        btn.classList.toggle('is-playing', playing);
+        btn.setAttribute('aria-label', playing ? 'Pause coffee shop ambience' : 'Play coffee shop ambience');
+    }
+
+    const status = document.getElementById('radio-status');
+    if (status) {
+        status.textContent = playing ? 'Now playing · lo-fi cafe'
+            : (c.pendingPlay ? 'Connecting to YouTube…' : (c.volume === 0 ? 'Muted' : 'Paused'));
+    }
+
+    const volLabel = document.getElementById('radio-vol-label');
+    if (volLabel) volLabel.textContent = `${c.volume}%`;
+
+    const soundsBtn = document.getElementById('btn-sounds');
+    if (soundsBtn) soundsBtn.classList.toggle('sounds-active', playing);
+},
+
 switchTab(target) {
     this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
     this.elements.panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
@@ -1470,6 +1564,9 @@ setMode(mode, preserveTime = false) {
     this.state.timeAdjustment = 0;
     this.state.adjustedTotal = null;
     this.elements.modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+    // Drives --mode-accent: the whole UI cools down on breaks and warms up for focus.
+    document.body.dataset.mode = mode;
+    this.updateRingGradient();
 
     const m = mode === 'work' ? this.state.settings.work :
               mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long;
@@ -1552,18 +1649,19 @@ toggleTimer() {
     this.startTimer();
 },
 
-    startTimer() {
+    startTimer(isRestore = false) {
     if (this.state.timeLeft <= 0) {
         this.setMode(this.state.mode || 'work');
     }
 
     this._stopKiamos();
 
-    // Request notification permission and resume any pending ambient sounds on first start
-    if ('Notification' in window && Notification.permission === 'default') {
+    // Ask for notification permission on a real start only — never on a page-load
+    // restore, which isn't a user gesture. Starting the timer never starts audio:
+    // the café radio is played from its own button and nowhere else.
+    if (!isRestore && 'Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
-    this.resumeAmbience();
 
     this.state.isRunning = true;
 
@@ -1665,6 +1763,9 @@ toggleTimer() {
         }
 
         this.state.timeLeft = newTime;
+        // Re-anchor the wall-clock baseline so the next interval tick doesn't overwrite the adjustment.
+        this.state.sessionStartTime = Date.now();
+        this.state.sessionTotalSeconds = newTime;
         this.state.adjustedTotal += deltaSecs;
         this.state.timeAdjustment = (this.state.timeAdjustment || 0) + deltaSecs;
 
@@ -1809,7 +1910,7 @@ restoreSessionState() {
             this.state.timeLeft = s.timeLeft;
             this.updateTimeDisplay();
             this.updateRing();
-            if (s.isRunning) this.startTimer();
+            if (s.isRunning) this.startTimer(true);
         }
     } catch (e) {}
 },
@@ -2018,156 +2119,6 @@ el.addEventListener('click', () => {
         if (bar) bar.classList.remove('visible');
     },
 
-    _initYTChannel(scene, trackIds, fallbackSrc) {
-        if (!this._ytPlayers) this._ytPlayers = {};
-        const fallback = fallbackSrc ? new Audio(fallbackSrc) : null;
-        if (fallback) fallback.loop = true;
-
-        const ch = { player: null, ready: false, failed: false, idx: 0, fallback };
-        this._ytPlayers[scene] = ch;
-
-        const vol     = () => (this.state.mixerVolumes[scene] || 0) / 100;
-        const startFb = () => { if (!fallback) return; fallback.volume = Math.min(1, vol()); if (fallback.paused) fallback.play().catch(() => {}); };
-        const stopFb  = () => { if (!fallback) return; fallback.pause(); fallback.currentTime = 0; };
-        const setVol  = (v) => { if (fallback) fallback.volume = Math.min(1, v); if (ch.player && ch.ready) ch.player.setVolume(v * 100); };
-
-        const wrapId  = `yt-wrap-${scene}`;
-        const frameId = `yt-frame-${scene}`;
-
-        const showPlayer = (on) => {
-            const w = document.getElementById(wrapId);
-            if (!w) return;
-            if (scene === 'bouzoukia') {
-                // Bouzoukia player lives in body — toggle visibility
-                if (on) {
-                    w.style.cssText = 'position:fixed;bottom:80px;right:16px;width:280px;height:158px;z-index:50;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.5);';
-                } else {
-                    w.style.cssText = 'position:fixed;bottom:0;right:0;width:200px;height:113px;z-index:-1;opacity:0;pointer-events:none;';
-                }
-            } else {
-                w.style.maxHeight = on ? '180px' : '0';
-            }
-        };
-
-        const loadTrack = () => {
-            if (!ch.player || !trackIds.length) return;
-            ch.player.loadVideoById(trackIds[ch.idx % trackIds.length]);
-        };
-
-        const ytPlay = () => {
-            if (!ch.player || !ch.ready) return false;
-            ch.player.setVolume(vol() * 100);
-            const s = ch.player.getPlayerState();
-            if (s === 1) return true;
-            if (s === 2) { ch.player.playVideo(); return true; }
-            loadTrack();
-            return true;
-        };
-
-        const onStart = () => {
-            if (!trackIds.length || ch.failed) { startFb(); return; }
-            showPlayer(true);
-            if (ch.ready) ytPlay(); else startFb(); // fallback until YouTube is ready
-        };
-        const onStop = () => {
-            if (ch.player && ch.ready) ch.player.pauseVideo();
-            stopFb();
-            showPlayer(false);
-        };
-
-        // Create player wrap — bouzoukia goes in body (always rendered) since its
-        // mixer-channel card is display:none outside Terea theme and YouTube needs
-        // a rendered element to initialise. Other channels go inside their channel div.
-        if (!document.getElementById(wrapId) && trackIds.length) {
-            const wrap = document.createElement('div');
-            wrap.id = wrapId;
-            if (scene === 'bouzoukia') {
-                wrap.style.cssText = 'position:fixed;bottom:0;right:0;width:200px;height:113px;z-index:-1;opacity:0;pointer-events:none;';
-                wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:100%;"></div>`;
-                document.body.appendChild(wrap);
-            } else {
-                const channel = document.querySelector(`.mixer-channel[data-scene="${scene}"]`);
-                if (channel) {
-                    wrap.style.cssText = 'overflow:hidden;max-height:0;width:100%;transition:max-height 0.3s ease;';
-                    wrap.innerHTML = `<div id="${frameId}" style="width:100%;height:160px;"></div>`;
-                    channel.appendChild(wrap);
-                }
-            }
-        }
-
-        const initPlayer = () => {
-            if (ch.player || !window.YT?.Player || !trackIds.length) return;
-            const div = document.getElementById(frameId);
-            if (!div) return;
-            const playerW = scene === 'bouzoukia' ? '200' : '100%';
-            const playerH = scene === 'bouzoukia' ? '113' : '160';
-            ch.player = new window.YT.Player(frameId, {
-                width: playerW, height: playerH,
-                videoId: trackIds[0],
-                playerVars: { autoplay: 0, controls: 1, playsinline: 1, rel: 0, iv_load_policy: 3 },
-                events: {
-                    onReady: () => {
-                        ch.ready = true;
-                        stopFb(); // stop fallback if it was playing
-                        if (vol() > 0) { ch.player.setVolume(vol() * 100); ch.player.playVideo(); }
-                    },
-                    onStateChange: e => {
-                        if (e.data === 0) { ch.idx = (ch.idx + 1) % trackIds.length; loadTrack(); }
-                    },
-                    onError: () => {
-                        ch.idx = (ch.idx + 1) % trackIds.length;
-                        if (trackIds.length > 1 && ch.idx !== 0) loadTrack();
-                        else { ch.failed = true; showPlayer(false); if (vol() > 0) startFb(); }
-                    },
-                }
-            });
-        };
-
-        if (trackIds.length) {
-            if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                document.head.appendChild(tag);
-            }
-            if (window.YT?.Player) {
-                initPlayer();
-            } else {
-                const prev = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = () => { if (prev) prev(); initPlayer(); };
-            }
-        }
-
-        // Slider listener — reacts immediately when user moves the slider
-        const slider = document.querySelector(`.mixer-slider[data-scene="${scene}"]`);
-        if (slider) slider.addEventListener('input', e => {
-            const v = parseInt(e.target.value) / 100;
-            setVol(v);
-            if (v > 0) onStart(); else onStop();
-        });
-
-        // Icon toggle — wait for initMixer to update slider.value first (hence timeout)
-        const btn = document.querySelector(`.mixer-btn[data-scene="${scene}"]`);
-        if (btn) btn.addEventListener('click', () => setTimeout(() => {
-            const v = vol(); setVol(v);
-            if (v > 0) onStart(); else onStop();
-        }, 60));
-
-        // Stop All button
-        const stopAll = document.getElementById('btn-stop-all-ambient');
-        if (stopAll) stopAll.addEventListener('click', onStop);
-
-        // ⏭ next-track button (bouzoukia only)
-        if (scene === 'bouzoukia') {
-            const nxt = document.getElementById('bz-next-btn');
-            if (nxt) nxt.addEventListener('click', e => {
-                e.stopPropagation();
-                ch.idx = (ch.idx + 1) % (trackIds.length || 1);
-                if (ch.player && ch.ready && !ch.failed) loadTrack();
-                else { stopFb(); startFb(); }
-            });
-        }
-    },
-
     playAudio(type) {
     if (type === 'none') return;
     try {
@@ -2346,16 +2297,6 @@ el.addEventListener('click', () => {
         }, 6000);
     },
 
-    resumeAmbience() {
-        if (!window.AmbienceModule) return;
-        Object.entries(this.state.mixerVolumes).forEach(([scene, vol]) => {
-            if (typeof vol === 'number' && vol > 0 && !scene.startsWith('_prev_') && !window.AmbienceModule.isActive(scene)) {
-                window.AmbienceModule.play(scene);
-                window.AmbienceModule.setSceneVolume(scene, vol / 100);
-            }
-        });
-    },
-
     sendNotification(title, body) {
         if (!('Notification' in window)) return;
         if (Notification.permission === 'granted') {
@@ -2366,50 +2307,6 @@ el.addEventListener('click', () => {
             });
         }
     },
-
-   activateMood(moodKey) {
-    this.elements.moodCards.forEach(c => c.classList.toggle('active', c.dataset.mood === moodKey));
-
-    const presets = {
-        cozycafe:    { cafe: 65, jazz: 50, rain: 0, waves: 0, brown: 0, nature: 0, library: 0 },
-        rainyday:    { rain: 75, brown: 55, cafe: 0, jazz: 0, waves: 0, nature: 0, library: 0 },
-        deepfocus:   { library: 60, nature: 40, rain: 0, waves: 0, brown: 0, cafe: 0, jazz: 0 },
-        oceanbreeze: { waves: 70, nature: 45, rain: 0, brown: 0, cafe: 0, jazz: 0, library: 0 }
-    };
-
-    const customMoods = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
-    const volumes = presets[moodKey] || customMoods[moodKey];
-    if (!volumes) return;
-
-    const applyMood = () => {
-        Object.entries(volumes).forEach(([scene, vol]) => {
-            const slider = document.querySelector(`.mixer-slider[data-scene="${scene}"]`);
-            const channel = document.querySelector(`.mixer-channel[data-scene="${scene}"]`);
-            if (!slider || !channel) return;
-
-            slider.value = vol;
-            this.state.mixerVolumes[scene] = vol;
-            channel.querySelector('.mixer-vol').textContent = `${vol}%`;
-
-            if (vol > 0) {
-                window.AmbienceModule.play(scene);
-                window.AmbienceModule.setSceneVolume(scene, vol / 100);
-                channel.classList.add('active');
-            } else {
-                window.AmbienceModule.stop(scene);
-                channel.classList.remove('active');
-            }
-        });
-        localStorage.setItem('pomodoro_mixer', JSON.stringify(this.state.mixerVolumes));
-    };
-
-    if (window.AmbienceModule && window.AmbienceModule.crossfadeTo) {
-        window.AmbienceModule.crossfadeTo(applyMood);
-    } else {
-        window.AmbienceModule.stopAll();
-        applyMood();
-    }
-},
 
     // ===================================
     // SETTINGS & DATA
@@ -2772,6 +2669,7 @@ setThemePreview(theme) {
     },
 
     renderStats() {
+        this.updateLevel(); // keep level bar in sync whenever stats repaint
 		 // Empty state check
     const emptyState = document.getElementById('stats-empty-state');
     const statsGrid = document.getElementById('stats-overview-grid');
@@ -3527,51 +3425,228 @@ initOnboarding() {
 			return `<div class="tag-row"><span class="tag-label">${tag}</span><div class="tag-bar-wrap"><div class="tag-bar" style="width:${pct}%"></div></div><span class="tag-count">${count}</span></div>`;
 		}).join('');
 	},
-	saveCurrentMix() {
-		const input = document.getElementById('atm-mix-name');
-		const name = input ? input.value.trim() : '';
-		if (!name) { if (input) input.focus(); return; }
-		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
-		saved[name.trim()] = { ...this.state.mixerVolumes };
-		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
-		if (input) input.value = '';
-		this.showToast('Mix saved!', name, '🎵');
-		this.renderSavedMixes?.();
-	},
-	renderSavedMixes() {
-		const container = document.getElementById('atm-saved-mixes');
-		if (!container) return;
-		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
-		const keys = Object.keys(saved);
-		if (!keys.length) { container.innerHTML = ''; return; }
-		container.innerHTML = keys.map(k => `
-			<button class="atm-saved-chip" onclick="app.activateMood('${k.replace(/'/g, '&#39;')}')">
-				${k}
-				<span class="atm-chip-del" onclick="event.stopPropagation();app.deleteCustomMood('${k.replace(/'/g, '&#39;')}')">✕</span>
-			</button>`).join('');
-	},
-	deleteCustomMood(key) {
-		const saved = JSON.parse(localStorage.getItem('pomodoro_custom_moods') || '{}');
-		delete saved[key];
-		localStorage.setItem('pomodoro_custom_moods', JSON.stringify(saved));
-		this.showToast('Mix deleted', key, '🗑️');
-		this.renderSavedMixes();
-	},
+    // ===================================
+    // FRIEND REQUESTS
+    // ===================================
+    listenForFriendRequests(user) {
+        if (this._reqUnsub) this._reqUnsub();
+        if (!window.firebaseDb || !window.firestoreQuery || !window.firestoreWhere) return;
+        const q = window.firestoreQuery(
+            window.firestoreCollection(window.firebaseDb, 'friendRequests'),
+            window.firestoreWhere('to', '==', user.uid)
+        );
+        let firstLoad = true;
+        this._reqUnsub = window.firestoreOnSnapshot(q, (snap) => {
+            this._pendingRequests = [];
+            snap.forEach(d => this._pendingRequests.push({ id: d.id, ...d.data() }));
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+            if (!firstLoad && this._pendingRequests.length > 0) {
+                const newest = this._pendingRequests[this._pendingRequests.length - 1];
+                const sender = newest.fromUsername ? `@${newest.fromUsername}` : newest.fromName || 'Someone';
+                this.showToast(`Friend request from ${sender}!`, 'Go to Friends tab to accept.', '👋');
+                this.sendNotification(`Friend request from ${sender}!`, 'Open the app to accept.');
+            }
+            firstLoad = false;
+        }, () => {});
+    },
+
+    _renderFriendRequests() {
+        const section = document.getElementById('friend-requests-section');
+        const list = document.getElementById('friend-requests-list');
+        const badge = document.getElementById('req-count-badge');
+        const reqs = this._pendingRequests || [];
+        if (section) section.style.display = reqs.length ? '' : 'none';
+        if (badge) badge.textContent = reqs.length > 0 ? reqs.length : '';
+        if (!list) return;
+        list.innerHTML = reqs.map(r => {
+            const name = r.fromUsername ? `@${this.escapeHtml(r.fromUsername)}` : this.escapeHtml(r.fromName || 'Someone');
+            return `<div class="friend-req-row">
+                <span class="friend-req-name">${name}</span>
+                <div class="friend-req-btns">
+                    <button class="friend-req-accept" data-uid="${this.escapeHtml(r.from)}">Accept</button>
+                    <button class="friend-req-decline" data-uid="${this.escapeHtml(r.from)}">Decline</button>
+                </div>
+            </div>`;
+        }).join('');
+        list.querySelectorAll('.friend-req-accept').forEach(btn =>
+            btn.addEventListener('click', () => this.acceptFriendRequest(btn.dataset.uid)));
+        list.querySelectorAll('.friend-req-decline').forEach(btn =>
+            btn.addEventListener('click', () => this.declineFriendRequest(btn.dataset.uid)));
+    },
+
+    _updateFriendRequestBadge() {
+        const count = (this._pendingRequests || []).length;
+        const badge = document.getElementById('friends-tab-badge');
+        if (badge) {
+            badge.textContent = count > 0 ? count : '';
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    },
+
+    async acceptFriendRequest(fromUid) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !fromUid) return;
+        try {
+            const pairRef = window.firestoreDoc(window.firebaseDb, 'friendships', this._friendshipId(user.uid, fromUid));
+            const reqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${fromUid}_${user.uid}`);
+            await window.firestoreSetDoc(pairRef, { users: [user.uid, fromUid] });
+            await window.firestoreDeleteDoc(reqRef);
+            this._pendingRequests = (this._pendingRequests || []).filter(r => r.from !== fromUid);
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+            await this.loadSocial();
+        } catch (e) { /* non-fatal */ }
+    },
+
+    async declineFriendRequest(fromUid) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !fromUid) return;
+        try {
+            const reqRef = window.firestoreDoc(window.firebaseDb, 'friendRequests', `${fromUid}_${user.uid}`);
+            await window.firestoreDeleteDoc(reqRef);
+            this._pendingRequests = (this._pendingRequests || []).filter(r => r.from !== fromUid);
+            this._renderFriendRequests();
+            this._updateFriendRequestBadge();
+        } catch (e) { /* non-fatal */ }
+    },
+
+    // ===================================
+    // DIRECT MESSAGES
+    // ===================================
+    openChat(friendUid, friendUsername) {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) { this.showToast('Sign in first', 'You need to be signed in to chat.', '🔒'); return; }
+        const modal = document.getElementById('chat-modal');
+        const title = document.getElementById('chat-modal-title');
+        if (!modal) return;
+        const name = friendUsername ? `@${friendUsername}` : 'Friend';
+        if (title) title.textContent = name;
+        this._activeChatPairId = this._friendshipId(user.uid, friendUid);
+        this._activeChatMyUid = user.uid;
+        modal.style.display = 'flex';
+        // Unsubscribe any previous chat listener
+        if (this._chatUnsub) { this._chatUnsub(); this._chatUnsub = null; }
+        const chatRef = window.firestoreDoc(window.firebaseDb, 'chat', this._activeChatPairId);
+        this._chatUnsub = window.firestoreOnSnapshot(chatRef, (snap) => {
+            const msgs = snap.exists() ? (snap.data().messages || []) : [];
+            this._renderChatMessages(msgs);
+        }, () => this._renderChatMessages([]));
+        setTimeout(() => document.getElementById('chat-input')?.focus(), 80);
+    },
+
+    async sendChatMessage() {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user || !this._activeChatPairId) return;
+        const input = document.getElementById('chat-input');
+        const text = (input?.value || '').trim();
+        if (!text) return;
+        input.value = '';
+        const msg = {
+            sender: user.uid,
+            senderName: user.displayName?.split(' ')[0] || this.state.username || 'You',
+            text,
+            sentAt: new Date().toISOString()
+        };
+        try {
+            const chatRef = window.firestoreDoc(window.firebaseDb, 'chat', this._activeChatPairId);
+            await window.firestoreUpdateDoc(chatRef, {
+                messages: window.firestoreArrayUnion(msg)
+            }).catch(async () => {
+                await window.firestoreSetDoc(chatRef, { messages: [msg] });
+            });
+        } catch (e) { /* non-fatal */ }
+    },
+
+    _renderChatMessages(msgs) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        if (!msgs.length) {
+            container.innerHTML = '<div class="chat-empty">No messages yet. Say hi! 👋</div>';
+            return;
+        }
+        const sorted = [...msgs].sort((a, b) => (a.sentAt || '').localeCompare(b.sentAt || ''));
+        const myUid = this._activeChatMyUid;
+        container.innerHTML = sorted.map(m => {
+            const isMe = m.sender === myUid;
+            const time = m.sentAt ? new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            return `<div class="chat-msg ${isMe ? 'chat-msg-me' : 'chat-msg-them'}">
+                <div class="chat-bubble">${this.escapeHtml(m.text)}</div>
+                <div class="chat-time">${isMe ? '' : this.escapeHtml(m.senderName || '') + ' · '}${time}</div>
+            </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    },
+
+    // ===================================
+    // VOLUME DIAL KNOBS
+    // ===================================
+    // ===================================
+    // CAT MEOW SOUND
+    // ===================================
+    playMeow() {
+        try {
+            if (!this.toneCtx) this.toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.toneCtx.state === 'suspended') this.toneCtx.resume();
+            const ctx = this.toneCtx;
+            const t = ctx.currentTime;
+
+            // Fundamental "mee-ow" pitch sweep.
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            const filt = ctx.createBiquadFilter();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(580, t);
+            osc.frequency.linearRampToValueAtTime(880, t + 0.11);
+            osc.frequency.exponentialRampToValueAtTime(420, t + 0.45);
+            osc.frequency.exponentialRampToValueAtTime(360, t + 0.78);
+            filt.type = 'bandpass';
+            filt.frequency.setValueAtTime(1400, t);
+            filt.frequency.linearRampToValueAtTime(650, t + 0.4);
+            filt.Q.value = 3.5;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.28, t + 0.07);
+            g.gain.setValueAtTime(0.28, t + 0.38);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.82);
+            osc.connect(filt).connect(g).connect(ctx.destination);
+            osc.start(t); osc.stop(t + 0.85);
+
+            // Softer upper harmonic.
+            const osc2 = ctx.createOscillator();
+            const g2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1160, t);
+            osc2.frequency.linearRampToValueAtTime(1760, t + 0.11);
+            osc2.frequency.exponentialRampToValueAtTime(840, t + 0.45);
+            g2.gain.setValueAtTime(0, t);
+            g2.gain.linearRampToValueAtTime(0.1, t + 0.07);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+            osc2.connect(g2).connect(ctx.destination);
+            osc2.start(t); osc2.stop(t + 0.6);
+        } catch (e) { /* non-fatal */ }
+    },
+
+	// Paints the progress arc with the current phase colour, fading along its length
+	// so the ring reads as a sweep rather than a flat band.
 	updateRingGradient() {
-				const grad = document.getElementById('timer-grad');
-				const progressEl = document.getElementById('timer-progress');
-				const glowEl = document.getElementById('timer-glow');
-				if (!grad || !progressEl) return;
-				const accent = (getComputedStyle(document.body).getPropertyValue('--accent') || getComputedStyle(document.documentElement).getPropertyValue('--accent')).trim();
-				if (!accent) return;
-				const stops = grad.querySelectorAll('stop');
-				if (stops[0]) stops[0].setAttribute('stop-color', accent);
-				if (stops[1]) { stops[1].setAttribute('stop-color', accent); stops[1].setAttribute('stop-opacity', '0.4'); }
-				progressEl.style.stroke = 'url(#timer-grad)';
+		const grad = document.getElementById('timer-grad');
+		const progressEl = document.getElementById('timer-progress');
+		const glowEl = document.getElementById('timer-glow');
+		if (!grad || !progressEl) return;
+
+		const styles = getComputedStyle(document.body);
+		let accent = styles.getPropertyValue('--mode-accent').trim();
+		// Older engines hand back the unsubstituted var() — fall back to the raw accent.
+		if (!accent || accent.startsWith('var(')) accent = styles.getPropertyValue('--accent').trim();
+		if (!accent) return;
+
+		const stops = grad.querySelectorAll('stop');
+		if (stops[0]) { stops[0].setAttribute('stop-color', accent); stops[0].setAttribute('stop-opacity', '0.55'); }
+		if (stops[1]) { stops[1].setAttribute('stop-color', accent); stops[1].setAttribute('stop-opacity', '1'); }
+
 		progressEl.setAttribute('stroke', 'url(#timer-grad)');
-				if (glowEl) glowEl.style.stroke = 'url(#timer-grad)';
 		if (glowEl) glowEl.setAttribute('stroke', 'url(#timer-grad)');
-			},
+	},
 
 	};
 
