@@ -2503,6 +2503,14 @@ updateTheme() {
 			if (isMedical) window.MedicalModule.startECG();
 			else window.MedicalModule.stopECG();
 		}
+
+		// Force button gradient repaint — CSS gradients with vars sometimes don't update smoothly.
+		const btn = document.getElementById('btn-play');
+		if (btn) {
+			btn.style.opacity = '0.99';
+			btn.offsetHeight; // force reflow
+			btn.style.opacity = '';
+		}
 	},
 
 checkBouzoukiaHours() {
@@ -2738,6 +2746,15 @@ setThemePreview(theme) {
         this.checkAchievements();
     },
 
+    // Renders a minute count as "1h 30m" (or just "45m" / "2h" when one part is zero).
+    _formatHM(totalMinutes) {
+        const m = Math.round(totalMinutes || 0);
+        const h = Math.floor(m / 60), rem = m % 60;
+        if (h === 0) return `${rem}m`;
+        if (rem === 0) return `${h}h`;
+        return `${h}h ${rem}m`;
+    },
+
     renderCharts() {
         const ctxS = document.getElementById('sessions-chart');
         const ctxM = document.getElementById('minutes-chart');
@@ -2747,7 +2764,7 @@ setThemePreview(theme) {
         const days = activeRangeBtn ? parseInt(activeRangeBtn.dataset.range) : 7;
 
         const labels = [];
-        const sessionsData = [];
+        const hoursData = [];
         const minutesData = [];
 
         const now = new Date();
@@ -2758,15 +2775,15 @@ setThemePreview(theme) {
             d.setDate(d.getDate() - i);
             labels.push(d.toLocaleDateString([], { weekday: 'short' }));
 
-            let sCount = 0, mCount = 0;
+            let mCount = 0;
             this.state.history.forEach(s => {
                 if (s.type === 'focus') {
                     const sd = new Date(s.date);
                     sd.setHours(0, 0, 0, 0);
-                    if (sd.getTime() === d.getTime()) { sCount++; mCount += s.duration; }
+                    if (sd.getTime() === d.getTime()) mCount += s.duration;
                 }
             });
-            sessionsData.push(sCount);
+            hoursData.push(Math.round((mCount / 60) * 100) / 100);
             minutesData.push(mCount);
         }
 
@@ -2790,8 +2807,8 @@ this.chartS = new Chart(ctxS, {
     data: {
         labels,
         datasets: [{
-            label: 'Sessions',
-            data: sessionsData,
+            label: 'Hours',
+            data: hoursData,
             backgroundColor: barGrad,
             borderRadius: 6,
             borderSkipped: false
@@ -2809,11 +2826,11 @@ this.chartS = new Chart(ctxS, {
             borderWidth: 1,
             padding: 10,
             callbacks: {
-                label: ctx => ` ${ctx.parsed.y} session${ctx.parsed.y !== 1 ? 's' : ''}`
+                label: ctx => ` ${this._formatHM(minutesData[ctx.dataIndex])}`
             }
         }},
         scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(255,255,255,0.3)', stepSize: 1 } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(255,255,255,0.3)', callback: v => `${v}h` } },
             x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.3)' } }
         }
     }
