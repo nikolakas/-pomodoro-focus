@@ -2948,3 +2948,47 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
   .cat-bubble { max-width: 180px; }
 }
 @media (max-width: 640px) { .cat-companion { display: none; } }
+
+/* ===== CAT DASH — optional focus warm-up mini-game (Settings > Cat Game) ===== */
+.cat-game-card { max-width: 460px; }
+.cat-game-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.cat-game-header h3 { margin: 0; font-size: 1.05rem; font-family: var(--font-display); }
+.cat-game-close {
+  background: var(--surface-2); border: none; color: var(--text-secondary);
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+.cat-game-close:hover { background: var(--surface-3); color: var(--text-primary); }
+
+.cat-game-hud {
+  display: flex; justify-content: space-between;
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;
+  font-family: var(--font-mono);
+}
+.cat-game-hud b { color: var(--mode-accent); font-weight: 700; }
+
+.cat-game-canvas-wrap {
+  position: relative; width: 100%; border-radius: var(--r-md);
+  overflow: hidden; background: var(--surface-1); border: 1px solid var(--border);
+}
+#cat-game-canvas { display: block; width: 100%; height: 220px; touch-action: manipulation; cursor: pointer; }
+
+.cat-game-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  background: rgba(5,8,16,0.55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  text-align: center; padding: 0 1rem;
+}
+.cat-game-overlay-title { margin: 0; font-weight: 700; color: var(--text-primary); font-size: 0.95rem; }
+.cat-game-overlay-score { margin: 0; font-size: 0.82rem; color: var(--text-secondary); font-family: var(--font-mono); }
+.btn-cat-game-start {
+  border: none; cursor: pointer; padding: 9px 22px; border-radius: var(--r-pill);
+  font-weight: 700; font-size: 0.85rem; color: #fff;
+  background: var(--mode-accent); box-shadow: 0 4px 16px var(--mode-glow);
+  transition: transform 0.18s var(--ease-spring);
+}
+.btn-cat-game-start:hover { transform: scale(1.05); }
+.btn-cat-game-start:active { transform: scale(0.95); }
+
+.cat-game-hint { margin: 10px 0 0; font-size: 0.72rem; color: var(--text-muted); text-align: center; }

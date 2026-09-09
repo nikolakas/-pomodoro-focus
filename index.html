@@ -278,7 +278,7 @@
             <div class="stats-split">
                 <div class="charts-col">
                     <div class="chart-container glass-card">
-                        <div class="chart-header"><h2>Focus Sessions</h2>
+                        <div class="chart-header"><h2>Focus Hours</h2>
                             <div class="chart-range-btns">
                                 <button class="chart-range active" data-range="7">7d</button>
                                 <button class="chart-range" data-range="14">14d</button>
@@ -477,6 +477,10 @@
       <div class="setting-row">
         <label for="setting-rep-counter">Rep Counter (sets done today)</label>
         <input type="checkbox" id="setting-rep-counter">
+      </div>
+      <div class="setting-row">
+        <label for="setting-cat-game">Cat Game (click the cat to play)</label>
+        <input type="checkbox" id="setting-cat-game">
       </div>
       <div class="setting-row" id="row-terea-lite" style="display:none;">
         <label for="setting-terea-lite">Terea Lite (reduce smoke &amp; flash)</label>
@@ -919,6 +923,25 @@
   </div>
 </div>
 
+<!-- Cat Dash — optional focus warm-up mini-game, opt-in via Settings > Cat Game -->
+<div id="cat-game-modal" class="modal" style="display:none;">
+  <div class="modal-content glass-card cat-game-card">
+    <div class="cat-game-header">
+      <h3>🐱 Cat Dash</h3>
+      <button class="cat-game-close" id="cat-game-close" aria-label="Close">✕</button>
+    </div>
+    <div class="cat-game-hud">
+      <span>Score: <b id="cat-game-score">0</b></span>
+      <span>Best: <b id="cat-game-best">0</b></span>
+    </div>
+    <div class="cat-game-canvas-wrap">
+      <canvas id="cat-game-canvas" width="480" height="220"></canvas>
+      <div class="cat-game-overlay" id="cat-game-overlay"></div>
+    </div>
+    <p class="cat-game-hint">Jump the distractions. A quick reset before you focus.</p>
+  </div>
+</div>
+
 <!-- Onboarding Overlay -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
   <div class="onboarding-card glass-card">
@@ -941,10 +964,10 @@
 </div>
 
 
-        <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-        <script src="ambience.js"></script>
-<script src="medical.js"></script>
-<script src="app.js"></script>
+        <script src="https://unpkg.com/docx@8.5.0/build/index.js" defer></script>
+        <script src="ambience.js" defer></script>
+<script src="medical.js" defer></script>
+<script src="app.js" defer></script>
 
 <!-- Medical ECG background — canvas-based real-time PQRST -->
 <canvas id="med-ecg-canvas" aria-hidden="true"></canvas>

@@ -1256,6 +1256,15 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
+    // Cat Dash takes over Space/Escape while it's open and swallows everything
+    // else, so a jump doesn't also toggle the pomodoro timer underneath it.
+    const catGameModal = document.getElementById('cat-game-modal');
+    if (catGameModal && catGameModal.style.display === 'flex') {
+      if (e.key === 'Escape') { e.preventDefault(); this.closeCatGame(); }
+      else if (e.code === 'Space') { e.preventDefault(); this._catGameJump(); }
+      return;
+    }
+
     if (e.key === '?') {
       const mod = document.getElementById('shortcut-modal');
       if (mod) mod.style.display = mod.style.display === 'flex' ? 'none' : 'flex';
@@ -1337,12 +1346,26 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   if (chatSend) chatSend.addEventListener('click', () => this.sendChatMessage());
   if (chatInput) chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChatMessage(); } });
 
-  // Cat companion — click / tap to meow
+  // Cat companion — click / tap to meow, or to play Cat Dash if that's enabled
   const catEl = document.getElementById('cat-companion');
   if (catEl) {
-    catEl.addEventListener('click', () => this.playMeow());
-    catEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') this.playMeow(); });
+    const onCatActivate = () => {
+      if (this.state.settings.catGame) this.openCatGame();
+      else this.playMeow();
+    };
+    catEl.addEventListener('click', onCatActivate);
+    catEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCatActivate(); }
+    });
   }
+
+  // Cat Dash modal chrome
+  const catGameModal = document.getElementById('cat-game-modal');
+  const catGameClose = document.getElementById('cat-game-close');
+  const catGameCanvas = document.getElementById('cat-game-canvas');
+  if (catGameClose) catGameClose.addEventListener('click', () => this.closeCatGame());
+  if (catGameModal) catGameModal.addEventListener('click', e => { if (e.target === catGameModal) this.closeCatGame(); });
+  if (catGameCanvas) catGameCanvas.addEventListener('click', () => this._catGameJump());
 },
 
 
@@ -2332,6 +2355,8 @@ el.addEventListener('click', () => {
         if (repEl) repEl.checked = !!this.state.settings.repCounter;
         const tereaLiteEl = document.getElementById('setting-terea-lite');
         if (tereaLiteEl) tereaLiteEl.checked = !!this.state.settings.tereaLite;
+        const catGameEl = document.getElementById('setting-cat-game');
+        if (catGameEl) catGameEl.checked = !!this.state.settings.catGame;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -2349,6 +2374,8 @@ el.addEventListener('click', () => {
         if (repEl) this.state.settings.repCounter = repEl.checked;
         const tereaLiteEl = document.getElementById('setting-terea-lite');
         if (tereaLiteEl) this.state.settings.tereaLite = tereaLiteEl.checked;
+        const catGameEl = document.getElementById('setting-cat-game');
+        if (catGameEl) this.state.settings.catGame = catGameEl.checked;
         this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
@@ -2502,6 +2529,14 @@ updateTheme() {
 		if (window.MedicalModule) {
 			if (isMedical) window.MedicalModule.startECG();
 			else window.MedicalModule.stopECG();
+		}
+
+		// Force button gradient repaint — CSS gradients with vars sometimes don't update smoothly.
+		const btn = document.getElementById('btn-play');
+		if (btn) {
+			btn.style.opacity = '0.99';
+			btn.offsetHeight; // force reflow
+			btn.style.opacity = '';
 		}
 	},
 
@@ -2738,6 +2773,15 @@ setThemePreview(theme) {
         this.checkAchievements();
     },
 
+    // Renders a minute count as "1h 30m" (or just "45m" / "2h" when one part is zero).
+    _formatHM(totalMinutes) {
+        const m = Math.round(totalMinutes || 0);
+        const h = Math.floor(m / 60), rem = m % 60;
+        if (h === 0) return `${rem}m`;
+        if (rem === 0) return `${h}h`;
+        return `${h}h ${rem}m`;
+    },
+
     renderCharts() {
         const ctxS = document.getElementById('sessions-chart');
         const ctxM = document.getElementById('minutes-chart');
@@ -2747,7 +2791,7 @@ setThemePreview(theme) {
         const days = activeRangeBtn ? parseInt(activeRangeBtn.dataset.range) : 7;
 
         const labels = [];
-        const sessionsData = [];
+        const hoursData = [];
         const minutesData = [];
 
         const now = new Date();
@@ -2758,15 +2802,15 @@ setThemePreview(theme) {
             d.setDate(d.getDate() - i);
             labels.push(d.toLocaleDateString([], { weekday: 'short' }));
 
-            let sCount = 0, mCount = 0;
+            let mCount = 0;
             this.state.history.forEach(s => {
                 if (s.type === 'focus') {
                     const sd = new Date(s.date);
                     sd.setHours(0, 0, 0, 0);
-                    if (sd.getTime() === d.getTime()) { sCount++; mCount += s.duration; }
+                    if (sd.getTime() === d.getTime()) mCount += s.duration;
                 }
             });
-            sessionsData.push(sCount);
+            hoursData.push(Math.round((mCount / 60) * 100) / 100);
             minutesData.push(mCount);
         }
 
@@ -2790,8 +2834,8 @@ this.chartS = new Chart(ctxS, {
     data: {
         labels,
         datasets: [{
-            label: 'Sessions',
-            data: sessionsData,
+            label: 'Hours',
+            data: hoursData,
             backgroundColor: barGrad,
             borderRadius: 6,
             borderSkipped: false
@@ -2809,11 +2853,11 @@ this.chartS = new Chart(ctxS, {
             borderWidth: 1,
             padding: 10,
             callbacks: {
-                label: ctx => ` ${ctx.parsed.y} session${ctx.parsed.y !== 1 ? 's' : ''}`
+                label: ctx => ` ${this._formatHM(minutesData[ctx.dataIndex])}`
             }
         }},
         scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(255,255,255,0.3)', stepSize: 1 } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(255,255,255,0.3)', callback: v => `${v}h` } },
             x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.3)' } }
         }
     }
@@ -3624,6 +3668,202 @@ initOnboarding() {
             osc2.connect(g2).connect(ctx.destination);
             osc2.start(t); osc2.stop(t + 0.6);
         } catch (e) { /* non-fatal */ }
+    },
+
+    // ===================================
+    // CAT DASH — optional focus warm-up mini-game, opt-in via Settings > Cat Game.
+    // A tiny canvas endless-runner: jump the distraction icons, get a fast reset
+    // before diving into a session. Entirely decoupled from the timer.
+    // ===================================
+    openCatGame() {
+        const modal = document.getElementById('cat-game-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        const best = parseInt(localStorage.getItem('pomodoro_catgame_best'), 10) || 0;
+        const bestEl = document.getElementById('cat-game-best');
+        if (bestEl) bestEl.textContent = best;
+        const scoreEl = document.getElementById('cat-game-score');
+        if (scoreEl) scoreEl.textContent = '0';
+
+        this._catGameReset();
+        this._catGameShowOverlay('ready');
+    },
+
+    closeCatGame() {
+        const modal = document.getElementById('cat-game-modal');
+        if (modal) modal.style.display = 'none';
+        this._catGameStop();
+    },
+
+    _catGameShowOverlay(state) {
+        const overlay = document.getElementById('cat-game-overlay');
+        if (!overlay) return;
+        const best = parseInt(localStorage.getItem('pomodoro_catgame_best'), 10) || 0;
+
+        if (state === 'ready') {
+            overlay.innerHTML = `
+                <p class="cat-game-overlay-title">Tap, click, or press Space to jump</p>
+                <button class="btn-cat-game-start" id="btn-cat-game-start">▶ Start</button>`;
+        } else {
+            const g = this._catGame;
+            const score = g ? g.score : 0;
+            overlay.innerHTML = `
+                <p class="cat-game-overlay-title">Game Over 🐾</p>
+                <p class="cat-game-overlay-score">Score: ${score}${score >= best && score > 0 ? ' — New Best! 🎉' : ` · Best: ${best}`}</p>
+                <button class="btn-cat-game-start" id="btn-cat-game-start">↻ Play Again</button>`;
+        }
+        overlay.style.display = 'flex';
+
+        const btn = document.getElementById('btn-cat-game-start');
+        if (btn) btn.addEventListener('click', () => {
+            // "Play Again" needs a clean slate — the old game object still has
+            // last run's score and, worse, the obstacle that just killed the cat.
+            if (state === 'over') this._catGameReset();
+            this._catGameStart();
+        });
+    },
+
+    // (Re)builds the canvas + game state. Called every time the modal opens, so
+    // sizing always matches the canvas's current on-screen width.
+    _catGameReset() {
+        const canvas = document.getElementById('cat-game-canvas');
+        if (!canvas) return;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const cssW = canvas.clientWidth || 480, cssH = 220;
+        canvas.width = cssW * dpr;
+        canvas.height = cssH * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const styles = getComputedStyle(document.body);
+        let accent = styles.getPropertyValue('--mode-accent').trim();
+        if (!accent || accent.startsWith('var(')) accent = styles.getPropertyValue('--accent').trim();
+
+        const groundY = cssH - 34;
+        this._catGame = {
+            canvas, ctx, cssW, cssH, accent: accent || '#ff6b6b',
+            groundY, catY: groundY, catVy: 0, catX: 46, jumping: false,
+            obstacles: [], speed: 4.2, elapsed: 0,
+            spawnTimer: 0, nextSpawn: 900,
+            score: 0, running: false, raf: null, lastTs: null
+        };
+        this._catGameDrawFrame();
+    },
+
+    _catGameStart() {
+        const g = this._catGame;
+        if (!g) return;
+        const overlay = document.getElementById('cat-game-overlay');
+        if (overlay) overlay.style.display = 'none';
+        g.running = true;
+        g.lastTs = null;
+        g.raf = requestAnimationFrame(ts => this._catGameLoop(ts));
+    },
+
+    _catGameJump() {
+        const g = this._catGame;
+        if (!g || !g.running || g.jumping) return;
+        g.jumping = true;
+        g.catVy = -9.2;
+    },
+
+    _catGameLoop(ts) {
+        const g = this._catGame;
+        if (!g || !g.running) return;
+        if (g.lastTs == null) g.lastTs = ts;
+        const dt = Math.min(32, ts - g.lastTs); // clamp so a backgrounded tab can't leap the cat through a wall
+        g.lastTs = ts;
+        const dtF = dt / 16.6667; // normalize physics to ~60fps steps
+
+        const gravity = 0.55;
+        g.catVy += gravity * dtF;
+        g.catY += g.catVy * dtF;
+        if (g.catY >= g.groundY) { g.catY = g.groundY; g.catVy = 0; g.jumping = false; }
+
+        g.elapsed += dt;
+        g.speed = Math.min(9.5, 4.2 + g.elapsed / 4000);
+
+        g.spawnTimer += dt;
+        if (g.spawnTimer >= g.nextSpawn) {
+            g.spawnTimer = 0;
+            g.nextSpawn = Math.max(430, 750 + Math.random() * 650 - (g.speed - 4.2) * 30);
+            const icons = ['📱', '🛋️', '🍿'];
+            g.obstacles.push({ x: g.cssW + 10, icon: icons[Math.floor(Math.random() * icons.length)], cleared: false });
+        }
+
+        const catBox = { x: g.catX - 12, y: g.catY - 24, w: 30, h: 26 };
+        for (let i = g.obstacles.length - 1; i >= 0; i--) {
+            const o = g.obstacles[i];
+            o.x -= g.speed * dtF;
+            if (!o.cleared && o.x < g.catX) { o.cleared = true; g.score += 10; }
+            const oBox = { x: o.x - 11, y: g.groundY - 22, w: 24, h: 24 };
+            if (this._catGameCollide(catBox, oBox)) { this._catGameOver(); return; }
+            if (o.x < -20) g.obstacles.splice(i, 1);
+        }
+
+        g.score += dtF * 0.12; // slow trickle for survival time, on top of the +10 per clear
+
+        this._catGameDrawFrame();
+        const scoreEl = document.getElementById('cat-game-score');
+        if (scoreEl) scoreEl.textContent = Math.floor(g.score);
+
+        g.raf = requestAnimationFrame(t => this._catGameLoop(t));
+    },
+
+    _catGameCollide(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    },
+
+    _catGameOver() {
+        const g = this._catGame;
+        if (!g) return;
+        g.running = false;
+        if (g.raf) cancelAnimationFrame(g.raf);
+        g.score = Math.floor(g.score);
+
+        const best = parseInt(localStorage.getItem('pomodoro_catgame_best'), 10) || 0;
+        if (g.score > best) localStorage.setItem('pomodoro_catgame_best', String(g.score));
+        const bestEl = document.getElementById('cat-game-best');
+        if (bestEl) bestEl.textContent = Math.max(g.score, best);
+
+        this._catGameShowOverlay('over');
+    },
+
+    _catGameStop() {
+        const g = this._catGame;
+        if (g && g.raf) cancelAnimationFrame(g.raf);
+        if (g) g.running = false;
+    },
+
+    _catGameDrawFrame() {
+        const g = this._catGame;
+        if (!g) return;
+        const { ctx, cssW, cssH, groundY } = g;
+
+        // Opaque fill, not clearRect — the modal card is semi-transparent glass,
+        // so a cleared canvas lets the blurred page behind it show through.
+        ctx.fillStyle = '#0c1120';
+        ctx.fillRect(0, 0, cssW, cssH);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY + 2);
+        ctx.lineTo(cssW, groundY + 2);
+        ctx.stroke();
+
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = '28px sans-serif';
+        ctx.save();
+        ctx.translate(g.catX, g.catY);
+        if (g.jumping) ctx.rotate(-0.08);
+        ctx.fillText('🐱', -14, 4);
+        ctx.restore();
+
+        ctx.font = '22px sans-serif';
+        g.obstacles.forEach(o => ctx.fillText(o.icon, o.x - 11, groundY + 2));
     },
 
 	// Paints the progress arc with the current phase colour, fading along its length
