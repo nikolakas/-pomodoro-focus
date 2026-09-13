@@ -16,7 +16,7 @@ const app = {
             rounds: 4, dailyGoal: 8,
             sound: 'bell', theme: 'normal',
             wallpaper: 'default', accent: 'coral',
-            saber: 'blue', swMusic: true, autoStart: false
+            saber: 'blue', swMusic: true, autoStart: false, catGame: true
         },
         currentRound: 1,
         sessionsToday: 0,
@@ -2715,19 +2715,27 @@ setThemePreview(theme) {
         if (emptyState) emptyState.style.display = 'none';
         if (statsGrid) statsGrid.style.opacity = '1';
     }
+        // Today / This Week / All Time now read as hours actually studied, not a
+        // raw session count — the daily-goal ring below still tracks sessions,
+        // since the goal itself is configured in Settings as a session count.
         const statToday = document.getElementById('stat-today');
         const statTotal = document.getElementById('stat-total');
         const statWeek = document.getElementById('stat-week');
-        if (statToday) statToday.textContent = this.state.sessionsToday;
-        if (statTotal) statTotal.textContent = this.state.totalSessions;
 
         const now = new Date();
+        const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        let weekTotal = 0;
+        let todayMins = 0, weekMins = 0, totalMins = 0;
         this.state.history.forEach(s => {
-            if (s.type === 'focus' && new Date(s.date) >= weekStart) weekTotal++;
+            if (s.type !== 'focus') return;
+            const d = new Date(s.date);
+            totalMins += s.duration;
+            if (d.getTime() >= today0) todayMins += s.duration;
+            if (d >= weekStart) weekMins += s.duration;
         });
-        if (statWeek) statWeek.textContent = weekTotal;
+        if (statToday) statToday.textContent = this._hoursLabel(todayMins);
+        if (statWeek) statWeek.textContent = this._hoursLabel(weekMins);
+        if (statTotal) statTotal.textContent = this._hoursLabel(totalMins);
 
         const goalP = document.getElementById('goal-progress');
         if (goalP) {
@@ -2744,7 +2752,6 @@ setThemePreview(theme) {
                 activeDays.add(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
             }
         });
-        const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const yesterday0 = today0 - 86400000;
         let checkDate = today0;
         if (!activeDays.has(today0) && activeDays.has(yesterday0)) {
@@ -2771,6 +2778,12 @@ setThemePreview(theme) {
 				this.renderTagBreakdown();
         this.renderHistory();
         this.checkAchievements();
+    },
+
+    // Compact decimal-hours label for the Today/Week/All-Time stat cards — stays
+    // short ("1.5h") no matter how large the total gets, unlike "_formatHM".
+    _hoursLabel(totalMinutes) {
+        return `${((totalMinutes || 0) / 60).toFixed(1)}h`;
     },
 
     // Renders a minute count as "1h 30m" (or just "45m" / "2h" when one part is zero).
