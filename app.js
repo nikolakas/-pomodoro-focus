@@ -87,6 +87,7 @@ this.restoreSessionState();
 this._pendingInvite = this._parseInviteParam();
 if (window.firebaseAuth) { this.initFirebase(); } else { window.addEventListener('firebase-ready', () => this.initFirebase(), { once: true }); }
 this._watchFirebaseLoad();
+requestAnimationFrame(() => document.body.classList.remove('is-booting'));
     },
 
     // If the Firebase SDK can't load (offline, CDN blocked, ad-blocker), the Sign in
@@ -3186,38 +3187,39 @@ if (s.label && labelColors[s.label]) {
         });
     },
 
+    // Five calendar weeks (Mon–Sun, ending with the current week), shaded by
+    // hours studied — consistent with the rest of Stats, which reports hours.
     renderHeatmap() {
         const grid = document.getElementById('heatmap-grid');
         if (!grid) return;
-        grid.innerHTML = '';
 
-        const counts = {};
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
+        const mins = {};
         this.state.history.forEach(s => {
             if (s.type !== 'focus') return;
             const d = new Date(s.date);
             d.setHours(0, 0, 0, 0);
-            counts[d.getTime()] = (counts[d.getTime()] || 0) + 1;
+            mins[d.getTime()] = (mins[d.getTime()] || 0) + s.duration;
         });
 
-        for (let i = 34; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            const count = counts[d.getTime()] || 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const mondayOffset = (today.getDay() + 6) % 7;
+        const start = new Date(today);
+        start.setDate(today.getDate() - mondayOffset - 28);
 
-            let lvl = 0;
-            if (count > 0) lvl = 1;
-            if (count >= 3) lvl = 2;
-            if (count >= 6) lvl = 3;
-            if (count >= 8) lvl = 4;
-
-            const cell = document.createElement('div');
-            cell.className = `h-cell level-${lvl}`;
-            cell.title = `${d.toDateString()}: ${count} sessions`;
-            grid.appendChild(cell);
+        const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(l => `<span class="h-label">${l}</span>`).join('');
+        const cells = [];
+        for (let i = 0; i < 35; i++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            if (d > today) { cells.push('<span class="h-cell is-future"></span>'); continue; }
+            const m = mins[d.getTime()] || 0;
+            const lvl = m === 0 ? 0 : m < 30 ? 1 : m < 60 ? 2 : m < 120 ? 3 : 4;
+            const when = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+            const tip = `${when}: ${m ? this._formatHM(m) : 'no focus'}`;
+            cells.push(`<span class="h-cell level-${lvl}${d.getTime() === today.getTime() ? ' is-today' : ''}" title="${tip}" aria-label="${tip}"></span>`);
         }
+        grid.innerHTML = labels + cells.join('');
     },
 
     renderInsights() {
@@ -3230,13 +3232,18 @@ if (s.label && labelColors[s.label]) {
         });
 
         const bestH = hours.indexOf(Math.max(...hours));
-        const hourTxt = Math.max(...hours) > 0 ? `${bestH}:00 - ${bestH + 1}:00` : 'N/A';
+        const pad = n => String(n % 24).padStart(2, '0');
+        const hourTxt = Math.max(...hours) > 0 ? `${pad(bestH)}:00–${pad(bestH + 1)}:00` : '—';
         const insightHour = document.getElementById('insight-hour');
         if (insightHour) insightHour.textContent = hourTxt;
 
-        const score = Math.min(100, Math.floor((this.state.sessionsToday / this.state.settings.dailyGoal) * 50 + (this.state.level * 2)));
+        // Real number instead of the old made-up "productivity score".
+        const focusSessions = this.state.history.filter(s => s.type === 'focus');
+        const avgMins = focusSessions.length
+            ? Math.round(focusSessions.reduce((sum, s) => sum + s.duration, 0) / focusSessions.length)
+            : 0;
         const insightScore = document.getElementById('insight-score');
-        if (insightScore) insightScore.textContent = `${score}/100`;
+        if (insightScore) insightScore.textContent = avgMins ? `${avgMins} min` : '—';
 
         const now = new Date();
         const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
@@ -3255,7 +3262,7 @@ if (s.label && labelColors[s.label]) {
         const trendEl = document.getElementById('insight-trend');
         if (trendEl) {
             if (lastWeekMins === 0) {
-                trendEl.textContent = thisWeekMins > 0 ? 'Up (New)' : 'Neutral';
+                trendEl.textContent = thisWeekMins > 0 ? 'First week' : '—';
                 trendEl.style.color = thisWeekMins > 0 ? 'var(--success)' : 'var(--text-primary)';
             } else {
                 const pct = Math.round(((thisWeekMins - lastWeekMins) / lastWeekMins) * 100);
@@ -3266,12 +3273,18 @@ if (s.label && labelColors[s.label]) {
 
         const tipEl = document.getElementById('insight-tip');
         if (tipEl) {
-            if (this.state.sessionsToday >= this.state.settings.dailyGoal) {
-                tipEl.textContent = "You hit your daily goal! Great consistency. Consider wrapping up deep work for the day.";
-            } else if (bestH > 0 && new Date().getHours() === bestH) {
-                tipEl.textContent = "It's your statistically most productive hour. Time to tackle the hardest task!";
+            // Tips are drawn from the user's own history — no generic filler.
+            const hasHours = Math.max(...hours) > 0;
+            if (!focusSessions.length) {
+                tipEl.textContent = 'Finish a few sessions and tips based on your own patterns will show up here.';
+            } else if (this.state.sessionsToday >= this.state.settings.dailyGoal) {
+                tipEl.textContent = `Daily goal reached (${this.state.settings.dailyGoal} sessions). Anything more today is a bonus.`;
+            } else if (hasHours && new Date().getHours() === bestH) {
+                tipEl.textContent = 'This is the hour you usually focus best — a good time for your hardest task.';
+            } else if (hasHours) {
+                tipEl.textContent = `You focus most between ${hourTxt}. Try scheduling demanding work then.`;
             } else {
-                tipEl.textContent = "Try matching a Focus Mood with your current task to enhance concentration.";
+                tipEl.textContent = `${this.state.settings.dailyGoal - this.state.sessionsToday} sessions to go for today's goal.`;
             }
         }
     },
