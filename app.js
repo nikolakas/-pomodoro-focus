@@ -1457,10 +1457,10 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
 // ===================================
 SCAPE_LOOP_PAD: 0.5,
 SOUNDSCAPES: [
-    { id: 'rain',      name: 'Rain',        seconds: 40, icon: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/>' },
-    { id: 'waves',     name: 'Ocean',       seconds: 48, icon: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' },
-    { id: 'fireplace', name: 'Fireplace',   seconds: 40, icon: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>' },
-    { id: 'night',     name: 'Night',       seconds: 40, icon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>' },
+    { id: 'rain',      name: 'Rain',        seconds: 90, icon: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/>' },
+    { id: 'waves',     name: 'Ocean',       seconds: 120, icon: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' },
+    { id: 'fireplace', name: 'Fireplace',   seconds: 120, events: 'fire', icon: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>' },
+    { id: 'night',     name: 'Night',       seconds: 60, icon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>' },
     { id: 'brown',     name: 'Brown noise', seconds: 30, icon: '<path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/>' },
 ],
 
@@ -1516,7 +1516,10 @@ _ensureScapeCtx() {
         s.ctx = new (window.AudioContext || window.webkitAudioContext)();
         s.master = s.ctx.createGain();
         s.master.gain.value = this._scapeGain();
-        s.master.connect(s.ctx.destination);
+        const limiter = s.ctx.createDynamicsCompressor();
+        limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 4;
+        limiter.attack.value = 0.003; limiter.release.value = 0.25;
+        s.master.connect(limiter).connect(s.ctx.destination);
     }
     if (s.ctx.state === 'suspended') s.ctx.resume();
     return s.ctx;
@@ -1552,6 +1555,75 @@ _healScapeSeam(buffer, id) {
             d[b - m + i] = d[b - m + i] * (1 - w) + d[a - m + i] * w;
         }
     }
+},
+
+// Pops and crackles for the fireplace, generated live at random times so the
+// fire never audibly repeats (the file underneath is only the smooth roar).
+// Events are scheduled ~2 s ahead, so background-tab timer throttling can't
+// open up gaps.
+_startFireEvents(dest) {
+    const ctx = this.scape.ctx;
+    if (!this._fireSamples) this._fireSamples = this._makeFireSamples(ctx);
+    const { crackles, pops } = this._fireSamples;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+    const fire = (buf, when, gain, type, freq, rate) => {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.playbackRate.value = rate;
+        const filt = ctx.createBiquadFilter();
+        filt.type = type; filt.frequency.value = freq; filt.Q.value = type === 'bandpass' ? 1.1 : 0.7;
+        const g = ctx.createGain();
+        g.gain.value = gain;
+        let out = src.connect(filt).connect(g);
+        if (ctx.createStereoPanner) { const pan = ctx.createStereoPanner(); pan.pan.value = rand(-0.6, 0.6); out = out.connect(pan); }
+        out.connect(dest);
+        src.start(when);
+    };
+
+    let next = ctx.currentTime + rand(0.3, 1.2);
+    const tick = () => {
+        const horizon = ctx.currentTime + 2;
+        while (next < horizon) {
+            if (Math.random() < 0.13) {
+                fire(pick(pops), next, rand(0.18, 0.42), 'bandpass', rand(650, 1500), rand(0.8, 1.15));
+            } else {
+                // A short cluster of 1–5 crackles, like a log settling.
+                const count = 1 + Math.floor(Math.pow(Math.random(), 2) * 5);
+                let t = next;
+                for (let i = 0; i < count; i++) {
+                    fire(pick(crackles), t, rand(0.04, 0.2), 'highpass', rand(2200, 6000), rand(0.75, 1.35));
+                    t += rand(0.018, 0.13);
+                }
+            }
+            // Exponential gaps averaging ~1 s: unhurried, irregular.
+            next += 0.12 - Math.log(1 - Math.random()) * 0.95;
+        }
+    };
+    tick();
+    const timer = setInterval(tick, 400);
+    return () => clearInterval(timer);
+},
+
+_makeFireSamples(ctx) {
+    const sr = ctx.sampleRate;
+    const burst = (ms, tauMs, thumpHz = 0) => {
+        const len = Math.round(sr * ms / 1000);
+        const buf = ctx.createBuffer(1, len, sr);
+        const d = buf.getChannelData(0);
+        const tau = sr * tauMs / 1000;
+        for (let i = 0; i < len; i++) {
+            const env = Math.exp(-i / tau);
+            d[i] = (Math.random() * 2 - 1) * env;
+            if (thumpHz) d[i] += 0.6 * Math.sin(2 * Math.PI * thumpHz * i / sr) * Math.exp(-i / (tau * 2.5));
+        }
+        return buf;
+    };
+    return {
+        crackles: [burst(30, 1.2), burst(45, 2.2), burst(60, 3.5), burst(80, 5.5)],
+        pops: [burst(220, 16, 95), burst(300, 24, 80), burst(260, 20, 110)],
+    };
 },
 
 toggleScape(id) {
@@ -1595,7 +1667,8 @@ async playScape(id) {
     src.connect(fade).connect(s.master);
     src.start(0, this.SCAPE_LOOP_PAD);
 
-    s.node = { src, fade };
+    const stopEvents = meta.events === 'fire' ? this._startFireEvents(fade) : null;
+    s.node = { src, fade, stopEvents };
     s.current = id;
     this._renderScapes();
 },
@@ -1610,7 +1683,8 @@ stopScape() {
 _fadeOutScapeNode(sec) {
     const s = this.scape;
     if (!s.node) return;
-    const { src, fade } = s.node;
+    const { src, fade, stopEvents } = s.node;
+    if (stopEvents) stopEvents();
     const t = s.ctx.currentTime;
     fade.gain.cancelScheduledValues(t);
     fade.gain.setValueAtTime(fade.gain.value, t);
