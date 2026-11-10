@@ -2426,9 +2426,64 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
   margin-bottom: 1.1rem;
 }
 .atmosphere-title {
-  font-size: 0.76rem; font-weight: 700; margin: 0;
-  font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.16em;
-  color: var(--text-muted);
+  font-size: 1.05rem; font-weight: 700; margin: 0;
+  font-family: var(--font-display); letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.atmosphere-header-actions { display: flex; align-items: center; gap: 8px; }
+.atm-stop-all {
+  height: 30px; padding: 0 12px; border-radius: var(--r-pill); cursor: pointer;
+  background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+  font-size: 0.76rem; font-weight: 600;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+.atm-stop-all:hover { color: var(--text-primary); border-color: var(--border-hover); background: var(--surface-1); }
+
+/* ── Sections ── */
+.scape-section { display: flex; flex-direction: column; gap: 12px; padding: 14px 0 18px; border-top: 1px solid var(--border); }
+.scape-section:first-of-type { border-top: none; padding-top: 0; }
+.scape-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.scape-heading { margin: 0; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+.scape-sub { font-size: 0.72rem; color: var(--text-muted); }
+
+/* ── Soundscape tiles ── */
+.scape-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.scape-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 14px 4px 12px; min-height: 84px;
+  border-radius: var(--r-md); cursor: pointer;
+  background: var(--surface-1); border: 1px solid var(--border); color: var(--text-secondary);
+  transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.scape-tile:hover { background: var(--surface-2); color: var(--text-primary); }
+.scape-tile:active { transform: scale(0.97); }
+.scape-tile:focus-visible { outline: 2px solid var(--mode-accent); outline-offset: 2px; }
+.scape-tile.is-playing {
+  color: var(--mode-accent);
+  background: color-mix(in srgb, var(--mode-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--mode-accent) 45%, transparent);
+}
+.scape-name { font-size: 0.74rem; font-weight: 600; line-height: 1.2; text-align: center; }
+.scape-tile.is-playing .scape-name { color: var(--text-primary); }
+
+/* Live indicator in the corner of the playing tile */
+.scape-eq { position: absolute; top: 8px; right: 8px; display: flex; align-items: flex-end; gap: 2px; height: 10px; opacity: 0; transition: opacity 0.2s; }
+.scape-eq i { width: 2px; height: 4px; border-radius: 1px; background: var(--mode-accent); }
+.scape-tile.is-playing .scape-eq { opacity: 1; }
+.scape-tile.is-playing .scape-eq i { animation: scapeEq 0.9s ease-in-out infinite; }
+.scape-tile.is-playing .scape-eq i:nth-child(2) { animation-delay: 0.2s; }
+.scape-tile.is-playing .scape-eq i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes scapeEq { 0%,100% { height: 3px; } 50% { height: 10px; } }
+
+/* Loading: icon pulses while the file downloads/decodes */
+.scape-tile.is-loading .scape-icon { animation: scapePulse 0.9s ease-in-out infinite; }
+@keyframes scapePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+@media (max-width: 480px) {
+  .scape-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scape-tile.is-playing .scape-eq i, .scape-tile.is-loading .scape-icon { animation: none; }
 }
 .atmosphere-close {
   background: var(--surface-2); border: none; color: var(--text-secondary);
@@ -2535,7 +2590,9 @@ body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150
 .radio-player #radio-frame { width: 100%; height: 170px; border-radius: var(--r-md); overflow: hidden; }
 .radio-player iframe { border-radius: var(--r-md); }
 
-.radio-actions { display: flex; gap: 8px; }
+.radio-chip.radio-chip-icon { flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.radio-art-icon { color: var(--mode-accent); transition: opacity 0.25s var(--ease); }
+.radio.is-playing .radio-art-icon { opacity: 0; }
 .radio-chip {
   flex: 1; height: 38px; border-radius: var(--r-sm); cursor: pointer;
   background: var(--surface-1); border: 1px solid var(--border); color: var(--text-secondary);

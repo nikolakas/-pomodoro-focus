@@ -159,43 +159,63 @@
 
         </main>
 
-<div id="atmosphere-overlay" class="atmosphere-overlay" style="display:none;" role="dialog" aria-label="Ambience">
-  <div class="atmosphere-panel glass-card">
+<div id="atmosphere-overlay" class="atmosphere-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Sounds">
+  <div class="atmosphere-panel">
     <div class="atmosphere-header">
-      <h2 class="atmosphere-title">Ambience</h2>
-      <button class="atmosphere-close" id="btn-close-atmosphere" aria-label="Close">✕</button>
-    </div>
-
-    <div class="radio" id="cafe-radio">
-      <div class="radio-head">
-        <div class="radio-art" aria-hidden="true">
-          <span class="radio-art-emoji">☕</span>
-          <span class="radio-bars"><i></i><i></i><i></i><i></i></span>
-        </div>
-        <div class="radio-meta">
-          <span class="radio-name">Coffee Shop</span>
-          <span class="radio-status" id="radio-status">Paused</span>
-        </div>
-        <button class="radio-play" id="radio-play" aria-label="Play coffee shop ambience">
-          <svg class="i-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
-          <svg class="i-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      <h2 class="atmosphere-title">Sounds</h2>
+      <div class="atmosphere-header-actions">
+        <button class="atm-stop-all" id="btn-stop-all-ambient" type="button">Stop all</button>
+        <button class="atmosphere-close" id="btn-close-atmosphere" type="button" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
+    </div>
 
+    <section class="scape-section" aria-labelledby="scape-heading">
+      <div class="scape-section-head">
+        <h3 class="scape-heading" id="scape-heading">Soundscapes</h3>
+        <span class="scape-sub">Saved on this device · works offline</span>
+      </div>
+      <div class="scape-grid" id="scape-grid" role="group" aria-label="Soundscapes"></div>
       <div class="radio-volume">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        <input type="range" id="radio-volume" class="radio-slider" min="0" max="100" value="60" aria-label="Ambience volume">
-        <span class="radio-vol-label" id="radio-vol-label">60%</span>
+        <input type="range" id="scape-volume" class="radio-slider" min="0" max="100" value="60" aria-label="Soundscape volume">
+        <span class="radio-vol-label" id="scape-vol-label">60%</span>
       </div>
+    </section>
 
-      <div class="radio-player"><div id="radio-frame"></div></div>
-
-      <div class="radio-actions">
-        <button class="radio-chip" id="radio-next" title="Skip to another café stream">Shuffle station</button>
-        <button class="radio-chip radio-chip-stop" id="btn-stop-all-ambient">Stop</button>
+    <section class="scape-section" aria-labelledby="cafe-heading">
+      <div class="scape-section-head">
+        <h3 class="scape-heading" id="cafe-heading">Café music</h3>
+        <span class="scape-sub">Lo-fi stream · needs internet</span>
       </div>
-      <p class="radio-note">Streams a lo-fi café playlist from YouTube. Nothing plays until you press play.</p>
-    </div>
+      <div class="radio" id="cafe-radio">
+        <div class="radio-head">
+          <div class="radio-art" aria-hidden="true">
+            <svg class="radio-art-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2M14 2v2M6 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/></svg>
+            <span class="radio-bars"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="radio-meta">
+            <span class="radio-name">Coffee shop</span>
+            <span class="radio-status" id="radio-status">Paused</span>
+          </div>
+          <button class="radio-chip radio-chip-icon" id="radio-next" type="button" title="Next station" aria-label="Next station">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          </button>
+          <button class="radio-play" id="radio-play" type="button" aria-label="Play café music">
+            <svg class="i-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20 7 4"/></svg>
+            <svg class="i-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          </button>
+        </div>
+        <div class="radio-volume">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" id="radio-volume" class="radio-slider" min="0" max="100" value="60" aria-label="Café music volume">
+          <span class="radio-vol-label" id="radio-vol-label">60%</span>
+        </div>
+        <div class="radio-player"><div id="radio-frame"></div></div>
+      </div>
+    </section>
+    <p class="radio-note">Nothing plays until you press it. Sounds keep playing when you switch tabs.</p>
   </div>
 </div>
 
@@ -826,7 +846,7 @@
       </div>
     </div>
 
-    <p class="auth-modal-terms">Your data is encrypted and synced via Firebase.</p>
+    <p class="auth-modal-terms">Your sessions, stats and settings sync across your devices.</p>
   </div>
 </div>
 
@@ -853,7 +873,10 @@
   const auth = getAuth(firebaseApp);
   const db = getFirestore(firebaseApp);
 
-  await setPersistence(auth, browserLocalPersistence);
+  // Storage-blocked browsers (private mode, strict tracking protection) reject this;
+  // fall back to the SDK default instead of aborting the whole module.
+  try { await setPersistence(auth, browserLocalPersistence); }
+  catch (e) { console.warn('[auth] local persistence unavailable, using session default', e); }
 
   window.firebaseAuth = auth;
   window.firebaseDb = db;

@@ -68,6 +68,7 @@ currentSubtasks: [],
         this.bindEvents();
         this.bindSteppers();
 		this.initCafeRadio();
+		this.initSoundscapes();
         this.renderStats();
         this.renderNotes();
         this.renderHeatmap();
@@ -85,6 +86,25 @@ currentSubtasks: [],
 this.restoreSessionState();
 this._pendingInvite = this._parseInviteParam();
 if (window.firebaseAuth) { this.initFirebase(); } else { window.addEventListener('firebase-ready', () => this.initFirebase(), { once: true }); }
+this._watchFirebaseLoad();
+    },
+
+    // If the Firebase SDK can't load (offline, CDN blocked, ad-blocker), the Sign in
+    // button would otherwise be dead. Say so instead.
+    _watchFirebaseLoad() {
+        const btn = document.getElementById('btn-auth');
+        if (!btn || window.firebaseAuth) return;
+        const onEarlyClick = () => this.showToast('Connecting…', 'Sign-in is still loading — try again in a second.', '⏳');
+        btn.addEventListener('click', onEarlyClick);
+        const done = () => btn.removeEventListener('click', onEarlyClick);
+        window.addEventListener('firebase-ready', done, { once: true });
+        setTimeout(() => {
+            if (window.firebaseAuth) return;
+            done();
+            btn.textContent = 'Offline';
+            btn.title = 'Sign-in unavailable — check your connection or ad-blocker';
+            btn.addEventListener('click', () => this.showToast('Sign-in unavailable', 'Could not reach Firebase. Check your connection or ad-blocker, then reload.', '⚠️'));
+        }, 10000);
     },
 
     // Read & strip a ?add=<username> invite link so it isn't re-applied on refresh.
@@ -148,6 +168,19 @@ async initFirebase() {
         'auth/cancelled-popup-request': 'Sign-in cancelled.',
         'auth/network-request-failed':  'Network error. Check your connection.',
         'auth/unauthorized-domain':     'This domain is not authorised for Google sign-in. Use email/password instead.',
+        'auth/invalid-login-credentials': 'Email or password is incorrect.',
+        'auth/missing-password':        'Please enter your password.',
+        'auth/missing-email':           'Please enter your email.',
+        'auth/user-disabled':           'This account has been disabled.',
+        // Console-side misconfiguration — say so plainly instead of a generic failure.
+        'auth/operation-not-allowed':   'Email sign-in is turned off for this app (enable Email/Password in the Firebase console).',
+        'auth/api-key-not-valid.-please-pass-a-valid-api-key.': 'Firebase API key rejected — check the project config.',
+        'auth/internal-error':          'Firebase had an internal error. Try again in a moment.',
+    };
+    // Unknown codes still name the code, so a real problem is never hidden behind "something went wrong".
+    const authMessage = (err, fallback) => {
+        console.error('[auth]', err?.code, err?.message);
+        return AUTH_ERRORS[err?.code] || `${fallback} (${err?.code || 'unknown error'})`;
     };
 
     // ── Modal open/close ──────────────────────────────────────────
@@ -196,7 +229,13 @@ async initFirebase() {
             const email = emailInput?.value.trim();
             const pass  = passInput?.value;
             const name  = nameInput?.value.trim();
-            if (!email || !pass) return;
+            if (!email || !pass) {
+                if (errorEl) {
+                    errorEl.textContent = !email ? 'Please enter your email.' : 'Please enter your password.';
+                    errorEl.style.display = 'block';
+                }
+                return;
+            }
 
             if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '...'; }
             if (errorEl) errorEl.style.display = 'none';
@@ -213,7 +252,7 @@ async initFirebase() {
                 closeModal();
             } catch (err) {
                 if (errorEl) {
-                    errorEl.textContent = AUTH_ERRORS[err.code] || 'Something went wrong. Please try again.';
+                    errorEl.textContent = authMessage(err, 'Sign-in failed.');
                     errorEl.style.display = 'block';
                 }
             } finally {
@@ -245,7 +284,7 @@ async initFirebase() {
                 if (err.code === 'auth/popup-blocked' && window.signInWithRedirect) {
                     await window.signInWithRedirect(window.firebaseAuth, provider);
                 } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-                    const msg = AUTH_ERRORS[err.code] || err.message || 'Google sign-in failed.';
+                    const msg = authMessage(err, 'Google sign-in failed.');
                     if (googleError) { googleError.textContent = msg; googleError.style.display = 'block'; }
                     else if (errorEl) { errorEl.textContent = msg; errorEl.style.display = 'block'; }
                 }
@@ -261,7 +300,7 @@ async initFirebase() {
             .then(result => { if (result?.user) closeModal(); })
             .catch(err => {
                 if (err?.code && err.code !== 'auth/no-current-user') {
-                    this.showToast('Sign-in failed', AUTH_ERRORS[err.code] || err.message, '⚠️');
+                    this.showToast('Sign-in failed', authMessage(err, 'Google sign-in failed.'), '⚠️');
                 }
             });
     }
@@ -296,7 +335,7 @@ async initFirebase() {
                 if (resetEmailIn) resetEmailIn.value = '';
             } catch (err) {
                 if (resetError) {
-                    resetError.textContent = AUTH_ERRORS[err.code] || 'Could not send reset email. Try again.';
+                    resetError.textContent = authMessage(err, 'Could not send reset email.');
                     resetError.style.display = 'block';
                 }
             } finally {
@@ -325,7 +364,14 @@ async initFirebase() {
                 }
             }
 
-            await this.loadFromFirestore(user.uid);
+            try {
+                await this.loadFromFirestore(user.uid);
+            } catch (err) {
+                console.error('[sync] initial load failed', err);
+                this.showToast('Signed in, but sync failed', err?.code === 'permission-denied'
+                    ? 'Firestore rules blocked the read — publish firestore.rules.'
+                    : 'Your progress is saved locally and will sync later.', '⚠️');
+            }
 
             if (this.userUnsub) this.userUnsub();
             const ref = window.firestoreDoc(window.firebaseDb, 'users', user.uid);
@@ -1401,6 +1447,199 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
 // Volume is remembered; playback state deliberately is not, so opening the
 // app never starts making noise on its own.
 // ===================================
+// ===================================
+// SOUNDSCAPES — bundled loops in /sounds, played through Web Audio.
+// <audio loop> leaves a gap at every repeat in most browsers; an AudioBuffer
+// looped over [SCAPE_LOOP_PAD, SCAPE_LOOP_PAD + seconds) is sample-exact. Each
+// file carries half a second of wrap-around on both ends so MP3 encoder padding
+// never falls inside that region. Like the café stream, nothing starts without a click.
+// ===================================
+SCAPE_LOOP_PAD: 0.5,
+SOUNDSCAPES: [
+    { id: 'rain',      name: 'Rain',        seconds: 40, icon: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/>' },
+    { id: 'waves',     name: 'Ocean',       seconds: 48, icon: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' },
+    { id: 'fireplace', name: 'Fireplace',   seconds: 40, icon: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>' },
+    { id: 'night',     name: 'Night',       seconds: 40, icon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>' },
+    { id: 'brown',     name: 'Brown noise', seconds: 30, icon: '<path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/>' },
+],
+
+initSoundscapes() {
+    const savedVol = parseInt(localStorage.getItem('pomodoro_scape_volume'), 10);
+    this.scape = {
+        ctx: null, master: null, buffers: {}, pending: {},
+        current: null, node: null, loadingId: null,
+        volume: Number.isFinite(savedVol) ? Math.max(0, Math.min(100, savedVol)) : 60
+    };
+
+    const grid = document.getElementById('scape-grid');
+    if (grid) {
+        grid.innerHTML = this.SOUNDSCAPES.map(sc => `
+            <button type="button" class="scape-tile" data-scape="${sc.id}" aria-pressed="false">
+                <svg class="scape-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${sc.icon}</svg>
+                <span class="scape-name">${sc.name}</span>
+                <span class="scape-eq" aria-hidden="true"><i></i><i></i><i></i></span>
+            </button>`).join('');
+        grid.addEventListener('click', e => {
+            const tile = e.target.closest('.scape-tile');
+            if (tile) this.toggleScape(tile.dataset.scape);
+        });
+    }
+
+    const slider = document.getElementById('scape-volume');
+    if (slider) {
+        slider.value = this.scape.volume;
+        slider.addEventListener('input', e => {
+            this.scape.volume = parseInt(e.target.value, 10) || 0;
+            localStorage.setItem('pomodoro_scape_volume', String(this.scape.volume));
+            this._applyScapeVolume(0.05);
+            this._renderScapes();
+        });
+    }
+    this._renderScapes();
+},
+
+// Perceptual curve — with a linear gain the bottom half of the slider does almost nothing.
+_scapeGain() { return Math.pow(this.scape.volume / 100, 2); },
+
+_applyScapeVolume(ramp) {
+    const s = this.scape;
+    if (!s.master) return;
+    const t = s.ctx.currentTime;
+    s.master.gain.cancelScheduledValues(t);
+    s.master.gain.setTargetAtTime(this._scapeGain(), t, ramp);
+},
+
+_ensureScapeCtx() {
+    const s = this.scape;
+    if (!s.ctx) {
+        s.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        s.master = s.ctx.createGain();
+        s.master.gain.value = this._scapeGain();
+        s.master.connect(s.ctx.destination);
+    }
+    if (s.ctx.state === 'suspended') s.ctx.resume();
+    return s.ctx;
+},
+
+_loadScape(id) {
+    const s = this.scape;
+    if (s.buffers[id]) return Promise.resolve(s.buffers[id]);
+    if (!s.pending[id]) {
+        s.pending[id] = fetch(`sounds/${id}.mp3`)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+            .then(buf => s.ctx.decodeAudioData(buf))
+            .then(audio => { this._healScapeSeam(audio, id); s.buffers[id] = audio; return audio; })
+            .finally(() => { delete s.pending[id]; });
+    }
+    return s.pending[id];
+},
+
+// The audio is periodic, but MP3 coding noise differs between the two ends of
+// the loop, which can tick on very smooth sounds (brown noise). Crossfade the
+// last 20 ms before loopEnd into the 20 ms before loopStart — the same content
+// up to coding noise — so the jump back is continuous.
+_healScapeSeam(buffer, id) {
+    const meta = this.SOUNDSCAPES.find(sc => sc.id === id);
+    const sr = buffer.sampleRate;
+    const a = Math.round(this.SCAPE_LOOP_PAD * sr);
+    const b = Math.round((this.SCAPE_LOOP_PAD + meta.seconds) * sr);
+    const m = Math.round(0.02 * sr);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const d = buffer.getChannelData(ch);
+        for (let i = 0; i < m; i++) {
+            const w = (i + 1) / m;
+            d[b - m + i] = d[b - m + i] * (1 - w) + d[a - m + i] * w;
+        }
+    }
+},
+
+toggleScape(id) {
+    if (this.scape.current === id || this.scape.loadingId === id) this.stopScape();
+    else this.playScape(id);
+},
+
+async playScape(id) {
+    const s = this.scape;
+    const meta = this.SOUNDSCAPES.find(sc => sc.id === id);
+    if (!meta) return;
+    // The AudioContext has to be created/resumed inside the click's call stack,
+    // or browsers keep it suspended — so this happens before the first await.
+    const ctx = this._ensureScapeCtx();
+    s.loadingId = id;
+    this._renderScapes();
+
+    let buffer;
+    try {
+        buffer = await this._loadScape(id);
+    } catch (err) {
+        console.error('[sounds] failed to load', id, err);
+        if (s.loadingId === id) s.loadingId = null;
+        this._renderScapes();
+        this.showToast('Couldn’t load sound', `${meta.name} failed to load — check your connection and try again.`, '⚠️');
+        return;
+    }
+    // A different tile (or Stop) was pressed while this one was downloading.
+    if (s.loadingId !== id) return;
+    s.loadingId = null;
+
+    this._fadeOutScapeNode(0.8);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    src.loopStart = this.SCAPE_LOOP_PAD;
+    src.loopEnd = this.SCAPE_LOOP_PAD + meta.seconds;
+    const fade = ctx.createGain();
+    fade.gain.setValueAtTime(0, ctx.currentTime);
+    fade.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.2);
+    src.connect(fade).connect(s.master);
+    src.start(0, this.SCAPE_LOOP_PAD);
+
+    s.node = { src, fade };
+    s.current = id;
+    this._renderScapes();
+},
+
+stopScape() {
+    this.scape.loadingId = null;
+    this._fadeOutScapeNode(0.6);
+    this.scape.current = null;
+    this._renderScapes();
+},
+
+_fadeOutScapeNode(sec) {
+    const s = this.scape;
+    if (!s.node) return;
+    const { src, fade } = s.node;
+    const t = s.ctx.currentTime;
+    fade.gain.cancelScheduledValues(t);
+    fade.gain.setValueAtTime(fade.gain.value, t);
+    fade.gain.linearRampToValueAtTime(0, t + sec);
+    src.stop(t + sec + 0.05);
+    s.node = null;
+},
+
+_renderScapes() {
+    const s = this.scape;
+    if (!s) return;
+    document.querySelectorAll('.scape-tile').forEach(tile => {
+        const id = tile.dataset.scape;
+        const playing = s.current === id;
+        tile.classList.toggle('is-playing', playing);
+        tile.classList.toggle('is-loading', s.loadingId === id);
+        tile.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    });
+    const label = document.getElementById('scape-vol-label');
+    if (label) label.textContent = `${s.volume}%`;
+    this._renderSoundsIndicator();
+},
+
+// The dot on the Sounds button means "something is audible", from either source.
+_renderSoundsIndicator() {
+    const on = !!(this.scape && this.scape.current) || !!(this.cafe && this.cafe.playing);
+    const btn = document.getElementById('btn-sounds');
+    if (btn) btn.classList.toggle('sounds-active', on);
+},
+
 CAFE_TRACKS: [
     'h-PfBxoMq_4', // 4K Cozy Coffee Shop Piano Jazz
     'YACyyY64X-E', // Cozy Coffee Shop Ambience smooth jazz
@@ -1437,7 +1676,7 @@ initCafeRadio() {
     }
     if (playBtn) playBtn.addEventListener('click', () => this.toggleCafeRadio());
     if (nextBtn) nextBtn.addEventListener('click', () => this.nextCafeTrack());
-    if (stopBtn) stopBtn.addEventListener('click', () => this.stopCafeRadio());
+    if (stopBtn) stopBtn.addEventListener('click', () => { this.stopCafeRadio(); this.stopScape(); });
 
     // No YouTube anything at boot — the API and the player are only fetched once
     // the ambience sheet is opened. Nothing to load, nothing that could sound off.
@@ -1552,8 +1791,7 @@ _renderRadio() {
     const volLabel = document.getElementById('radio-vol-label');
     if (volLabel) volLabel.textContent = `${c.volume}%`;
 
-    const soundsBtn = document.getElementById('btn-sounds');
-    if (soundsBtn) soundsBtn.classList.toggle('sounds-active', playing);
+    this._renderSoundsIndicator();
 },
 
 switchTab(target) {
