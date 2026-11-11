@@ -1149,18 +1149,6 @@ const inputs = document.querySelectorAll('.settings-page input:not([type="file"]
 inputs.forEach(input => input.addEventListener('change', () => this.saveSettings()));
 
   // Notes
-  const btnAddNote = document.getElementById('btn-add-note');
-  if (btnAddNote) {
-    btnAddNote.addEventListener('click', () => this.addNote());
-  }
-
-  const noteInput = document.getElementById('note-input');
-  if (noteInput) {
-    noteInput.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === 'Enter') this.addNote();
-    });
-  }
-
   const noteSearch = document.getElementById('note-search');
   if (noteSearch) noteSearch.addEventListener('input', () => this.renderNotes());
 
@@ -1309,6 +1297,13 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     if (catGameModal && catGameModal.style.display === 'flex') {
       if (e.key === 'Escape') { e.preventDefault(); this.closeCatGame(); }
       else if (e.code === 'Space') { e.preventDefault(); this._catGameJump(); }
+      return;
+    }
+
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && this.journal && this.journal.open
+        && document.getElementById('panel-notes').classList.contains('active') && !e.target.closest('.tabs')) {
+      e.preventDefault();
+      this._journalFlip(e.key === 'ArrowRight' ? 1 : -1);
       return;
     }
 
@@ -3027,10 +3022,7 @@ setThemePreview(theme) {
             if (title) title.textContent = 'Pomodoro Focus';
             if (subtitle) subtitle.textContent = '';
         }
-        const titleEl = document.getElementById('notebook-cover-title');
-        const emblem = document.querySelector('.notebook-emblem');
-        if (titleEl) titleEl.textContent = theme === 'terea' ? 'Terea Journal 💨' : 'My Journal';
-        if (emblem) emblem.textContent = theme === 'terea' ? '👑' : '📖';
+        this.renderNotes();
     },
 
     rotateQuote() {
@@ -3414,10 +3406,261 @@ const tag = s.label && labelColors[s.label]
     // ===================================
     // NOTES LOGIC
     // ===================================
+    // ===================================
+    // JOURNAL — behaves like a book: a cover, an endpaper, a title page, one
+    // entry per page in the order they were written, and a fresh page at the
+    // end to write on. Entries live in localStorage ('pomodoro_notes', newest first).
+    // ===================================
+    JOURNAL_THEMES: {
+        normal:  { title: 'Journal',      epigraph: 'Where your attention goes,<br>your time goes.', emblem: '<circle cx="12" cy="12" r="3.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>' },
+        pink:    { title: 'Rose Diary',   epigraph: 'Bloom where you are planted.', emblem: '<path d="M12 20.5s-7.5-4.6-9.3-9.4C1.4 7.5 3.6 4.5 6.8 4.5c2 0 3.8 1.1 5.2 3 1.4-1.9 3.2-3 5.2-3 3.2 0 5.4 3 4.1 6.6-1.8 4.8-9.3 9.4-9.3 9.4z"/>' },
+        terea:   { title: 'Training Log', epigraph: 'Η βασίλισσα δεν σταματά.', emblem: '<path d="M6.5 7.5v9M3.5 10v4M17.5 7.5v9M20.5 10v4M6.5 12h11"/>' },
+        medical: { title: 'Case Notes',   epigraph: 'Every patient is a teacher.<br>Every case is a lesson.', emblem: '<path d="M2 12h5l2-6 4 12 2-6h7"/>' },
+    },
+
+    _journalNotes() {
+        try { return JSON.parse(localStorage.getItem('pomodoro_notes') || '[]'); } catch (e) { return []; }
+    },
+
+    _esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); },
+
+    initNotebook() { this.renderNotes(); },
+
+    openJournalToWrite() {
+        this.switchTab('notes');
+        if (!this.journal) this.renderNotes();
+        this.journal.open = true;
+        this.journal.jumpToEnd = true;
+        this.renderNotes();
+        const input = document.getElementById('note-input');
+        if (input) input.focus();
+    },
+
+    renderNotes() {
+        const root = document.getElementById('journal');
+        if (!root) return;
+        if (!this.journal) {
+            this.journal = { open: false, view: null, draft: '', filterKey: '' };
+            this._bindJournal(root);
+        }
+        const J = this.journal;
+        const theme = this.JOURNAL_THEMES[this.state.settings.theme] || this.JOURNAL_THEMES.normal;
+        const notes = this._journalNotes();
+        const chrono = [...notes].reverse();
+        const fmtDay = d => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+
+        // Cover
+        const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+        set('journal-cover-title', theme.title);
+        set('journal-cover-emblem', `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${theme.emblem}</svg>`);
+        set('journal-cover-sub', String(chrono.length ? new Date(chrono[0].date).getFullYear() : new Date().getFullYear()));
+
+        // Tag chips
+        const tags = [...new Set(notes.flatMap(n => n.tags || []))];
+        const active = this.state.activeNoteFilter || null;
+        set('tags-filter', tags.length
+            ? [`<button type="button" class="j-chip${active ? '' : ' active'}" data-filter="">All</button>`,
+               ...tags.map(t => `<button type="button" class="j-chip${active === t ? ' active' : ''}" data-filter="${this._esc(t)}">#${this._esc(t)}</button>`)].join('')
+            : '');
+
+        // Pages
+        const searchEl = document.getElementById('note-search');
+        const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+        let shown = chrono.map((n, i) => ({ n, num: i + 1 }));
+        if (active) shown = shown.filter(e => (e.n.tags || []).includes(active));
+        if (q) shown = shown.filter(e => e.n.text.toLowerCase().includes(q));
+
+        const single = window.matchMedia('(max-width: 720px)').matches;
+        const pages = [];
+        if (!single) pages.push({ type: 'endpaper' });
+        pages.push({ type: 'title', theme, count: notes.length, begun: chrono[0] ? fmtDay(chrono[0].date) : null });
+        const noHits = (q || active) && !shown.length;
+        // The writing page always sits on the right, facing the latest entry. When
+        // the page count would put it on the left, an epigraph page evens it out.
+        if (!single && (shown.length + (noHits ? 1 : 0)) % 2 === 0) pages.push({ type: 'epigraph', theme });
+        if (noHits) pages.push({ type: 'empty', q: q || `#${active}` });
+        shown.forEach(e => pages.push({ type: 'entry', ...e }));
+        pages.push({ type: 'write' });
+
+        J.pages = pages;
+        J.per = single ? 1 : 2;
+        J.views = Math.ceil(pages.length / J.per);
+        const viewOf = type => Math.floor(Math.max(0, pages.findIndex(p => p.type === type)) / J.per);
+        const filterKey = `${q}|${active || ''}`;
+        if (filterKey !== J.filterKey) {
+            // A new search starts at its first hit; clearing it returns to the writing page.
+            J.view = (q || active) ? viewOf(shown.length ? 'entry' : 'empty') : viewOf('write');
+            J.filterKey = filterKey;
+        } else if (J.view == null || J.view >= J.views || J.jumpToEnd) {
+            J.view = viewOf('write');
+        }
+        J.jumpToEnd = false;
+
+        root.dataset.state = J.open ? 'open' : 'closed';
+        root.classList.toggle('single', single);
+        this._journalPaint();
+
+        const foot = document.getElementById('journal-foot');
+        if (foot) {
+            const n = notes.length;
+            if (!J.open) foot.textContent = n ? `${n} ${n === 1 ? 'entry' : 'entries'} · last written ${fmtDay(notes[0].date)}` : 'Empty so far — open it and write the first page';
+            else if (q || active) foot.textContent = `${shown.length} of ${n} ${n === 1 ? 'entry' : 'entries'} match`;
+            else foot.textContent = '';
+        }
+    },
+
+    _journalPageHTML(p) {
+        if (!p) return '';
+        const esc = s => this._esc(s);
+        const longDate = d => d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        switch (p.type) {
+            case 'title':
+                return `<div class="jp-title">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.theme.emblem}</svg>
+                    <h2>${p.theme.title}</h2>
+                    <span class="jp-orn" aria-hidden="true"></span>
+                    <p>${p.count ? `${p.count} ${p.count === 1 ? 'entry' : 'entries'}` : 'No entries yet'}</p>
+                    <p class="jp-dim">${p.begun ? `Begun ${p.begun}` : 'Turn the page to begin'}</p>
+                </div>`;
+            case 'entry': {
+                const d = new Date(p.n.date);
+                const body = esc(p.n.text).replace(/#(\w+)/g, (m, t) => `<button type="button" class="jp-tag" data-filter="${t.toLowerCase()}">#${t}</button>`);
+                return `<header class="jp-head"><span class="jp-date">${longDate(d)}</span><span class="jp-time">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></header>
+                    <div class="j-body" tabindex="0">${body}</div>
+                    <footer class="jp-foot">
+                        <button type="button" class="jp-del" data-del="${p.n.id}" title="Delete this entry" aria-label="Delete this entry"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg><span></span></button>
+                        <span class="jp-num">${p.num}</span>
+                    </footer>`;
+            }
+            case 'write':
+                return `<header class="jp-head"><span class="jp-date">${longDate(new Date())}</span><span class="jp-time">New entry</span></header>
+                    <textarea id="note-input" class="j-body j-input" aria-label="New journal entry" placeholder="${esc(this.journalPrompt || 'Write here…')}">${esc(this.journal.draft || '')}</textarea>
+                    <footer class="jp-foot">
+                        <span class="jp-hint">Ctrl + Enter saves · #tags are searchable</span>
+                        <button type="button" class="j-save" id="btn-add-note">Save entry</button>
+                    </footer>`;
+            case 'empty':
+                return `<div class="jp-title"><p>No entries match “${esc(p.q)}”.</p></div>`;
+            case 'epigraph':
+                return `<div class="jp-title jp-epigraph"><p>${p.theme.epigraph}</p></div>`;
+            default:
+                return '';
+        }
+    },
+
+    _journalPaint() {
+        const J = this.journal;
+        const L = document.getElementById('j-left'), R = document.getElementById('j-right');
+        if (!L || !R) return;
+        const a = J.pages[J.view * J.per], b = J.per === 2 ? J.pages[J.view * J.per + 1] : null;
+        L.dataset.type = a ? a.type : 'blank';
+        L.innerHTML = this._journalPageHTML(a);
+        R.dataset.type = b ? b.type : 'blank';
+        R.innerHTML = this._journalPageHTML(b);
+        const prev = document.getElementById('j-prev'), next = document.getElementById('j-next');
+        if (prev) prev.disabled = J.view <= 0;
+        if (next) next.disabled = J.view >= J.views - 1;
+        const count = document.getElementById('j-count');
+        if (count) count.textContent = `${J.view + 1} / ${J.views}`;
+    },
+
+    async _journalFlip(dir) {
+        const J = this.journal;
+        if (!J || !J.open || J.flipping) return;
+        const target = J.view + dir;
+        if (target < 0 || target >= J.views) return;
+        const L = document.getElementById('j-left'), R = document.getElementById('j-right');
+        this.uiSound('page');
+        if (!L.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            J.view = target; this._journalPaint(); return;
+        }
+        J.flipping = true;
+        // Never let a stalled animation (background tab) leave the book stuck mid-turn.
+        const run = (el, frames, opts) => Promise.race([el.animate(frames, opts).finished, new Promise(r => setTimeout(r, opts.duration + 250))]);
+        const sign = dir > 0 ? -1 : 1;
+        const out = 'cubic-bezier(0.22, 1, 0.36, 1)';
+        try {
+            if (J.per === 1) {
+                await run(L, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${sign * 28}px)` }], { duration: 130, easing: 'ease-in' });
+                J.view = target; this._journalPaint();
+                await run(L, [{ opacity: 0, transform: `translateX(${-sign * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 210, easing: out });
+            } else {
+                // The leaving page folds up toward the spine; the arriving one unfolds from it.
+                const leaving = dir > 0 ? R : L, arriving = dir > 0 ? L : R;
+                leaving.style.transformOrigin = dir > 0 ? 'left center' : 'right center';
+                await run(leaving, [{ transform: 'perspective(1800px) rotateY(0deg)' }, { transform: `perspective(1800px) rotateY(${sign * 88}deg)` }], { duration: 170, easing: 'ease-in' });
+                J.view = target; this._journalPaint();
+                arriving.style.transformOrigin = dir > 0 ? 'right center' : 'left center';
+                await run(arriving, [{ transform: `perspective(1800px) rotateY(${-sign * 88}deg)` }, { transform: 'perspective(1800px) rotateY(0deg)' }], { duration: 240, easing: out });
+            }
+        } finally {
+            J.flipping = false;
+        }
+    },
+
+    _bindJournal(root) {
+        const J = this.journal;
+        const book = document.getElementById('journal-book');
+        if (book) book.addEventListener('click', () => {
+            if (root.classList.contains('opening')) return;
+            this.uiSound('page');
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            root.classList.add('opening');
+            setTimeout(() => {
+                root.classList.remove('opening');
+                J.open = true;
+                J.jumpToEnd = true;
+                this.renderNotes();
+            }, reduce ? 0 : 360);
+        });
+
+        root.addEventListener('click', e => {
+            const t = e.target;
+            if (t.closest('#journal-close')) { J.open = false; this.renderNotes(); return; }
+            if (t.closest('#j-prev')) { this._journalFlip(-1); return; }
+            if (t.closest('#j-next')) { this._journalFlip(1); return; }
+            if (t.closest('#btn-add-note')) { this.addNote(); return; }
+            const filter = t.closest('[data-filter]');
+            if (filter) { this.setNoteFilter(filter.dataset.filter || null); return; }
+            const del = t.closest('.jp-del');
+            if (del) {
+                // Two taps to tear a page out — one is too easy to do by accident.
+                if (del.classList.contains('armed')) { this.deleteNote(Number(del.dataset.del)); return; }
+                del.classList.add('armed');
+                del.querySelector('span').textContent = 'Delete?';
+                setTimeout(() => { if (del.isConnected) { del.classList.remove('armed'); del.querySelector('span').textContent = ''; } }, 3000);
+            }
+        });
+        root.addEventListener('input', e => { if (e.target.id === 'note-input') J.draft = e.target.value; });
+        root.addEventListener('keydown', e => {
+            if (e.target.id === 'note-input' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); this.addNote(); }
+        });
+
+        // Swipe to turn pages on touch screens.
+        let x0 = null;
+        const spread = document.getElementById('journal-spread');
+        if (spread) {
+            spread.addEventListener('touchstart', e => { x0 = e.target.closest('textarea') ? null : e.touches[0].clientX; }, { passive: true });
+            spread.addEventListener('touchend', e => {
+                if (x0 == null) return;
+                const dx = e.changedTouches[0].clientX - x0;
+                x0 = null;
+                if (Math.abs(dx) > 50) this._journalFlip(dx < 0 ? 1 : -1);
+            }, { passive: true });
+        }
+
+        // One page on phones, two on wider screens.
+        let lastSingle = window.matchMedia('(max-width: 720px)').matches;
+        window.addEventListener('resize', () => {
+            const single = window.matchMedia('(max-width: 720px)').matches;
+            if (single !== lastSingle) { lastSingle = single; J.view = null; this.renderNotes(); }
+        });
+    },
+
     addNote() {
         const input = document.getElementById('note-input');
-        const text = input.value.trim();
-        if (!text) return;
+        const text = input ? input.value.trim() : '';
+        if (!text) { if (input) input.focus(); return; }
 
         const tags = [];
         text.replace(/#(\w+)/g, (match, tag) => {
@@ -3425,11 +3668,14 @@ const tag = s.label && labelColors[s.label]
             return match;
         });
 
-        const notes = JSON.parse(localStorage.getItem('pomodoro_notes') || '[]');
+        const notes = this._journalNotes();
         notes.unshift({ id: Date.now(), text, date: new Date().toISOString(), tags });
         localStorage.setItem('pomodoro_notes', JSON.stringify(notes));
 
-        input.value = '';
+        this.journal.draft = '';
+        this.journal.jumpToEnd = true;
+        this.journalPrompt = null;
+        this.uiSound('select');
         this.renderNotes();
     },
 
@@ -3437,6 +3683,13 @@ const tag = s.label && labelColors[s.label]
         this.state.activeNoteFilter = tag;
         this.renderNotes();
     },
+
+    deleteNote(id) {
+        const notes = this._journalNotes().filter(n => n.id !== id);
+        localStorage.setItem('pomodoro_notes', JSON.stringify(notes));
+        this.renderNotes();
+    },
+
 deleteHistoryItem(date) {
     this.state.history = this.state.history.filter(s => s.date !== date);
     localStorage.setItem('pomodoro_history', JSON.stringify(this.state.history));
@@ -3445,62 +3698,8 @@ deleteHistoryItem(date) {
     this.renderInsights();
     this.renderStats();
 },
-    deleteNote(id) {
-        let notes = JSON.parse(localStorage.getItem('pomodoro_notes') || '[]');
-        notes = notes.filter(n => n.id !== id);
-        localStorage.setItem('pomodoro_notes', JSON.stringify(notes));
-        this.renderNotes();
-    },
 
-    renderNotes() {
-        const list = document.getElementById('notes-list');
-        if (!list) return;
-        const notes = JSON.parse(localStorage.getItem('pomodoro_notes') || '[]');
-
-        let allTags = new Set();
-        notes.forEach(n => { if (n.tags) n.tags.forEach(t => allTags.add(t)); });
-
-        const filterContainer = document.getElementById('tags-filter');
-        if (filterContainer) {
-            filterContainer.innerHTML = `<button class="tag-btn ${!this.state.activeNoteFilter ? 'active' : ''}" onclick="app.setNoteFilter(null)">All</button>`;
-            Array.from(allTags).forEach(t => {
-                filterContainer.innerHTML += `<button class="tag-btn ${this.state.activeNoteFilter === t ? 'active' : ''}" onclick="app.setNoteFilter('${t}')">#${t}</button>`;
-            });
-            if (allTags.size === 0) filterContainer.innerHTML = '';
-        }
-
-        const searchEl = document.getElementById('note-search');
-        const searchQ = searchEl ? searchEl.value.trim().toLowerCase() : '';
-
-        list.innerHTML = '';
-        let filteredNotes = this.state.activeNoteFilter
-            ? notes.filter(n => n.tags && n.tags.includes(this.state.activeNoteFilter))
-            : notes;
-
-        if (searchQ) {
-            filteredNotes = filteredNotes.filter(n => n.text.toLowerCase().includes(searchQ));
-        }
-
-        if (filteredNotes.length === 0) {
-            list.innerHTML = '<p class="empty-state">No notes found.</p>';
-            return;
-        }
-
-        filteredNotes.forEach(n => {
-            const d = new Date(n.date);
-            const el = document.createElement('div');
-            el.className = 'note-item';
-            let formattedText = n.text.replace(/</g, '&lt;').replace(/#(\w+)/g, '<span class="note-tag">#$1</span>');
-            el.innerHTML = `
-                <div class="note-text">${formattedText}</div>
-                <div class="note-time">${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                <button class="btn-delete-note" onclick="app.deleteNote(${n.id})" title="Delete Note">✕</button>
-            `;
-            list.appendChild(el);
-        });
-    },
   openJournalPrompt(prompt) {
-    const noteInput = document.getElementById('note-input');
     const c = document.getElementById('toast-container');
     if (!c) return;
 
@@ -3511,13 +3710,14 @@ deleteHistoryItem(date) {
         <div class="toast-content">
             <div class="toast-title">${prompt}</div>
             <div class="toast-desc" style="margin-top:6px;">
-                <button class="toast-journal-btn" onclick="app.switchTab('notes'); this.closest('.toast').remove();">Open Journal →</button>
+                <button class="toast-journal-btn" onclick="app.openJournalToWrite(); this.closest('.toast').remove();">Write it down</button>
             </div>
         </div>
     `;
     c.appendChild(t);
 
-    if (noteInput) noteInput.placeholder = prompt;
+    this.journalPrompt = prompt;
+    this.renderNotes();
 
     setTimeout(() => {
         t.classList.add('hiding');
@@ -3525,59 +3725,6 @@ deleteHistoryItem(date) {
         if (noteInput) noteInput.placeholder = 'Write your thought...';
     }, 8000);
 },
-	initNotebook() {
-    const cover    = document.getElementById('notebook-cover');
-    const openBook = document.getElementById('notebook-open');
-    if (!cover || !openBook) return;
-
-    const theme = this.state.settings.theme;
-    const themes = {
-        pink:     { title: 'Rose Diary',        emblem: '🌸',  close: '← Close Diary'    },
-        terea:    { title: 'Gym Log',           emblem: '🏋️',  close: '← Close Log'      },
-        medical:  { title: 'Clinical Binder',   emblem: '🩺',  close: '← Close Binder'   },
-        normal:   { title: 'My Journal',        emblem: '📖',  close: '← Close Journal'  },
-    };
-    const cfg = themes[theme] || themes.normal;
-
-    const titleEl = document.getElementById('notebook-cover-title');
-    if (titleEl) titleEl.textContent = cfg.title;
-    const emblemEl = cover.querySelector('.notebook-emblem');
-    if (emblemEl) emblemEl.textContent = cfg.emblem;
-
-    // Remove old listener by cloning
-    const newCover = cover.cloneNode(true);
-    cover.parentNode.replaceChild(newCover, cover);
-
-    newCover.addEventListener('click', () => {
-        newCover.classList.add('opening');
-        setTimeout(() => {
-            newCover.style.display = 'none';
-            newCover.classList.remove('opening');
-            openBook.style.display = 'block';
-            openBook.classList.remove('bookReveal');
-            void openBook.offsetWidth; // reflow
-            openBook.classList.add('bookReveal');
-            this.renderNotes();
-        }, 280);
-    });
-
-    const existing = document.getElementById('btn-notebook-close');
-    if (existing) {
-        existing.textContent = cfg.close;
-        existing.onclick = () => { openBook.style.display = 'none'; newCover.style.display = 'flex'; };
-    } else {
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'notebook-close-btn';
-        closeBtn.id = 'btn-notebook-close';
-        closeBtn.textContent = cfg.close;
-        openBook.appendChild(closeBtn);
-        closeBtn.addEventListener('click', () => {
-            openBook.style.display = 'none';
-            newCover.style.display = 'flex';
-        });
-    }
-},
-
 async downloadAsDocx(title, textContent) {
     if (!window.docx) {
         // Fallback: plain .txt
@@ -3615,13 +3762,13 @@ async downloadAsDocx(title, textContent) {
 
 downloadNotes() {
     const notes = JSON.parse(localStorage.getItem('pomodoro_notes') || '[]');
-    if (!notes.length) { this.showToast('No journal entries to download', '', '📭'); return; }
+    if (!notes.length) { this.showToast('Nothing to export yet', 'Write an entry first.', '📄'); return; }
     const text = notes.map((n, i) => {
         const date = n.date ? new Date(n.date).toLocaleDateString() : '';
         const header = `Entry ${i + 1}${date ? ' — ' + date : ''}`;
         return `${header}\n${n.text || ''}`;
     }).join('\n\n---\n\n');
-    this.downloadAsDocx('My Journal', text);
+    this.downloadAsDocx((this.JOURNAL_THEMES[this.state.settings.theme] || this.JOURNAL_THEMES.normal).title, text);
 },
 
     // ===================================
@@ -4085,6 +4232,19 @@ initOnboarding() {
                 case 'pause':  blip(G5, 0, 0.09, 0.045); blip(C5, 0.07, 0.13, 0.045); break;
                 case 'on':     blip(C6, 0, 0.06, 0.04); break;
                 case 'off':    blip(E5, 0, 0.06, 0.04); break;
+                case 'page': {
+                    const len = Math.round(ctx.sampleRate * 0.17);
+                    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < len; i++) {
+                        const x = i / len;
+                        d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * x) * (1 - x);
+                    }
+                    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+                    src.buffer = buf; f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 0.6; g.gain.value = 0.07;
+                    src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+                    break;
+                }
             }
         } catch (e) { /* audio is never essential */ }
     },

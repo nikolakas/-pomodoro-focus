@@ -29,7 +29,8 @@
 
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
-    --font-display: 'Space Grotesk', 'Inter', sans-serif;
+    --font-display: 'Space Grotesk', var(--font-sans);
+    --font-serif: 'Literata', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
 
     /* ── Radii ── */
     --r-xs: 8px; --r-sm: 12px; --r-md: 16px; --r-lg: 22px; --r-xl: 30px; --r-pill: 999px;
@@ -951,23 +952,10 @@ select { background: var(--bg-secondary); color: var(--text-primary); border: 1p
 .notes-input { margin-bottom: 1rem; }
 textarea { width: 100%; background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 0.75rem 1rem; border-radius: 12px; font-family: inherit; font-size: 0.95rem; resize: vertical; min-height: 60px; outline: none; margin-bottom: 0.5rem; transition: border-color 0.2s; }
 textarea:focus { border-color: var(--accent); }
-.btn-add-note { width: 100%; height: 38px; border-radius: 8px; gap: 8px; font-weight: 600; font-size: 0.95rem; }
-.note-search-input {
-    width: 100%; box-sizing: border-box;
-    padding: 6px 10px; margin-bottom: 10px;
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-    background: rgba(255,255,255,0.04); color: var(--text-primary);
-    font-size: 0.82rem; outline: none;
-    transition: border-color 0.2s;
-}
-.note-search-input:focus { border-color: var(--accent); }
-.note-search-input::placeholder { color: var(--text-muted); }
+
+
 .notes-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: 50vh; overflow-y: auto; padding-right: 8px; }
-.note-item { background: var(--bg-card); border-radius: 12px; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.05); position: relative; animation: slideUp 0.3s ease-out; }
-.note-text { font-size: 0.95rem; line-height: 1.5; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
-.note-time { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
-.btn-delete-note { position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; }
-.btn-delete-note:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1055,13 +1043,6 @@ body.zen-mode .cat-companion { display: none; }
 .shortcut-item:last-child { border-bottom: none; }
 kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.2); }
 
-/* Note tags */
-.tags-filter-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
-.tag-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
-.tag-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.tag-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
-.note-tag { color: var(--accent); font-weight: 600; cursor: pointer; }
-.note-tag:hover { text-decoration: underline; }
 
 /* Empty state */
 .empty-state { color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 2rem 0; }
@@ -1148,12 +1129,10 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
     .wallpaper-picker-new { flex-wrap: wrap; gap: 8px; }
     .wp-thumb { width: 70px; }
 
-    /* Notebook */
-    .notebook-pages { grid-template-columns: 1fr; grid-template-rows: auto 8px auto; }
-    .notebook-spine { height: 8px; background: linear-gradient(180deg, #c4a882, #e8d5b0, #c4a882); }
-    .notebook-page { padding: 1rem; }
+    
 
-    /* Stats */
+
+/* Stats */
     .stats-split { gap: 1rem; }
     .history-list { max-height: 250px; }
     .eod-modal-content { padding: 1.5rem; }
@@ -1298,133 +1277,7 @@ kbd { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-
     color: var(--text-secondary); padding: 4px 10px; border-radius: 20px;
     font-size: 0.75rem; cursor: pointer; transition: 0.2s; font-family: inherit;
 }
-/* ===== STAR WARS NOTEBOOK ===== */
-.notebook-wrap { perspective: 1200px; }
 
-/* Cover */
-.notebook-cover {
-    background: linear-gradient(135deg, #1a0a00 0%, #3d1a00 50%, #1a0a00 100%);
-    border-radius: 4px 16px 16px 4px;
-    border: 1px solid #8b4513;
-    box-shadow: -4px 4px 20px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.3);
-    min-height: 300px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s;
-    position: relative;
-    overflow: hidden;
-}
-.notebook-cover::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0; width: 24px;
-    background: linear-gradient(90deg, #0a0500, #5c2800, #0a0500);
-    border-right: 1px solid #8b4513;
-}
-.notebook-cover::after {
-    content: '';
-    position: absolute; inset: 12px;
-    border: 1px solid rgba(139,69,19,0.4);
-    border-radius: 2px 12px 12px 2px;
-    pointer-events: none;
-}
-.notebook-cover:hover {
-    transform: translateY(-4px) rotateY(-3deg);
-    box-shadow: -8px 8px 30px rgba(0,0,0,0.7), inset 0 0 40px rgba(0,0,0,0.3);
-}
-.notebook-cover-inner {
-    text-align: center; padding: 2rem; z-index: 1;
-}
-.notebook-emblem { font-size: 3rem; margin-bottom: 1rem; display: block; }
-.notebook-title {
-    font-size: 1.4rem; font-weight: 700;
-    font-family: var(--font-display);
-    color: #d4a96a;
-    text-shadow: 0 0 20px rgba(212,169,106,0.5);
-    margin-bottom: 0.5rem;
-}
-.notebook-subtitle {
-    font-size: 0.8rem; color: rgba(212,169,106,0.5);
-    text-transform: uppercase; letter-spacing: 0.15em;
-}
-
-/* Open notebook */
-.notebook-open { animation: bookOpen 0.5s cubic-bezier(0.2,0.8,0.2,1) forwards; }
-@keyframes bookOpen {
-    from { opacity: 0; transform: rotateY(-8deg) scale(0.97); }
-    to   { opacity: 1; transform: rotateY(0deg) scale(1); }
-}
-.notebook-pages {
-    display: grid;
-    grid-template-columns: 1fr 20px 1fr;
-    height: 560px;
-    max-height: 82vh;
-    border-radius: 4px 12px 12px 4px;
-    overflow: hidden;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-}
-.notebook-page {
-    background: #f5f0e8;
-    padding: 1.5rem;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.notebook-page::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    background-image: repeating-linear-gradient(
-        transparent, transparent 27px, rgba(0,0,0,0.07) 27px, rgba(0,0,0,0.07) 28px
-    );
-    pointer-events: none;
-}
-.notebook-page-title {
-    font-family: var(--font-display);
-    font-size: 0.7rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.12em;
-    color: #8b4513; margin-bottom: 1rem;
-    padding-bottom: 6px;
-    border-bottom: 2px solid rgba(139,69,19,0.3);
-}
-.notebook-page-left {
-    overflow: hidden;
-}
-.notebook-page-left .notebook-page-title {
-    flex-shrink: 0;
-}
-.notebook-page-left textarea {
-    background: transparent;
-    border: none;
-    color: #2c1810;
-    font-family: 'Georgia', serif;
-    font-size: 0.92rem;
-    line-height: 28px;
-    resize: none;
-    width: 100%;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    outline: none;
-    padding: 0;
-    margin-bottom: 0;
-}
-.notebook-actions {
-    display: flex; flex-direction: column; gap: 8px;
-    flex-shrink: 0;
-    margin-top: 0.75rem;
-}
-.notebook-actions .btn-add-note {
-    border-radius: 6px; height: 36px; font-size: 0.85rem;
-    background: #8b4513; border: none;
-}
-.notebook-spine {
-    background: linear-gradient(90deg, #c4a882, #e8d5b0, #c4a882);
-    box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
-    position: relative;
-}
-.notebook-page-right {
-    overflow-y: auto;
-}
 
 body.minimal-mode .quote-display,
 body.minimal-mode .level-progress-container {
@@ -1446,43 +1299,7 @@ body.minimal-mode .controls {
     }
 }
 
-/* Search input — notebook context */
-.notebook-page-right .note-search-input {
-    background: rgba(0,0,0,0.06); border-color: rgba(139,69,19,0.2);
-    color: #2c1810; font-family: 'Georgia', serif;
-}
-.notebook-page-right .note-search-input:focus { border-color: rgba(139,69,19,0.5); }
-.notebook-page-right .note-search-input::placeholder { color: rgba(139,69,19,0.45); }
 
-/* Notes inside book */
-.notebook-page-right .note-item {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(139,69,19,0.2);
-    border-radius: 0;
-    padding: 8px 0;
-    animation: none;
-}
-.notebook-page-right .note-text {
-    color: #2c1810; font-family: 'Georgia', serif; font-size: 0.88rem;
-}
-.notebook-page-right .note-time { color: #8b6040; }
-.notebook-page-right .btn-delete-note { color: #8b6040; }
-
-/* Close button */
-.notebook-close-btn {
-    display: block; margin: 0.75rem auto 0;
-    background: transparent; border: 1px solid rgba(255,255,255,0.1);
-    color: var(--text-muted); padding: 6px 20px;
-    border-radius: 20px; font-size: 0.8rem; cursor: pointer; transition: 0.2s;
-}
-.notebook-close-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
-
-@media (max-width: 768px) {
-    .notebook-pages { grid-template-columns: 1fr; grid-template-rows: auto 8px auto; height: auto; max-height: none; }
-    .notebook-page-left { height: 340px; }
-    .notebook-spine { height: 8px; background: linear-gradient(180deg, #c4a882, #e8d5b0, #c4a882); }
-}
 .label-btn:hover { border-color: var(--lc); color: var(--lc); }
 .label-btn.active { background: color-mix(in srgb, var(--lc) 20%, transparent); border-color: var(--lc); color: var(--lc); font-weight: 600; }
 /* ===== ONBOARDING ===== */
@@ -1885,7 +1702,6 @@ body.zen-mode .app{padding-top:0;padding-bottom:0;}
 .tag-bar-pct{font-size:0.8rem;color:var(--text-muted);min-width:36px;text-align:right;}
 
 
-
 /* ========================================
    MEDICAL STUDY MODULE
    ======================================== */
@@ -2262,91 +2078,10 @@ body.theme-medical #btn-med-motivate { display: flex; }
 /* Remove the ::before pseudo-element now that handle is a real element */
 .med-postit::before { display: none; }
 
-/* ===== NOTEBOOK FLIP ANIMATION ===== */
-.notebook-cover.opening {
-    animation: coverFlip 0.28s cubic-bezier(0.4,0,0.2,1) forwards;
-    transform-origin: left center;
-}
+
 @keyframes coverFlip {
     from { transform: rotateY(0deg);    opacity: 1; }
     to   { transform: rotateY(-90deg);  opacity: 0; }
-}
-.notebook-open.bookReveal {
-    animation: bookOpen 0.42s cubic-bezier(0.2,0.8,0.2,1) forwards;
-}
-
-/* ===== NOTEBOOK — PINK (ROSE DIARY) ===== */
-body.theme-pink .notebook-cover {
-    background: linear-gradient(135deg, #2d0a1a 0%, #6b1a3d 50%, #2d0a1a 100%);
-    border-color: #ff6eb4;
-    box-shadow: -4px 4px 20px rgba(0,0,0,0.6), 0 0 30px rgba(255,110,180,0.15), inset 0 0 40px rgba(0,0,0,0.3);
-}
-body.theme-pink .notebook-cover::before {
-    background: linear-gradient(90deg, #1a0010, #5a1035, #1a0010);
-    border-right-color: #ff6eb4;
-}
-body.theme-pink .notebook-cover::after { border-color: rgba(255,110,180,0.35); }
-body.theme-pink .notebook-title { color: #ff6eb4; text-shadow: 0 0 20px rgba(255,110,180,0.6); }
-body.theme-pink .notebook-subtitle { color: rgba(255,110,180,0.45); }
-body.theme-pink .notebook-page { background: #fff0f5; }
-body.theme-pink .notebook-page::before {
-    background-image: repeating-linear-gradient(
-        transparent, transparent 27px, rgba(255,110,180,0.12) 27px, rgba(255,110,180,0.12) 28px
-    );
-}
-body.theme-pink .notebook-page-title { color: #c2185b; border-bottom-color: rgba(194,24,91,0.25); }
-
-/* ===== NOTEBOOK — TEREA (GYM LOG) ===== */
-body.theme-terea .notebook-cover {
-    background: linear-gradient(135deg, #010f0e 0%, #052e28 50%, #010f0e 100%);
-    border-color: #00d4c8;
-    box-shadow: -4px 4px 20px rgba(0,0,0,0.8), 0 0 30px rgba(0,212,200,0.12), inset 0 0 40px rgba(0,0,0,0.5);
-}
-body.theme-terea .notebook-cover::before {
-    background: linear-gradient(90deg, #000, #021c18, #000);
-    border-right-color: #00d4c8;
-}
-body.theme-terea .notebook-cover::after { border-color: rgba(0,212,200,0.3); }
-body.theme-terea .notebook-title { color: #00d4c8; text-shadow: 0 0 20px rgba(0,212,200,0.6); font-family: 'Orbitron', sans-serif; }
-body.theme-terea .notebook-subtitle { color: rgba(0,212,200,0.4); }
-body.theme-terea .notebook-page { background: #0d1a18; }
-body.theme-terea .notebook-page::before {
-    background-image: repeating-linear-gradient(
-        transparent, transparent 27px, rgba(0,212,200,0.06) 27px, rgba(0,212,200,0.06) 28px
-    );
-}
-body.theme-terea .notebook-page-title { color: #00d4c8; border-bottom-color: rgba(0,212,200,0.2); }
-body.theme-terea .notebook-page textarea,
-body.theme-terea .notebook-page input { color: #dff6f4; background: rgba(0,212,200,0.04); }
-
-/* ===== NOTEBOOK — MEDICAL (CLINICAL BINDER) ===== */
-body.theme-medical .notebook-cover {
-    background: linear-gradient(135deg, #040e1c 0%, #0a2340 50%, #040e1c 100%);
-    border-color: #00c6e0;
-    box-shadow: -4px 4px 20px rgba(0,0,0,0.8), 0 0 30px rgba(0,198,224,0.1), inset 0 0 40px rgba(0,0,0,0.4);
-}
-body.theme-medical .notebook-cover::before {
-    background: linear-gradient(90deg, #020810, #071830, #020810);
-    border-right-color: #00c6e0;
-}
-body.theme-medical .notebook-cover::after { border-color: rgba(0,198,224,0.25); }
-body.theme-medical .notebook-title { color: #00c6e0; text-shadow: 0 0 20px rgba(0,198,224,0.5); font-family: 'Space Mono', monospace; }
-body.theme-medical .notebook-subtitle { color: rgba(0,198,224,0.4); }
-body.theme-medical .notebook-page { background: #f2f8fc; }
-body.theme-medical .notebook-page::before {
-    background-image:
-        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-        repeating-linear-gradient(transparent, transparent 27px, rgba(0,150,180,0.12) 27px, rgba(0,150,180,0.12) 28px);
-    background-size: 100% 40px, 100% 100%;
-}
-body.theme-medical .notebook-page-title { color: #005f80; border-bottom-color: rgba(0,95,128,0.25); }
-body.theme-medical .notebook-page textarea,
-body.theme-medical .notebook-page input { color: #0a2340; background: rgba(0,150,180,0.04); }
-
-/* Journal export button */
-.btn-dl-journal {
-    font-size: 0.75rem; padding: 6px 12px;
-    border-radius: 8px; white-space: nowrap;
 }
 
 
@@ -3171,3 +2906,269 @@ body.theme-pink .tabs > .seg-indicator { background: rgba(255,110,180,0.16); box
 @media (max-width: 1420px) { body.hide-logo .cat-companion { display: none; } }
 /* Toasts must not sit on top of the phone tab bar. */
 @media (max-width: 768px) { .toast-container { left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); } }
+
+
+/* ===================================================================
+   JOURNAL — a hardcover book: cover → endpaper → title page → one entry
+   per page → a blank page to write on. Every theme rebinds it by changing
+   the variables below.
+   =================================================================== */
+.journal {
+  --j-cover: #1f3d36; --j-cover-2: #152b26;
+  --j-foil: #dcbb72;
+  --j-paper: #f6f0e1; --j-ink: #2b2925;
+  --j-rule: rgba(58, 92, 140, 0.17);
+  --j-band: #0e1d1a; --j-ribbon: var(--accent);
+  --j-title-font: var(--font-serif);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 4px 0 28px;
+}
+body.theme-pink .journal {
+  --j-cover: #e39ab4; --j-cover-2: #c9708f; --j-foil: #fff6ee;
+  --j-paper: #fff8fa; --j-ink: #4b2535; --j-rule: rgba(214, 96, 140, 0.2);
+  --j-band: #a9506f; --j-ribbon: #b83272;
+}
+body.theme-terea .journal {
+  --j-cover: #101615; --j-cover-2: #050808; --j-foil: #00d4c8;
+  --j-paper: #101d1b; --j-ink: #dff6f4; --j-rule: rgba(0, 212, 200, 0.13);
+  --j-band: #00d4c8; --j-ribbon: #00d4c8; --j-title-font: 'Orbitron', var(--font-display);
+}
+body.theme-medical .journal {
+  --j-cover: #0d2c4d; --j-cover-2: #071b32; --j-foil: #8fe6f3;
+  --j-paper: #f3f8fb; --j-ink: #0d2a44; --j-rule: rgba(0, 140, 175, 0.16);
+  --j-band: #06162a; --j-ribbon: #00c6e0; --j-title-font: 'Space Mono', var(--font-mono);
+}
+
+.journal[data-state="closed"] .journal-tools,
+.journal[data-state="closed"] .journal-spread { display: none; }
+.journal[data-state="open"] .journal-book { display: none; }
+
+.journal-stage { width: 100%; display: flex; justify-content: center; perspective: 1800px; }
+.journal-foot { margin: 0; min-height: 1.2em; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+
+/* ── The closed book ── */
+.journal-book {
+  position: relative; display: block; width: min(288px, 66vw); aspect-ratio: 3 / 4.15;
+  margin: 26px 0 44px; padding: 0; border: 0; background: none; cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-3) var(--ease-out);
+}
+.journal-book:hover { transform: translateY(-5px) rotate(-1.2deg); }
+.journal-book:focus-visible { outline: 2px solid var(--mode-accent); outline-offset: 10px; border-radius: 8px; }
+
+/* Page block showing past the cover on the fore-edge and the foot */
+.jb-pages {
+  position: absolute; inset: 5px -7px -6px 16px; border-radius: 3px 9px 9px 3px;
+  background: repeating-linear-gradient(90deg, var(--j-paper) 0 1.5px, color-mix(in srgb, var(--j-paper) 78%, #000) 1.5px 3px);
+  box-shadow: 0 26px 34px -14px rgba(0, 0, 0, 0.7), 0 6px 10px rgba(0, 0, 0, 0.35);
+}
+.jb-ribbon {
+  position: absolute; left: 60%; bottom: -36px; width: 13px; height: 46px;
+  background: var(--j-ribbon);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+.jb-cover {
+  position: absolute; inset: 0; padding-left: 26px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 13px;
+  border-radius: 5px 12px 12px 5px; color: var(--j-foil);
+  /* Book-cloth weave over the cover colour */
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 80% at 30% 10%, rgba(255, 255, 255, 0.10), transparent 60%),
+    linear-gradient(140deg, var(--j-cover), var(--j-cover-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset -1px -2px 0 rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.5);
+  transform-origin: left center;
+  transition: transform 360ms cubic-bezier(0.5, 0, 0.75, 0.4);
+}
+.journal.opening .jb-cover { transform: rotateY(-100deg); }
+.journal.opening .jb-band { opacity: 0; }
+/* Spine and hinge groove */
+.jb-spine {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 34px; border-radius: 5px 0 0 5px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.06) 62%, rgba(255, 255, 255, 0.07) 70%, rgba(0, 0, 0, 0.30) 78%, transparent);
+}
+.jb-frame {
+  position: absolute; inset: 22px 26px 22px 52px; border-radius: 3px; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--j-foil) 50%, transparent);
+  box-shadow: inset 0 0 0 3px transparent, inset 0 0 0 4px color-mix(in srgb, var(--j-foil) 22%, transparent);
+}
+.jb-emblem { display: flex; }
+.jb-title {
+  max-width: 70%; text-align: center; font-family: var(--j-title-font); font-weight: 600;
+  font-size: 1.65rem; line-height: 1.12; letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+.jb-rule { width: 34px; height: 1px; background: currentColor; opacity: 0.7; }
+.jb-sub { font-family: var(--font-sans); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.34em; padding-left: 0.34em; opacity: 0.85; }
+.jb-band {
+  position: absolute; top: -3px; bottom: -3px; right: 34px; width: 10px; border-radius: 2px;
+  background: var(--j-band);
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.5), inset 1px 0 0 rgba(255, 255, 255, 0.14), inset -1px 0 0 rgba(0, 0, 0, 0.3);
+  transition: opacity var(--dur-1);
+}
+
+/* ── Tools above the open book ── */
+.journal-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; max-width: 940px; }
+.j-tool {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; flex-shrink: 0;
+  border-radius: var(--r-pill); cursor: pointer; font-size: 0.78rem; font-weight: 600;
+  color: var(--text-secondary); background: var(--surface-1); border: 1px solid var(--border);
+  transition: color var(--dur-2), background-color var(--dur-2);
+}
+.j-tool:hover { color: var(--text-primary); background: var(--surface-2); }
+.j-search {
+  flex: 1; min-width: 150px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
+  border-radius: var(--r-pill); color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border);
+}
+.j-search:focus-within { border-color: var(--mode-accent); }
+.j-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text-primary); font: inherit; font-size: 0.84rem; }
+.j-search input::placeholder { color: var(--text-muted); }
+.j-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.j-tags:empty { display: none; }
+.j-chip {
+  height: 28px; padding: 0 10px; border-radius: var(--r-pill); cursor: pointer; font-size: 0.74rem; font-weight: 600;
+  color: var(--text-secondary); background: transparent; border: 1px solid var(--border);
+}
+.j-chip.active { color: var(--mode-accent); border-color: color-mix(in srgb, var(--mode-accent) 45%, transparent); background: color-mix(in srgb, var(--mode-accent) 12%, transparent); }
+
+/* ── The open book ── */
+.journal-spread { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 940px; animation: jOpen var(--dur-3) var(--ease-out); }
+@keyframes jOpen { from { opacity: 0; transform: scale(0.965); } }
+.j-nav {
+  flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer; color: var(--text-secondary); background: var(--surface-1); border: 1px solid var(--border);
+  transition: color var(--dur-2), background-color var(--dur-2), opacity var(--dur-2), transform var(--dur-1) var(--ease-out);
+}
+.j-nav:hover:not(:disabled) { color: var(--text-primary); background: var(--surface-2); }
+.j-nav:active:not(:disabled) { transform: scale(0.94); }
+.j-nav:disabled { opacity: 0.28; cursor: default; }
+.j-count { display: none; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Cover boards visible around the page block */
+.j-board {
+  flex: 1; min-width: 0; padding: 10px 12px 12px; border-radius: 12px;
+  background: linear-gradient(140deg, var(--j-cover), var(--j-cover-2));
+  box-shadow: 0 34px 50px -24px rgba(0, 0, 0, 0.75), 0 8px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.j-sheet {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr;
+  height: clamp(430px, 64vh, 620px); border-radius: 4px; background: var(--j-paper);
+  /* A few stacked page edges under the top sheet */
+  box-shadow:
+    0 2px 0 -0.5px color-mix(in srgb, var(--j-paper) 84%, #000),
+    0 4px 0 -1px color-mix(in srgb, var(--j-paper) 70%, #000),
+    3px 0 0 -1px color-mix(in srgb, var(--j-paper) 80%, #000),
+    -3px 0 0 -1px color-mix(in srgb, var(--j-paper) 80%, #000);
+}
+/* Gutter */
+.j-sheet::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(0, 0, 0, 0.2); pointer-events: none; }
+/* Ribbon marker lying across the right-hand page */
+.j-sheet::before {
+  content: ''; position: absolute; z-index: 2; top: -10px; left: calc(50% + 14px); width: 11px; height: 38%;
+  background: var(--j-ribbon); opacity: 0.92; pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 8px), 0 100%);
+  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.25);
+}
+
+.j-page {
+  position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column;
+  padding: 26px 30px 14px 46px; color: var(--j-ink); background-color: var(--j-paper);
+  font-family: var(--font-serif); backface-visibility: hidden;
+}
+.j-left  { padding: 26px 46px 14px 30px; border-radius: 4px 0 0 4px; background-image: linear-gradient(90deg, transparent 80%, rgba(0, 0, 0, 0.11)); }
+.j-right { border-radius: 0 4px 4px 0; background-image: linear-gradient(270deg, transparent 80%, rgba(0, 0, 0, 0.13)); }
+
+/* Endpaper: patterned in the cover colour, like the inside of a bound book */
+.j-page[data-type="endpaper"] {
+  background-image:
+    linear-gradient(90deg, transparent 80%, rgba(0, 0, 0, 0.16)),
+    repeating-linear-gradient(45deg, transparent 0 9px, color-mix(in srgb, var(--j-cover) 16%, transparent) 9px 10px),
+    repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--j-cover) 16%, transparent) 9px 10px);
+  background-color: color-mix(in srgb, var(--j-cover) 26%, var(--j-paper));
+}
+
+.jp-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding-bottom: 9px; margin-bottom: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--j-ink) 20%, transparent);
+}
+.jp-date { font-family: var(--font-sans); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in srgb, var(--j-ink) 72%, transparent); }
+.jp-time { flex-shrink: 0; font-style: italic; font-size: 0.82rem; color: color-mix(in srgb, var(--j-ink) 55%, transparent); }
+
+/* Ruled writing area; the rules scroll with the text */
+.j-body {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 0 2px; margin: 0;
+  font-family: var(--font-serif); font-size: 1rem; line-height: 28px; color: inherit;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  background-image: linear-gradient(transparent 27px, var(--j-rule) 27px);
+  background-size: 100% 28px; background-attachment: local;
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--j-ink) 25%, transparent) transparent;
+}
+.j-body:focus-visible { outline: 1px dashed color-mix(in srgb, var(--j-ink) 35%, transparent); outline-offset: 4px; }
+body.theme-medical .j-body {
+  /* Squared paper for case notes */
+  background-image: linear-gradient(transparent 27px, var(--j-rule) 27px), linear-gradient(90deg, transparent 27px, var(--j-rule) 27px);
+  background-size: 100% 28px, 28px 100%;
+}
+.j-input { display: block; width: 100%; border: 0; outline: 0; resize: none; background-color: transparent; }
+.j-input::placeholder { font-style: italic; color: color-mix(in srgb, var(--j-ink) 40%, transparent); }
+.jp-tag { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; color: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.jp-tag:hover { text-decoration-style: solid; }
+
+.jp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-top: 8px; font-family: var(--font-sans); }
+.jp-num { font-family: var(--font-serif); font-style: italic; font-size: 0.82rem; color: color-mix(in srgb, var(--j-ink) 55%, transparent); }
+/* Page numbers sit in the outer corners, as in a printed book */
+.j-left .jp-num { order: 1; }
+.j-left .jp-del { order: 2; margin-left: auto; }
+.j-right .jp-del { order: 1; }
+.j-right .jp-num { order: 2; margin-left: auto; }
+.jp-hint { font-size: 0.7rem; color: color-mix(in srgb, var(--j-ink) 50%, transparent); }
+.jp-del {
+  display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 7px; border: 0; border-radius: var(--r-pill);
+  background: none; cursor: pointer; font-size: 0.72rem; font-weight: 600;
+  color: color-mix(in srgb, var(--j-ink) 45%, transparent);
+  transition: color var(--dur-2), background-color var(--dur-2);
+}
+.jp-del:hover { color: var(--j-ink); background: color-mix(in srgb, var(--j-ink) 8%, transparent); }
+.jp-del.armed { color: #fff; background: #c0392b; }
+.j-save {
+  flex-shrink: 0; height: 34px; padding: 0 16px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+  font-size: 0.8rem; font-weight: 600; color: var(--j-paper); background: var(--j-ink);
+  transition: transform var(--dur-1) var(--ease-out), opacity var(--dur-2);
+}
+.j-save:hover { opacity: 0.88; }
+.j-save:active { transform: scale(0.96); }
+
+/* Title page */
+.jp-title { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; max-width: 80%; }
+.jp-title h2 { margin: 4px 0 0; font-family: var(--j-title-font); font-size: 2rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1.15; }
+.jp-title p { margin: 0; font-size: 0.95rem; }
+.jp-title .jp-dim { font-style: italic; font-size: 0.86rem; color: color-mix(in srgb, var(--j-ink) 58%, transparent); }
+.jp-orn { width: 44px; height: 1px; margin: 4px 0; background: currentColor; opacity: 0.45; }
+
+/* ── Phones: one page at a time ── */
+.journal.single .journal-spread { flex-wrap: wrap; justify-content: center; gap: 12px 18px; }
+.journal.single .j-board { order: -1; flex: 0 0 100%; padding: 8px 9px 10px; }
+.journal.single .j-sheet { grid-template-columns: 1fr; height: clamp(420px, 62vh, 560px); }
+.journal.single .j-sheet::after, .journal.single .j-right { display: none; }
+.journal.single .j-sheet::before { display: none; }
+.journal.single .j-left { padding: 22px 22px 12px 26px; border-radius: 4px; background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.10), transparent 12%); }
+.journal.single .j-count { display: inline; }
+.journal.single .jp-hint { display: none; }
+.journal.single .j-save { margin-left: auto; }
+
+.jp-epigraph p { font-style: italic; font-size: 1.12rem; line-height: 1.6; color: color-mix(in srgb, var(--j-ink) 78%, transparent); }
+/* Light theme: the shared translucent-white surfaces vanish on pink, so give
+   the journal controls real outlines there. */
+body.theme-pink .j-tool, body.theme-pink .j-search, body.theme-pink .j-nav, body.theme-pink .j-chip {
+  background: rgba(255, 255, 255, 0.62); border-color: rgba(184, 50, 114, 0.22); color: #8a3a5c;
+}
+body.theme-pink .j-search input { color: #5c2440; }
+body.theme-pink .j-search input::placeholder { color: #b07a92; }
+body.theme-pink .j-chip.active { background: rgba(255, 110, 180, 0.2); border-color: rgba(184, 50, 114, 0.45); color: #9d1b5f; }
+body.theme-pink .journal-foot { color: #a05a78; }
+/* Dark-paper book on a dark page: outline it so it still reads as an object. */
+body.theme-terea .journal { --j-paper: #13231f; }
+body.theme-terea .j-board { box-shadow: 0 0 0 1px rgba(0, 212, 200, 0.4), 0 34px 50px -24px rgba(0, 0, 0, 0.8); }
+body.theme-terea .jb-cover { box-shadow: inset 0 0 0 1px rgba(0, 212, 200, 0.22), 0 1px 2px rgba(0, 0, 0, 0.5); }
