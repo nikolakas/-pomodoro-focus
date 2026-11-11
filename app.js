@@ -16,7 +16,7 @@ const app = {
             rounds: 4, dailyGoal: 8,
             sound: 'bell', theme: 'normal',
             wallpaper: 'default', accent: 'coral',
-            saber: 'blue', swMusic: true, autoStart: false, catGame: true
+            saber: 'blue', swMusic: true, autoStart: false, catGame: true, uiSounds: true
         },
         currentRound: 1,
         sessionsToday: 0,
@@ -1406,6 +1406,42 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
     });
   }
 
+  // Interface sounds — only on real user actions, never on programmatic state changes.
+  let wasRunning = false;
+  document.addEventListener('click', e => { if (e.target.closest('#btn-start')) wasRunning = this.state.isRunning; }, true);
+  document.addEventListener('click', e => {
+    if (!e.isTrusted) return;
+    const t = e.target;
+    if (t.closest('#btn-start')) {
+      if (this.state.isRunning && !wasRunning) this.uiSound('start');
+      else if (!this.state.isRunning && wasRunning) this.uiSound('pause');
+      return;
+    }
+    if (t.closest('.mode-btn')) { this.uiSound('select'); return; }
+    if (t.closest('.tab, .stepper-btn, .theme-card, .color-btn, .chart-range, .auth-tab, #btn-reset, #btn-skip, .btn-time-adjust, .wp-thumb')) this.uiSound('tap');
+  });
+  document.addEventListener('change', e => {
+    if (e.isTrusted && e.target.matches('.settings-page input[type="checkbox"]')) this.uiSound(e.target.checked ? 'on' : 'off');
+  });
+
+  // Arrow keys move between tabs, as a tablist should.
+  const tablist = document.querySelector('.tabs');
+  if (tablist) tablist.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const tabs = [...this.elements.tabs];
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+    next.focus();
+    this.switchTab(next.dataset.tab);
+  });
+
+  window.addEventListener('resize', () => this._syncIndicators());
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this._syncIndicators());
+  // Let the first position land without animating, then enable the slide.
+  requestAnimationFrame(() => { this._syncIndicators(); requestAnimationFrame(() => document.body.classList.add('seg-ready')); });
+
   // Cat Dash modal chrome
   const catGameModal = document.getElementById('cat-game-modal');
   const catGameClose = document.getElementById('cat-game-close');
@@ -1870,9 +1906,14 @@ _renderRadio() {
 },
 
 switchTab(target) {
-    this.elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+    this.elements.tabs.forEach(t => {
+        const on = t.dataset.tab === target;
+        t.classList.toggle('active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
     this.elements.panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
     document.body.classList.toggle('hide-logo', target !== 'timer');
+    this._syncIndicators();
     if (target === 'stats') {
         this.renderStats();
         this.renderHeatmap();
@@ -1903,6 +1944,7 @@ setMode(mode, preserveTime = false) {
     // Drives --mode-accent: the whole UI cools down on breaks and warms up for focus.
     document.body.dataset.mode = mode;
     this.updateRingGradient();
+    this._syncIndicators();
 
     const m = mode === 'work' ? this.state.settings.work :
               mode === 'shortBreak' ? this.state.settings.short : this.state.settings.long;
@@ -2670,6 +2712,8 @@ el.addEventListener('click', () => {
         if (tereaLiteEl) tereaLiteEl.checked = !!this.state.settings.tereaLite;
         const catGameEl = document.getElementById('setting-cat-game');
         if (catGameEl) catGameEl.checked = !!this.state.settings.catGame;
+        const uiSoundsEl = document.getElementById('setting-ui-sounds');
+        if (uiSoundsEl) uiSoundsEl.checked = this.state.settings.uiSounds !== false;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -2689,6 +2733,8 @@ el.addEventListener('click', () => {
         if (tereaLiteEl) this.state.settings.tereaLite = tereaLiteEl.checked;
         const catGameEl = document.getElementById('setting-cat-game');
         if (catGameEl) this.state.settings.catGame = catGameEl.checked;
+        const uiSoundsEl = document.getElementById('setting-ui-sounds');
+        if (uiSoundsEl) this.state.settings.uiSounds = uiSoundsEl.checked;
         this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
@@ -2843,6 +2889,9 @@ updateTheme() {
 			if (isMedical) window.MedicalModule.startECG();
 			else window.MedicalModule.stopECG();
 		}
+
+		this._syncIndicators();
+		requestAnimationFrame(() => this._syncIndicators());
 
 		// Force button gradient repaint — CSS gradients with vars sometimes don't update smoothly.
 		const btn = document.getElementById('btn-play');
@@ -3235,7 +3284,7 @@ this.chartM = new Chart(ctxM, {
         if (!list) return;
         list.innerHTML = '';
         if (this.state.history.length === 0) {
-            list.innerHTML = '<p class="empty-state">No sessions yet. Start your first focus session!</p>';
+            list.innerHTML = '<p class="empty-state">Finished sessions will be listed here.</p>';
             return;
         }
         const recent = [...this.state.history].reverse().slice(0, 50);
@@ -3244,17 +3293,16 @@ this.chartM = new Chart(ctxM, {
             const el = document.createElement('div');
         el.className = `history-item ${s.type}`;
 const labelColors = { work:'#a78bfa', study:'#38bdf8', creative:'#fb923c', admin:'#94a3b8', other:'#4ecdc4' };
-if (s.label && labelColors[s.label]) {
-    el.style.borderLeftColor = labelColors[s.label];
-}
+const tag = s.label && labelColors[s.label]
+    ? `<span class="history-tag" style="--tag:${labelColors[s.label]}">${s.label}</span>` : '';
             el.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
-            <div>${s.type === 'focus' ? '🎯 Focus' : '☕ Break'} · ${s.duration}m</div>
+            <div class="history-title">${s.type === 'focus' ? 'Focus' : 'Break'} · ${s.duration} min ${tag}</div>
             <div class="history-meta">${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-            ${s.intention ? `<div style="font-size:0.82rem; color:var(--accent); margin-top:4px; font-style:italic;">🎯 "${s.intention.replace(/</g,'&lt;')}"</div>` : ''}
+            ${s.intention ? `<div class="history-intention">${s.intention.replace(/</g,'&lt;')}</div>` : ''}
         </div>
-        <button class="btn-delete-history" onclick="app.deleteHistoryItem('${s.date}')" title="Delete">✕</button>
+        <button class="btn-delete-history" onclick="app.deleteHistoryItem('${s.date}')" title="Delete session" aria-label="Delete session"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
 `;
             list.appendChild(el);
@@ -4006,6 +4054,63 @@ initOnboarding() {
             osc2.connect(g2).connect(ctx.destination);
             osc2.start(t); osc2.stop(t + 0.6);
         } catch (e) { /* non-fatal */ }
+    },
+
+    // ===================================
+    // INTERFACE SOUNDS — a few very short tones from one chord (C–E–G), so the
+    // app has a single sonic identity. Quiet, under 200 ms, and optional
+    // (Settings › Interface sounds). Every sound accompanies a visible change.
+    // ===================================
+    uiSound(name) {
+        if (this.state.settings.uiSounds === false) return;
+        try {
+            if (!this.toneCtx) this.toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.toneCtx.state === 'suspended') this.toneCtx.resume();
+            const ctx = this.toneCtx, t = ctx.currentTime;
+            const blip = (freq, at, dur, gain, type = 'sine') => {
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.type = type;
+                o.frequency.setValueAtTime(freq, t + at);
+                g.gain.setValueAtTime(0.0001, t + at);
+                g.gain.exponentialRampToValueAtTime(gain, t + at + 0.006);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + at + dur);
+                o.connect(g).connect(ctx.destination);
+                o.start(t + at); o.stop(t + at + dur + 0.02);
+            };
+            const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
+            switch (name) {
+                case 'tap':    blip(C6, 0, 0.045, 0.03, 'triangle'); break;
+                case 'select': blip(G5, 0, 0.07, 0.045); break;
+                case 'start':  blip(C5, 0, 0.09, 0.05); blip(G5, 0.07, 0.13, 0.05); break;
+                case 'pause':  blip(G5, 0, 0.09, 0.045); blip(C5, 0.07, 0.13, 0.045); break;
+                case 'on':     blip(C6, 0, 0.06, 0.04); break;
+                case 'off':    blip(E5, 0, 0.06, 0.04); break;
+            }
+        } catch (e) { /* audio is never essential */ }
+    },
+
+    // Sliding pill behind the active item of a segmented control.
+    _moveIndicator(container) {
+        if (!container) return;
+        let ind = container.querySelector(':scope > .seg-indicator');
+        if (!ind) {
+            ind = document.createElement('span');
+            ind.className = 'seg-indicator';
+            ind.setAttribute('aria-hidden', 'true');
+            container.prepend(ind);
+            container.classList.add('has-indicator');
+        }
+        const active = container.querySelector(':scope > .active');
+        if (!active || !active.offsetWidth) { ind.style.opacity = '0'; return; }
+        ind.style.opacity = '1';
+        ind.style.width = `${active.offsetWidth}px`;
+        ind.style.height = `${active.offsetHeight}px`;
+        ind.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    },
+
+    _syncIndicators() {
+        this._moveIndicator(document.querySelector('.tabs'));
+        this._moveIndicator(document.querySelector('.mode-selector'));
     },
 
     // ===================================
