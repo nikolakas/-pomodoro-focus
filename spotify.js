@@ -459,8 +459,10 @@ window.SpotifyAccount = (() => {
     const n = st.now;
     if (!connected() || !n || !n.playing) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = `${art((n.item.album && n.item.album.images) || n.item.images, 22)}
-      <span class="sp-mini-text"><b>${esc(n.item.name)}</b> · ${artists(n.item)}</span>
+    const imgs = (n.item.album && n.item.album.images) || n.item.images || [];
+    const cover = imgs.length ? (imgs[1] || imgs[0]).url : '';
+    el.innerHTML = `${cover ? `<img class="np-cover" src="${esc(cover)}" width="44" height="44" alt="">` : ''}
+      <span class="np-text"><b>${esc(n.item.name)}</b><span>${artists(n.item)}</span></span>
       <button type="button" class="sp-mini-btn" data-spa="toggle" aria-label="Pause"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>`;
   }
 

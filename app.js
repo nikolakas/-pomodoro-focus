@@ -4446,6 +4446,17 @@ initOnboarding() {
     },
 
     _renderAlbumStatus(reason, src, pal) {
+        // The link player can't report its own song, so it gets a now-playing
+        // card here (a connected account uses the Spotify module's card, which
+        // has controls).
+        const card = document.getElementById('album-now');
+        if (card) {
+            const srcs = this._albumSrc || {};
+            const show = !reason && src && srcs.link === src && !srcs.account;
+            card.hidden = !show;
+            if (show) card.innerHTML = `<img class="np-cover" src="${this._esc(src.url)}" width="44" height="44" alt="">
+                <span class="np-text"><b>${this._esc(src.label || 'Spotify')}</b><span>Playing from your Spotify link</span></span>`;
+        }
         const el = document.getElementById('album-status');
         if (!el) return;
         const msg = {
@@ -4559,6 +4570,7 @@ initOnboarding() {
                 b.style.setProperty('--album-accent', p.primary);
                 b.style.setProperty('--album-2', p.secondary);
             });
+            if (url) b.style.setProperty('--album-cover', `url("${url}")`);
             // The cover itself, blurred, behind everything: unmistakably "this album".
             if (back && url) {
                 back.classList.remove('show');
@@ -4574,6 +4586,7 @@ initOnboarding() {
             this._albumOffTimer = setTimeout(() => {
                 if (this._albumApplied) return;
                 b.classList.remove('album-mode');
+                b.style.removeProperty('--album-cover');
                 if (back) back.style.backgroundImage = '';
             }, 1500);
         }
