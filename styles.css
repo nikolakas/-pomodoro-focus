@@ -3418,3 +3418,19 @@ body.has-scene .quote-display p { color: rgba(255, 255, 255, 0.78); }
 body.has-scene .timer-ring-bg { stroke: rgba(255, 255, 255, 0.16); }
 body.theme-pink.has-scene .timer-container::before { background: rgba(255, 255, 255, 0.45); }
 body.theme-pink.has-scene .session-text, body.theme-pink.has-scene .quote-display p { color: #6b2d4a; text-shadow: none; }
+
+
+/* Blurred album cover behind everything while album colours are on. A
+   chosen photo scene keeps priority over it. */
+.album-backdrop {
+  position: fixed; inset: -12%; z-index: -1; pointer-events: none;
+  background-size: cover; background-position: center;
+  filter: blur(70px) saturate(1.35) brightness(0.62);
+  opacity: 0; transition: opacity 0.9s var(--ease);
+}
+body.album-mode:not(.has-scene) .album-backdrop.show { opacity: 0.5; }
+.setting-label-stack { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.setting-hint { margin: 0; font-size: 0.74rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.setting-hint b { color: var(--text-secondary); font-weight: 600; }
+.album-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2); flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .album-backdrop { transition: none; } }

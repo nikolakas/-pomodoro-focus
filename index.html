@@ -39,6 +39,7 @@
 </div>
     <div class="wallpaper-layer" id="wallpaper-layer"></div>
     <p class="scene-credit" id="scene-credit" hidden></p>
+    <div class="album-backdrop" id="album-backdrop" aria-hidden="true"></div>
 
     <div class="app">
         <header class="header">
@@ -623,7 +624,10 @@
         </div>
       </div>
       <div class="setting-row">
-        <label for="setting-album-colors">Album colors (match the song playing on Spotify)</label>
+        <div class="setting-label-stack">
+          <label for="setting-album-colors">Album colors (match what's playing on Spotify)</label>
+          <p class="setting-hint" id="album-status">Waiting for music.</p>
+        </div>
         <input type="checkbox" id="setting-album-colors" checked>
       </div>
       <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">

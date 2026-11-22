@@ -293,7 +293,8 @@ window.SpotifyAccount = (() => {
     const url = imgs && imgs.length ? (imgs[1] || imgs[0]).url : null;
     clearTimeout(albumOff);
     if (!window.app || !app.setAlbumColors) return;
-    if (n && n.playing && url) app.setAlbumColors(url);
+    const label = n && n.item ? `${n.item.name}${artists(n.item) ? ' — ' + ((n.item.artists || []).map(a => a.name).join(', ')) : ''}` : '';
+    if (n && n.playing && url) app.setAlbumColors(url, label);
     else albumOff = setTimeout(() => app.setAlbumColors(null), n ? 8000 : 0);
   }
 

@@ -1784,6 +1784,14 @@ initSpotify() {
         if (del) {
             const key = del.dataset.spRemove;
             this.spotify.recent = this.spotify.recent.filter(r => `${r.type}:${r.id}` !== key);
+            const cur = this.spotify.current;
+            if (cur && `${cur.type}:${cur.id}` === key) {
+                this.spotify.current = null;
+                const box = document.getElementById('sp-player');
+                if (box) { box.innerHTML = ''; box.hidden = true; delete box.dataset.key; }
+                this.spotify.mounted = false;
+                this.setAlbumSource('link', null);
+            }
             this._saveSpotify();
             this._renderSpotifyChips();
             return;
@@ -1823,12 +1831,12 @@ loadSpotify(item) {
     const S = this.spotify;
     // Already showing this one: leave the player alone so playback continues.
     if (S.current && S.current.type === item.type && S.current.id === item.id && document.querySelector('#sp-player iframe')) return;
-    S.current = { type: item.type, id: item.id, title: item.title || null };
+    S.current = { type: item.type, id: item.id, title: item.title || null, thumb: item.thumb || null };
     S.recent = [S.current, ...S.recent.filter(r => !(r.type === item.type && r.id === item.id))].slice(0, 6);
     this._saveSpotify();
     this._mountSpotify(true);
     this._renderSpotifyChips();
-    if (!S.current.title) this._fetchSpotifyTitle(S.current);
+    if (!S.current.title || !S.current.thumb) this._fetchSpotifyTitle(S.current);
 },
 
 // (Re)build the iframe only when the selection changes — rebuilding it
@@ -1849,12 +1857,22 @@ _mountSpotify(force = false) {
     box.dataset.key = key;
     box.hidden = false;
     S.mounted = true;
+    this._linkAlbum();
+},
+
+// The link player can't report the exact song, so it lends the loaded
+// item's cover (an album/track link's cover is the album art itself).
+_linkAlbum() {
+    const S = this.spotify;
+    const live = S && S.current && document.querySelector('#sp-player iframe');
+    this.setAlbumSource('link', live && S.current.thumb ? S.current.thumb : null, live ? S.current.title : '');
 },
 
 // Reloading the frame is the only way to silence a plain embed.
 stopSpotify() {
     const frame = document.querySelector('#sp-player iframe');
     if (frame) frame.src = frame.src;
+    this.setAlbumSource('link', null);
 },
 
 async _fetchSpotifyTitle(item) {
@@ -1864,10 +1882,12 @@ async _fetchSpotifyTitle(item) {
         if (!r.ok) return;
         const data = await r.json();
         if (!data.title) return;
-        this.spotify.recent.forEach(x => { if (x.type === item.type && x.id === item.id) x.title = data.title; });
-        if (this.spotify.current && this.spotify.current.id === item.id) this.spotify.current.title = data.title;
+        const upd = x => { if (x && x.type === item.type && x.id === item.id) { x.title = data.title; x.thumb = data.thumbnail_url || x.thumb || null; } };
+        this.spotify.recent.forEach(upd);
+        upd(this.spotify.current);
         this._saveSpotify();
         this._renderSpotifyChips();
+        this._linkAlbum();
     } catch (e) { /* the chip just keeps its generic label */ }
 },
 
@@ -2884,7 +2904,7 @@ el.addEventListener('click', () => {
         if (uiSoundsEl) this.state.settings.uiSounds = uiSoundsEl.checked;
         const albumEl = document.getElementById('setting-album-colors');
         if (albumEl) this.state.settings.albumColors = albumEl.checked;
-        if (this.setAlbumColors) this.setAlbumColors(this._albumWanted);
+        if (this._refreshAlbum) this._refreshAlbum();
         this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
@@ -3047,7 +3067,7 @@ updateTheme() {
 		this._syncIndicators();
 		requestAnimationFrame(() => this._syncIndicators());
 		// Album colours only belong to the Normal theme.
-		if (this.setAlbumColors) this.setAlbumColors(this._albumWanted);
+		if (this._refreshAlbum) this._refreshAlbum();
 
 		// Force button gradient repaint — CSS gradients with vars sometimes don't update smoothly.
 		const btn = document.getElementById('btn-play');
@@ -4388,23 +4408,61 @@ initOnboarding() {
     },
 
     // ===================================
-    // ALBUM COLORS — while Spotify plays, the app takes its accent and a soft
-    // backdrop glow from the album cover. Only in the Normal theme (the other
-    // themes have their own identity) and switchable off in Settings. Break
-    // phases keep their calm colours so the phase is still readable.
+    // ALBUM COLORS — the app takes its accent, a soft glow and a blurred copy
+    // of the cover from whatever Spotify is playing. Two sources:
+    //   account — the song playing on the connected Spotify account (exact)
+    //   link    — the item loaded in the no-login link player (its cover)
+    // The account wins when both exist. Normal theme only; Settings can turn
+    // it off, and the status line there says what it's matching or why not.
     // ===================================
-    setAlbumColors(url) {
-        this._albumWanted = url || null;
-        const allowed = this.state.settings.albumColors !== false && this.state.settings.theme === 'normal';
-        const eff = allowed ? this._albumWanted : null;
+    setAlbumColors(url, label) { this.setAlbumSource('account', url, label); },
+
+    setAlbumSource(kind, url, label) {
+        this._albumSrc = this._albumSrc || {};
+        this._albumSrc[kind] = url ? { url, label: label || '' } : null;
+        this._refreshAlbum();
+    },
+
+    _refreshAlbum() {
+        const srcs = this._albumSrc || {};
+        const src = srcs.account || srcs.link || null;
+        const s = this.state.settings;
+        const reason = s.albumColors === false ? 'off' : s.theme !== 'normal' ? 'theme' : !src ? 'idle' : null;
+        this._renderAlbumStatus(reason, src);
+        const eff = reason ? null : src.url;
         if (eff === this._albumApplied) return;
         this._albumApplied = eff;
         if (!eff) { this._applyAlbumPalette(null); return; }
         this._extractPalette(eff)
-            .then(p => { if (this._albumApplied === eff) this._applyAlbumPalette(p); })
-            .catch(() => { /* cover unreadable: keep the normal accent */ });
+            .then(p => {
+                if (this._albumApplied !== eff) return;
+                this._applyAlbumPalette(p, eff);
+                this._renderAlbumStatus(null, src, p);
+            })
+            .catch(err => {
+                console.warn('[album] could not read cover', err);
+                this._renderAlbumStatus('unreadable', src);
+            });
     },
 
+    _renderAlbumStatus(reason, src, pal) {
+        const el = document.getElementById('album-status');
+        if (!el) return;
+        const msg = {
+            off: 'Off.',
+            theme: 'Album colors only apply in the Normal theme.',
+            idle: 'Waiting for music — connect your Spotify account in Sounds, or play a Spotify link there.',
+            unreadable: 'Couldn’t read this cover’s colors.'
+        }[reason];
+        if (msg) { el.textContent = msg; return; }
+        const dots = pal ? `<span class="album-dot" style="background:${pal.primary}"></span><span class="album-dot" style="background:${pal.secondary}"></span>` : '';
+        el.innerHTML = `${dots}Matching <b>${this._esc(src.label || 'what’s playing')}</b>`;
+    },
+
+    // Picks the colour that covers the most of the cover (not merely the
+    // loudest pixel), keeping its hue and saturation and only adjusting
+    // lightness enough to read on the dark UI. Black-and-white covers stay
+    // neutral instead of being pushed into a colour they don't have.
     _extractPalette(url) {
         this._paletteCache = this._paletteCache || {};
         if (this._paletteCache[url]) return Promise.resolve(this._paletteCache[url]);
@@ -4413,34 +4471,59 @@ initOnboarding() {
             img.crossOrigin = 'anonymous';
             img.onload = () => {
                 try {
-                    const N = 40, cv = document.createElement('canvas');
+                    const N = 48, cv = document.createElement('canvas');
                     cv.width = cv.height = N;
                     const ctx = cv.getContext('2d', { willReadFrequently: true });
                     ctx.drawImage(img, 0, 0, N, N);
                     const px = ctx.getImageData(0, 0, N, N).data;
-                    // Bucket by hue/sat/light and score buckets: frequent and vivid wins.
-                    const buckets = new Map();
+                    const BINS = 24;
+                    const bins = Array.from({ length: BINS }, () => ({ w: 0, x: 0, y: 0, s: 0, l: 0 }));
+                    let chroma = 0, total = 0, lumSum = 0;
                     for (let i = 0; i < px.length; i += 4) {
                         const [h, s, l] = this._rgbToHsl(px[i], px[i + 1], px[i + 2]);
-                        const key = `${Math.round(h / 15)}-${Math.round(s * 4)}-${Math.round(l * 5)}`;
-                        const b = buckets.get(key) || { n: 0, h: 0, s: 0, l: 0 };
-                        b.n++; b.h += h; b.s += s; b.l += l;
-                        buckets.set(key, b);
+                        total++; lumSum += l;
+                        // Dark areas count (a night-sky cover *is* that blue), but only
+                        // when clearly coloured — very dark pixels have unreliable hue.
+                        if (l > 0.92 || l < 0.05 || s < (l < 0.15 ? 0.3 : 0.16)) continue;
+                        chroma++;
+                        const b = bins[Math.floor(h / (360 / BINS)) % BINS];
+                        const w = 0.5 + s;
+                        b.w += w; b.s += s * w; b.l += l * w;
+                        b.x += Math.cos(h * Math.PI / 180) * w; b.y += Math.sin(h * Math.PI / 180) * w;
                     }
-                    const list = [...buckets.values()].map(b => ({ n: b.n, h: b.h / b.n, s: b.s / b.n, l: b.l / b.n }));
-                    const vivid = c => c.n * (0.25 + c.s) * (c.l > 0.12 && c.l < 0.9 ? 1 : 0.15);
-                    list.sort((a, b) => vivid(b) - vivid(a));
-                    const main = list[0];
-                    const hueGap = (a, b) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
-                    const second = list.find(c => hueGap(c.h, main.h) > 35 && c.n > 6) || main;
-                    // Clamp into a range that reads on the dark UI: never muddy, never neon.
-                    const fix = (c, lMin, lMax) => this._hsl(c.h, Math.min(0.85, Math.max(c.s < 0.12 ? 0.18 : 0.5, c.s)), Math.min(lMax, Math.max(lMin, c.l)));
-                    const pal = { primary: fix(main, 0.6, 0.7), secondary: fix(second, 0.42, 0.58) };
+                    let pal;
+                    if (chroma / total < 0.06) {
+                        pal = { primary: 'hsl(220 8% 74%)', secondary: `hsl(220 6% ${Math.round(Math.min(0.5, Math.max(0.3, lumSum / total)) * 100)}%)` };
+                    } else {
+                        const score = i => bins[(i + BINS - 1) % BINS].w * 0.5 + bins[i].w + bins[(i + 1) % BINS].w * 0.5;
+                        const group = i => {
+                            const g = { w: 0, x: 0, y: 0, s: 0, l: 0 };
+                            [-1, 0, 1].forEach(d => { const b = bins[(i + d + BINS) % BINS]; for (const k in g) g[k] += b[k]; });
+                            return { h: (Math.atan2(g.y, g.x) * 180 / Math.PI + 360) % 360, s: g.s / g.w, l: g.l / g.w, score: score(i) };
+                        };
+                        const order = [...bins.keys()].sort((a, b) => score(b) - score(a));
+                        const main = group(order[0]);
+                        const gap = (a, b) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+                        const otherIdx = order.find(i => bins[i].w > 0 && gap(group(i).h, main.h) >= 40 && score(i) >= main.score * 0.15);
+                        const other = otherIdx != null ? group(otherIdx) : { ...main, l: main.l * 0.7 };
+                        const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+                        // Lifting a dark colour to a readable lightness makes it look
+                        // more saturated than the cover, so give back some saturation.
+                        const lift = (c, lMin, lMax, sMin, sMax) => {
+                            const l = clamp(c.l, lMin, lMax);
+                            const s = clamp(c.s * (1 - Math.max(0, l - c.l) * 0.9), sMin, sMax);
+                            return this._hsl(c.h, s, l);
+                        };
+                        pal = {
+                            primary: lift(main, 0.54, 0.7, 0.26, 0.68),
+                            secondary: lift(other, 0.35, 0.55, 0.22, 0.7)
+                        };
+                    }
                     this._paletteCache[url] = pal;
                     resolve(pal);
                 } catch (e) { reject(e); }
             };
-            img.onerror = reject;
+            img.onerror = () => reject(new Error('image failed to load'));
             img.src = url;
         });
     },
@@ -4456,9 +4539,11 @@ initOnboarding() {
 
     _hsl(h, s, l) { return `hsl(${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`; },
 
-    _applyAlbumPalette(p) {
+    _applyAlbumPalette(p, url) {
         const b = document.body;
+        const back = document.getElementById('album-backdrop');
         clearTimeout(this._albumOffTimer);
+        clearTimeout(this._albumSwapTimer);
         const base = this.state.accents[this.state.settings.accent] || '#ff6b6b';
         if (p) {
             if (!b.classList.contains('album-mode')) {
@@ -4472,10 +4557,23 @@ initOnboarding() {
                 b.style.setProperty('--album-accent', p.primary);
                 b.style.setProperty('--album-2', p.secondary);
             });
+            // The cover itself, blurred, behind everything: unmistakably "this album".
+            if (back && url) {
+                back.classList.remove('show');
+                this._albumSwapTimer = setTimeout(() => {
+                    back.style.backgroundImage = `url("${url}")`;
+                    back.classList.add('show');
+                }, back.style.backgroundImage ? 450 : 0);
+            }
         } else if (b.classList.contains('album-mode')) {
             b.style.setProperty('--album-accent', base);
             b.style.setProperty('--album-2', base);
-            this._albumOffTimer = setTimeout(() => { if (!this._albumApplied) b.classList.remove('album-mode'); }, 1500);
+            if (back) back.classList.remove('show');
+            this._albumOffTimer = setTimeout(() => {
+                if (this._albumApplied) return;
+                b.classList.remove('album-mode');
+                if (back) back.style.backgroundImage = '';
+            }, 1500);
         }
     },
 
