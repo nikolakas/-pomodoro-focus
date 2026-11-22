@@ -134,6 +134,7 @@
                 <button class="btn btn-secondary" id="btn-skip" title="Skip" aria-label="Skip to next phase"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
                 <button class="btn btn-secondary" id="btn-sounds" title="Sounds" aria-label="Sounds"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg></button>
             </div>
+<div class="sp-mini" id="sp-mini" hidden></div>
 <div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
 <div class="subtask-tracker" id="subtask-tracker"></div>
 
@@ -208,8 +209,11 @@
     <section class="scape-section" aria-labelledby="spotify-heading">
       <div class="scape-section-head">
         <h3 class="scape-heading sp-heading" id="spotify-heading"><svg class="sp-mark" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#1ed760"/><path d="M6.6 9.4c3.6-1.1 7.7-.8 10.9 1M7.2 12.6c2.9-.9 6.2-.6 8.8.9M7.9 15.6c2.3-.6 4.7-.4 6.7.7" fill="none" stroke="#0b0d10" stroke-width="1.7" stroke-linecap="round"/></svg>Spotify</h3>
-        <span class="scape-sub">Your playlists, albums or podcasts</span>
+        <span class="spa-status" id="spa-status"></span>
       </div>
+      <div class="spa" id="spa"></div>
+      <details class="sp-linkbox" id="sp-linkbox">
+        <summary>Or play a Spotify link without logging in</summary>
       <form class="sp-form" id="sp-form" autocomplete="off">
         <input type="text" id="sp-input" class="sp-input" placeholder="Paste a Spotify link (Share → Copy link)" aria-label="Spotify link" spellcheck="false">
         <button type="submit" class="sp-load">Load</button>
@@ -218,6 +222,7 @@
       <div class="sp-chips" id="sp-chips"></div>
       <div class="sp-player" id="sp-player" hidden></div>
       <p class="sp-note">Full songs play when you're logged in at <a href="https://open.spotify.com" target="_blank" rel="noopener noreferrer">open.spotify.com</a> in this browser (desktop). Otherwise Spotify plays 30-second previews.</p>
+      </details>
     </section>
 
     <section class="scape-section" aria-labelledby="cafe-heading">
@@ -1041,6 +1046,7 @@
         <script src="ambience.js" defer></script>
 <script src="medical.js" defer></script>
 <script src="app.js" defer></script>
+<script src="spotify.js" defer></script>
 
 <!-- Medical ECG background — canvas-based real-time PQRST -->
 <canvas id="med-ecg-canvas" aria-hidden="true"></canvas>

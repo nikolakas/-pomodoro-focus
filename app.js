@@ -1364,6 +1364,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       // Build the player now that its container is actually on screen.
       this._ensureCafePlayer();
       this._mountSpotify();
+      if (window.SpotifyAccount) SpotifyAccount.onSheetOpen();
       this._renderRadio();
     });
   }
@@ -1743,7 +1744,8 @@ _renderScapes() {
 
 // The dot on the Sounds button means "something is audible", from either source.
 _renderSoundsIndicator() {
-    const on = !!(this.scape && this.scape.current) || !!(this.cafe && this.cafe.playing);
+    const on = !!(this.scape && this.scape.current) || !!(this.cafe && this.cafe.playing)
+        || !!(window.SpotifyAccount && SpotifyAccount.playingHere);
     const btn = document.getElementById('btn-sounds');
     if (btn) btn.classList.toggle('sounds-active', on);
 },
@@ -1836,6 +1838,8 @@ _mountSpotify(force = false) {
     const box = document.getElementById('sp-player');
     if (!S || !box) return;
     if (!S.current) { box.hidden = true; return; }
+    const linkbox = document.getElementById('sp-linkbox');
+    if (linkbox) linkbox.open = true;
     const key = `${S.current.type}:${S.current.id}`;
     if (S.mounted && box.dataset.key === key && !force) return;
     if (box.dataset.key === key && box.querySelector('iframe') && !force) return;
@@ -1928,7 +1932,7 @@ initCafeRadio() {
     }
     if (playBtn) playBtn.addEventListener('click', () => this.toggleCafeRadio());
     if (nextBtn) nextBtn.addEventListener('click', () => this.nextCafeTrack());
-    if (stopBtn) stopBtn.addEventListener('click', () => { this.stopCafeRadio(); this.stopScape(); this.stopSpotify(); });
+    if (stopBtn) stopBtn.addEventListener('click', () => { this.stopCafeRadio(); this.stopScape(); this.stopSpotify(); if (window.SpotifyAccount) SpotifyAccount.pauseHere(); });
 
     // No YouTube anything at boot — the API and the player are only fetched once
     // the ambience sheet is opened. Nothing to load, nothing that could sound off.
