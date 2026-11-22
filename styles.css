@@ -3363,3 +3363,58 @@ body.album-mode::before {
 .share-btn-main { color: #fff; background: var(--accent); border-color: transparent; }
 .share-btn-main:hover { filter: brightness(1.07); }
 .share-hint { margin: -4px 0 0; font-size: 0.74rem; color: var(--text-muted); text-align: center; }
+
+
+/* ===== SCENES (photo backgrounds) =====
+   The photo is the point, so it's shown at full strength and slowly drifts;
+   a scrim keeps text readable on any picture. */
+body.has-scene .wallpaper-layer {
+  opacity: 1; inset: -3%;
+  animation: sceneDrift 70s ease-in-out infinite alternate;
+  transition: opacity 0.8s var(--ease);
+}
+.wallpaper-layer.is-loading { opacity: 0 !important; }
+body.has-scene .wallpaper-layer::after {
+  background:
+    linear-gradient(180deg, rgba(6, 8, 14, 0.55) 0%, rgba(6, 8, 14, 0.38) 35%, rgba(6, 8, 14, 0.5) 70%, rgba(6, 8, 14, 0.82) 100%),
+    radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(6, 8, 14, 0.55) 100%);
+}
+@keyframes sceneDrift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.06) translate(-1%, -1%); } }
+/* Surfaces sit on the photo as frosted glass. */
+body.has-scene .glass-card, body.has-scene .controls, body.has-scene .mode-selector,
+body.has-scene .tabs, body.has-scene .level-progress-container {
+  background: rgba(10, 13, 22, 0.42);
+  backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+body.has-scene .header { background: rgba(6, 8, 14, 0.35); }
+body.has-scene .timer-time, body.has-scene .quote-display p { text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55); }
+body.has-scene::after { display: none; }
+body.theme-pink.has-scene .wallpaper-layer { opacity: 1; }
+body.theme-pink.has-scene .wallpaper-layer::after {
+  background: linear-gradient(180deg, rgba(255, 238, 245, 0.72), rgba(255, 238, 245, 0.55) 40%, rgba(255, 238, 245, 0.8));
+}
+body.theme-pink.has-scene .glass-card, body.theme-pink.has-scene .controls, body.theme-pink.has-scene .mode-selector,
+body.theme-pink.has-scene .tabs, body.theme-pink.has-scene .level-progress-container { background: rgba(255, 255, 255, 0.55); }
+
+.scene-credit {
+  position: fixed; right: 14px; bottom: 10px; z-index: 5; margin: 0;
+  font-size: 0.66rem; color: rgba(255, 255, 255, 0.55);
+}
+.scene-credit a { color: inherit; }
+body.zen-mode .scene-credit { opacity: 0.4; }
+@media (max-width: 768px) { .scene-credit { bottom: calc(78px + env(safe-area-inset-bottom)); } }
+@media (prefers-reduced-motion: reduce) { body.has-scene .wallpaper-layer { animation: none; inset: 0; } }
+/* Frosted face inside the ring and behind the small controls, so they read on any photo. */
+body.has-scene .timer-container::before {
+  inset: 5%; border-radius: 50%;
+  background: rgba(8, 10, 18, 0.36);
+  backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+body.has-scene .btn-time-adjust { background: rgba(10, 13, 22, 0.55); border-color: rgba(255, 255, 255, 0.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+body.has-scene .btn-time-adjust .adjust-icon, body.has-scene .btn-time-adjust .adjust-label { color: rgba(255, 255, 255, 0.85); }
+body.has-scene .session-text { color: rgba(255, 255, 255, 0.78); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+body.has-scene .dot:not(.active) { background: rgba(255, 255, 255, 0.28); }
+body.has-scene .quote-display p { color: rgba(255, 255, 255, 0.78); }
+body.has-scene .timer-ring-bg { stroke: rgba(255, 255, 255, 0.16); }
+body.theme-pink.has-scene .timer-container::before { background: rgba(255, 255, 255, 0.45); }
+body.theme-pink.has-scene .session-text, body.theme-pink.has-scene .quote-display p { color: #6b2d4a; text-shadow: none; }

@@ -3144,17 +3144,40 @@ setThemePreview(theme) {
     const layer = document.getElementById('wallpaper-layer');
     if (!layer) return;
 
+    // Scenes are shown at full strength under a reading scrim (see .has-scene);
+    // photos from Unsplash, credited in the corner while shown.
     const presets = {
-        preset_forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80',
-        preset_space:  'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920&q=80'
+        scene_cafe: { url: 'https://images.unsplash.com/photo-1775179424139-bd65d79c132e?w=1920&q=80&auto=format&fit=crop', credit: 'Jerry Chen' },
+        scene_booth: { url: 'https://images.unsplash.com/photo-1759301495161-31027c795358?w=1920&q=80&auto=format&fit=crop', credit: 'Nimal Mathew' },
+        scene_library: { url: 'https://images.unsplash.com/photo-1747515203898-2df8f083f417?w=1920&q=80&auto=format&fit=crop', credit: 'Sir Simo' },
+        scene_desk: { url: 'https://images.unsplash.com/photo-1751200065687-a126e7c304da?w=1920&q=80&auto=format&fit=crop', credit: 'Zoshua Colah' },
+        scene_night: { url: 'https://images.unsplash.com/photo-1758649863410-2d35a9d36f70?w=1920&q=80&auto=format&fit=crop', credit: 'Maximilian Bungart' },
+        preset_forest: { url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80' },
+        preset_space:  { url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920&q=80' }
     };
 
     layer.style.backgroundImage = 'none';
+    document.body.classList.toggle('has-scene', wpId !== 'default');
+    const credit = document.getElementById('scene-credit');
+    if (credit) {
+        const c = presets[wpId] && presets[wpId].credit;
+        credit.hidden = !c;
+        if (c) credit.innerHTML = `Photo: ${c} / <a href="https://unsplash.com/?utm_source=pomodoro_focus&utm_medium=referral" target="_blank" rel="noopener noreferrer">Unsplash</a>`;
+    }
 
     if (wpId === 'default') {
         // cleared above
     } else if (presets[wpId]) {
-        layer.style.backgroundImage = `url('${presets[wpId]}')`;
+        // Fade in only once the photo has actually arrived, so it never pops in half-drawn.
+        const url = presets[wpId].url;
+        layer.classList.add('is-loading');
+        const pre = new Image();
+        pre.onload = pre.onerror = () => {
+            if (this.state.settings.wallpaper !== wpId) return;
+            layer.style.backgroundImage = `url('${url}')`;
+            layer.classList.remove('is-loading');
+        };
+        pre.src = url;
     } else if (wpId.startsWith('wp_')) {
         const req = indexedDB.open('pomodoro_db', 1);
         req.onsuccess = (e) => {
