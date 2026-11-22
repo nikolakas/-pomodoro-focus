@@ -15,7 +15,7 @@ window.SpotifyAccount = (() => {
   // Set this to the app's Client ID to make "Connect Spotify" work for every
   // visitor. Until then it can be entered once in the setup panel (stored
   // locally). A Client ID is public by design in the PKCE flow.
-  const CLIENT_ID = '';
+  const CLIENT_ID = '64fde39ac41641a98e48463a3cd7844c';
 
   const SCOPES = [
     'user-read-currently-playing', 'user-read-playback-state', 'user-modify-playback-state',
