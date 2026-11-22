@@ -69,6 +69,7 @@ currentSubtasks: [],
         this.bindSteppers();
 		this.initCafeRadio();
 		this.initSoundscapes();
+		this.initSpotify();
         this.renderStats();
         this.renderNotes();
         this.renderHeatmap();
@@ -1362,6 +1363,7 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
       atmosphereOverlay.style.display = 'flex';
       // Build the player now that its container is actually on screen.
       this._ensureCafePlayer();
+      this._mountSpotify();
       this._renderRadio();
     });
   }
@@ -1746,6 +1748,150 @@ _renderSoundsIndicator() {
     if (btn) btn.classList.toggle('sounds-active', on);
 },
 
+// ===================================
+// SPOTIFY — the official Spotify embed. No developer app or login flow on our
+// side: Spotify itself plays full tracks when the visitor is logged in to
+// open.spotify.com in the same desktop browser, and 30 s previews otherwise.
+// The iframe is used exactly as Spotify's generator emits it (changing it can
+// force preview-only playback). Embeds never start without a click.
+// ===================================
+SPOTIFY_STARTERS: [
+    { type: 'playlist', id: '37i9dQZF1DWWQRwui0ExPn', title: 'lofi beats' },
+    { type: 'playlist', id: '37i9dQZF1DWZeKCadgRdKQ', title: 'Deep Focus' },
+    { type: 'playlist', id: '37i9dQZF1DX4sWSpwq3LiO', title: 'Peaceful Piano' },
+    { type: 'playlist', id: '37i9dQZF1DX8Uebhn9wzrS', title: 'chill lofi study beats' },
+],
+
+initSpotify() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('pomodoro_spotify') || '{}'); } catch (e) {}
+    this.spotify = { current: saved.current || null, recent: Array.isArray(saved.recent) ? saved.recent : [], mounted: false };
+
+    const form = document.getElementById('sp-form');
+    if (form) form.addEventListener('submit', e => {
+        e.preventDefault();
+        const input = document.getElementById('sp-input');
+        const parsed = this._parseSpotify(input.value);
+        if (parsed.error) { this._spotifyError(parsed.error); return; }
+        input.value = '';
+        this.loadSpotify(parsed);
+    });
+    const chips = document.getElementById('sp-chips');
+    if (chips) chips.addEventListener('click', e => {
+        const del = e.target.closest('[data-sp-remove]');
+        if (del) {
+            const key = del.dataset.spRemove;
+            this.spotify.recent = this.spotify.recent.filter(r => `${r.type}:${r.id}` !== key);
+            this._saveSpotify();
+            this._renderSpotifyChips();
+            return;
+        }
+        const chip = e.target.closest('[data-sp-key]');
+        if (chip) {
+            const [type, id] = chip.dataset.spKey.split(':');
+            const known = [...this.spotify.recent, ...this.SPOTIFY_STARTERS].find(r => r.type === type && r.id === id);
+            this.loadSpotify(known || { type, id });
+        }
+    });
+    this._renderSpotifyChips();
+},
+
+// Accepts open.spotify.com links (with or without intl-xx/ or embed/),
+// spotify: URIs, and bare links pasted with tracking parameters.
+_parseSpotify(raw) {
+    const text = (raw || '').trim();
+    if (!text) return { error: 'Paste a link from Spotify first.' };
+    if (/spotify\.link\//i.test(text) || /spotify\.app\.link/i.test(text)) {
+        return { error: 'That’s a short link. Open it, then copy the full open.spotify.com address from the browser bar.' };
+    }
+    const m = text.match(/(?:open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?|spotify:)(track|album|playlist|artist|show|episode)[/:]([A-Za-z0-9]{22})/i);
+    if (!m) return { error: 'That doesn’t look like a Spotify link. In Spotify use Share → Copy link.' };
+    return { type: m[1].toLowerCase(), id: m[2] };
+},
+
+_spotifyError(msg) {
+    const el = document.getElementById('sp-error');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+},
+
+loadSpotify(item) {
+    this._spotifyError('');
+    const S = this.spotify;
+    // Already showing this one: leave the player alone so playback continues.
+    if (S.current && S.current.type === item.type && S.current.id === item.id && document.querySelector('#sp-player iframe')) return;
+    S.current = { type: item.type, id: item.id, title: item.title || null };
+    S.recent = [S.current, ...S.recent.filter(r => !(r.type === item.type && r.id === item.id))].slice(0, 6);
+    this._saveSpotify();
+    this._mountSpotify(true);
+    this._renderSpotifyChips();
+    if (!S.current.title) this._fetchSpotifyTitle(S.current);
+},
+
+// (Re)build the iframe only when the selection changes — rebuilding it
+// would cut off whatever is playing.
+_mountSpotify(force = false) {
+    const S = this.spotify;
+    const box = document.getElementById('sp-player');
+    if (!S || !box) return;
+    if (!S.current) { box.hidden = true; return; }
+    const key = `${S.current.type}:${S.current.id}`;
+    if (S.mounted && box.dataset.key === key && !force) return;
+    if (box.dataset.key === key && box.querySelector('iframe') && !force) return;
+    const compact = S.current.type === 'track' || S.current.type === 'episode';
+    const title = this._esc(S.current.title ? `Spotify Embed: ${S.current.title}` : 'Spotify Embed');
+    box.innerHTML = `<iframe style="border-radius: 12px" width="100%" height="${compact ? 152 : 352}" title="${title}" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" src="https://open.spotify.com/embed/${S.current.type}/${S.current.id}?utm_source=generator&theme=0"></iframe>`;
+    box.dataset.key = key;
+    box.hidden = false;
+    S.mounted = true;
+},
+
+// Reloading the frame is the only way to silence a plain embed.
+stopSpotify() {
+    const frame = document.querySelector('#sp-player iframe');
+    if (frame) frame.src = frame.src;
+},
+
+async _fetchSpotifyTitle(item) {
+    try {
+        const url = `https://open.spotify.com/${item.type}/${item.id}`;
+        const r = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!data.title) return;
+        this.spotify.recent.forEach(x => { if (x.type === item.type && x.id === item.id) x.title = data.title; });
+        if (this.spotify.current && this.spotify.current.id === item.id) this.spotify.current.title = data.title;
+        this._saveSpotify();
+        this._renderSpotifyChips();
+    } catch (e) { /* the chip just keeps its generic label */ }
+},
+
+_saveSpotify() {
+    const { current, recent } = this.spotify;
+    localStorage.setItem('pomodoro_spotify', JSON.stringify({ current, recent }));
+},
+
+_renderSpotifyChips() {
+    const box = document.getElementById('sp-chips');
+    if (!box || !this.spotify) return;
+    const S = this.spotify;
+    const label = r => this._esc(r.title || ({ playlist: 'Playlist', album: 'Album', track: 'Song', artist: 'Artist', show: 'Podcast', episode: 'Episode' }[r.type] || 'Spotify'));
+    const isCur = r => S.current && S.current.type === r.type && S.current.id === r.id;
+    if (S.recent.length) {
+        box.innerHTML = S.recent.map(r => `
+            <span class="sp-chip${isCur(r) ? ' active' : ''}">
+                <button type="button" class="sp-chip-main" data-sp-key="${r.type}:${r.id}" title="${label(r)}">${label(r)}</button>
+                <button type="button" class="sp-chip-x" data-sp-remove="${r.type}:${r.id}" aria-label="Forget ${label(r)}">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </span>`).join('');
+    } else {
+        box.innerHTML = `<span class="sp-try">Try</span>` + this.SPOTIFY_STARTERS.map(r =>
+            `<span class="sp-chip"><button type="button" class="sp-chip-main" data-sp-key="${r.type}:${r.id}">${label(r)}</button></span>`).join('');
+    }
+},
+
 CAFE_TRACKS: [
     'h-PfBxoMq_4', // 4K Cozy Coffee Shop Piano Jazz
     'YACyyY64X-E', // Cozy Coffee Shop Ambience smooth jazz
@@ -1782,7 +1928,7 @@ initCafeRadio() {
     }
     if (playBtn) playBtn.addEventListener('click', () => this.toggleCafeRadio());
     if (nextBtn) nextBtn.addEventListener('click', () => this.nextCafeTrack());
-    if (stopBtn) stopBtn.addEventListener('click', () => { this.stopCafeRadio(); this.stopScape(); });
+    if (stopBtn) stopBtn.addEventListener('click', () => { this.stopCafeRadio(); this.stopScape(); this.stopSpotify(); });
 
     // No YouTube anything at boot — the API and the player are only fetched once
     // the ambience sheet is opened. Nothing to load, nothing that could sound off.
