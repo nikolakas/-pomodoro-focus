@@ -262,6 +262,13 @@
 
         <!-- Stats Tab -->
         <main class="tab-content" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats">
+            <div class="stats-toolbar">
+                <h2 class="stats-title">Stats</h2>
+                <button type="button" class="btn-share" data-open-share="day">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+                    Share
+                </button>
+            </div>
             <div class="stats-empty-state" id="stats-empty-state" style="display:none;">
     <span class="stats-empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span>
     <div class="stats-empty-title">No sessions yet</div>
@@ -613,6 +620,10 @@
           <button class="color-btn" data-color="amber" style="--swatch:#fbbf24"></button>
           <button class="color-btn" data-color="sky" style="--swatch:#38bdf8"></button>
         </div>
+      </div>
+      <div class="setting-row">
+        <label for="setting-album-colors">Album colors (match the song playing on Spotify)</label>
+        <input type="checkbox" id="setting-album-colors" checked>
       </div>
       <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
         <label>Background</label>
@@ -995,6 +1006,10 @@
         <div class="eod-bar-fill" id="eod-bar-fill"></div>
       </div>
     </div>
+    <button type="button" class="btn-share eod-share" data-open-share="day">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+      Share my day
+    </button>
     <button class="btn btn-primary eod-close-btn" id="btn-eod-close" style="width:100%; border-radius:12px; height:44px; margin-top:4px;">
       Keep going
     </button>
@@ -1017,6 +1032,28 @@
       <div class="cat-game-overlay" id="cat-game-overlay"></div>
     </div>
     <p class="cat-game-hint">Jump the distractions. A quick reset before you focus.</p>
+  </div>
+</div>
+
+<!-- Share card: a story-sized image of today or this month -->
+<div id="share-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="share-title">
+  <div class="modal-content glass-card share-card">
+    <div class="share-head">
+      <h3 id="share-title">Share your progress</h3>
+      <button type="button" class="cat-game-close" id="share-close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="spa-seg share-seg" role="tablist" aria-label="What to share">
+      <button type="button" role="tab" class="spa-seg-btn active" data-share-kind="day">Today</button>
+      <button type="button" role="tab" class="spa-seg-btn" data-share-kind="month">This month</button>
+    </div>
+    <div class="share-frame"><img id="share-preview" class="is-loading" alt="Preview of the image to share"></div>
+    <div class="share-actions">
+      <button type="button" class="share-btn share-btn-main" id="share-go">Share</button>
+      <button type="button" class="share-btn" id="share-copy" hidden>Copy image</button>
+    </div>
+    <p class="share-hint" id="share-hint"></p>
   </div>
 </div>
 
@@ -1047,6 +1084,7 @@
 <script src="medical.js" defer></script>
 <script src="app.js" defer></script>
 <script src="spotify.js" defer></script>
+<script src="share.js" defer></script>
 
 <!-- Medical ECG background — canvas-based real-time PQRST -->
 <canvas id="med-ecg-canvas" aria-hidden="true"></canvas>

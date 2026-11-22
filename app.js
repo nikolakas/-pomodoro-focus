@@ -16,7 +16,7 @@ const app = {
             rounds: 4, dailyGoal: 8,
             sound: 'bell', theme: 'normal',
             wallpaper: 'default', accent: 'coral',
-            saber: 'blue', swMusic: true, autoStart: false, catGame: true, uiSounds: true
+            saber: 'blue', swMusic: true, autoStart: false, catGame: true, uiSounds: true, albumColors: true
         },
         currentRound: 1,
         sessionsToday: 0,
@@ -2859,6 +2859,8 @@ el.addEventListener('click', () => {
         if (catGameEl) catGameEl.checked = !!this.state.settings.catGame;
         const uiSoundsEl = document.getElementById('setting-ui-sounds');
         if (uiSoundsEl) uiSoundsEl.checked = this.state.settings.uiSounds !== false;
+        const albumEl = document.getElementById('setting-album-colors');
+        if (albumEl) albumEl.checked = this.state.settings.albumColors !== false;
 		this.setWallpaper(this.state.settings.wallpaper);
     },
 
@@ -2880,6 +2882,9 @@ el.addEventListener('click', () => {
         if (catGameEl) this.state.settings.catGame = catGameEl.checked;
         const uiSoundsEl = document.getElementById('setting-ui-sounds');
         if (uiSoundsEl) this.state.settings.uiSounds = uiSoundsEl.checked;
+        const albumEl = document.getElementById('setting-album-colors');
+        if (albumEl) this.state.settings.albumColors = albumEl.checked;
+        if (this.setAlbumColors) this.setAlbumColors(this._albumWanted);
         this.updateRepCounter();
         localStorage.setItem('pomodoro_settings', JSON.stringify(this.state.settings));
         this.renderStats();
@@ -2921,7 +2926,11 @@ this.state.history.push({
     intention: type === 'focus' ? this.state.currentIntention : null,
     label: type === 'focus' ? this.sessionLabel || null : null
 });
-        if (type === 'focus') this.state.currentIntention = null;
+        if (type === 'focus') {
+            this.state.currentIntention = null;
+            // Remember which songs were playing during this session (for share cards).
+            if (window.SpotifyAccount) SpotifyAccount.captureFocusSession(Date.now() - duration * 60000, Date.now());
+        }
         const inp = document.getElementById('intention-input');
         if (inp) inp.value = '';
 		document.querySelectorAll('.subtask-input').forEach(i => i.value = '');
@@ -3037,6 +3046,8 @@ updateTheme() {
 
 		this._syncIndicators();
 		requestAnimationFrame(() => this._syncIndicators());
+		// Album colours only belong to the Normal theme.
+		if (this.setAlbumColors) this.setAlbumColors(this._albumWanted);
 
 		// Force button gradient repaint — CSS gradients with vars sometimes don't update smoothly.
 		const btn = document.getElementById('btn-play');
@@ -4351,6 +4362,98 @@ initOnboarding() {
             osc2.connect(g2).connect(ctx.destination);
             osc2.start(t); osc2.stop(t + 0.6);
         } catch (e) { /* non-fatal */ }
+    },
+
+    // ===================================
+    // ALBUM COLORS — while Spotify plays, the app takes its accent and a soft
+    // backdrop glow from the album cover. Only in the Normal theme (the other
+    // themes have their own identity) and switchable off in Settings. Break
+    // phases keep their calm colours so the phase is still readable.
+    // ===================================
+    setAlbumColors(url) {
+        this._albumWanted = url || null;
+        const allowed = this.state.settings.albumColors !== false && this.state.settings.theme === 'normal';
+        const eff = allowed ? this._albumWanted : null;
+        if (eff === this._albumApplied) return;
+        this._albumApplied = eff;
+        if (!eff) { this._applyAlbumPalette(null); return; }
+        this._extractPalette(eff)
+            .then(p => { if (this._albumApplied === eff) this._applyAlbumPalette(p); })
+            .catch(() => { /* cover unreadable: keep the normal accent */ });
+    },
+
+    _extractPalette(url) {
+        this._paletteCache = this._paletteCache || {};
+        if (this._paletteCache[url]) return Promise.resolve(this._paletteCache[url]);
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const N = 40, cv = document.createElement('canvas');
+                    cv.width = cv.height = N;
+                    const ctx = cv.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0, N, N);
+                    const px = ctx.getImageData(0, 0, N, N).data;
+                    // Bucket by hue/sat/light and score buckets: frequent and vivid wins.
+                    const buckets = new Map();
+                    for (let i = 0; i < px.length; i += 4) {
+                        const [h, s, l] = this._rgbToHsl(px[i], px[i + 1], px[i + 2]);
+                        const key = `${Math.round(h / 15)}-${Math.round(s * 4)}-${Math.round(l * 5)}`;
+                        const b = buckets.get(key) || { n: 0, h: 0, s: 0, l: 0 };
+                        b.n++; b.h += h; b.s += s; b.l += l;
+                        buckets.set(key, b);
+                    }
+                    const list = [...buckets.values()].map(b => ({ n: b.n, h: b.h / b.n, s: b.s / b.n, l: b.l / b.n }));
+                    const vivid = c => c.n * (0.25 + c.s) * (c.l > 0.12 && c.l < 0.9 ? 1 : 0.15);
+                    list.sort((a, b) => vivid(b) - vivid(a));
+                    const main = list[0];
+                    const hueGap = (a, b) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+                    const second = list.find(c => hueGap(c.h, main.h) > 35 && c.n > 6) || main;
+                    // Clamp into a range that reads on the dark UI: never muddy, never neon.
+                    const fix = (c, lMin, lMax) => this._hsl(c.h, Math.min(0.85, Math.max(c.s < 0.12 ? 0.18 : 0.5, c.s)), Math.min(lMax, Math.max(lMin, c.l)));
+                    const pal = { primary: fix(main, 0.6, 0.7), secondary: fix(second, 0.42, 0.58) };
+                    this._paletteCache[url] = pal;
+                    resolve(pal);
+                } catch (e) { reject(e); }
+            };
+            img.onerror = reject;
+            img.src = url;
+        });
+    },
+
+    _rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+        if (max === min) return [0, 0, l];
+        const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return [h * 60, s, l];
+    },
+
+    _hsl(h, s, l) { return `hsl(${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`; },
+
+    _applyAlbumPalette(p) {
+        const b = document.body;
+        clearTimeout(this._albumOffTimer);
+        const base = this.state.accents[this.state.settings.accent] || '#ff6b6b';
+        if (p) {
+            if (!b.classList.contains('album-mode')) {
+                // Start the transition from the current accent, not from black.
+                b.style.setProperty('--album-accent', base);
+                b.style.setProperty('--album-2', base);
+                void b.offsetWidth;
+                b.classList.add('album-mode');
+            }
+            requestAnimationFrame(() => {
+                b.style.setProperty('--album-accent', p.primary);
+                b.style.setProperty('--album-2', p.secondary);
+            });
+        } else if (b.classList.contains('album-mode')) {
+            b.style.setProperty('--album-accent', base);
+            b.style.setProperty('--album-2', base);
+            this._albumOffTimer = setTimeout(() => { if (!this._albumApplied) b.classList.remove('album-mode'); }, 1500);
+        }
     },
 
     // ===================================

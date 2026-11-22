@@ -151,6 +151,7 @@ window.SpotifyAccount = (() => {
     if (st.player) { st.player.disconnect(); st.player = null; }
     Object.assign(st, { profile: null, now: null, recent: [], top: [], playlists: [], deviceId: null, playingHere: false, error: '' });
     stopPolling();
+    syncAlbum();
     render();
     renderMini();
     if (!silent) toast('Spotify disconnected', 'You can connect again any time.');
@@ -190,6 +191,7 @@ window.SpotifyAccount = (() => {
     } catch (e) {
       if (e.status === 429) stopPolling();
     }
+    syncAlbum();
     renderNow();
     renderMini();
   }
@@ -243,10 +245,11 @@ window.SpotifyAccount = (() => {
       player.addListener('initialization_error', ({ message }) => { st.sdkLoading = false; st.error = `This browser can’t play Spotify here (${message}).`; render(); });
       player.addListener('playback_error', ({ message }) => console.warn('[spotify] playback error', message));
       player.addListener('player_state_changed', s => {
-        if (!s) { st.playingHere = false; renderNow(); renderMini(); app._renderSoundsIndicator(); return; }
+        if (!s) { st.playingHere = false; syncAlbum(); renderNow(); renderMini(); app._renderSoundsIndicator(); return; }
         st.lastLocalState = Date.now();
         st.playingHere = true;
         st.now = { item: s.track_window.current_track, playing: !s.paused, progress: s.position, at: Date.now(), here: true };
+        syncAlbum();
         renderNow(); renderMini(); app._renderSoundsIndicator();
       });
       // Browsers only allow audio after a gesture; this click is it.
@@ -279,6 +282,48 @@ window.SpotifyAccount = (() => {
 
   function pauseHere() {
     if (st.player && st.playingHere && st.now && st.now.playing) st.player.pause();
+  }
+
+  // Album colours follow what's playing; a short pause doesn't flip the app
+  // back and forth, so the revert waits a few seconds.
+  let albumOff = null;
+  function syncAlbum() {
+    const n = st.now;
+    const imgs = n && n.item && ((n.item.album && n.item.album.images) || n.item.images || (n.item.show && n.item.show.images));
+    const url = imgs && imgs.length ? (imgs[1] || imgs[0]).url : null;
+    clearTimeout(albumOff);
+    if (!window.app || !app.setAlbumColors) return;
+    if (n && n.playing && url) app.setAlbumColors(url);
+    else albumOff = setTimeout(() => app.setAlbumColors(null), n ? 8000 : 0);
+  }
+
+  // ── Focus soundtrack: songs heard during focus sessions, kept locally ──
+  const TRACKS_KEY = 'pomodoro_focus_tracks';
+  const entry = (t, at) => t && t.id ? ({
+    id: t.id, name: t.name,
+    artist: ((t.artists || []).map(a => a.name).join(', ')) || '',
+    img: (t.album && t.album.images && (t.album.images[1] || t.album.images[0]) || {}).url || null,
+    ms: t.duration_ms || 0, at
+  }) : null;
+
+  async function captureFocusSession(startMs, endMs) {
+    if (!connected()) return;
+    try {
+      const d = await api(`/me/player/recently-played?limit=50&after=${Math.floor(startMs)}`);
+      const found = ((d && d.items) || [])
+        .filter(i => new Date(i.played_at).getTime() <= endMs + 60000)
+        .map(i => entry(i.track, i.played_at));
+      // The song still playing when the session ends isn't in "recently played" yet.
+      if (st.now && st.now.playing && st.now.item && st.now.item.type !== 'episode') found.push(entry(st.now.item, new Date(endMs).toISOString()));
+      let all = [];
+      try { all = JSON.parse(localStorage.getItem(TRACKS_KEY) || '[]'); } catch (e) {}
+      found.filter(Boolean).forEach(t => {
+        const at = new Date(t.at).getTime();
+        // A song that straddles two sessions shouldn't be counted twice.
+        if (!all.some(x => x.id === t.id && Math.abs(new Date(x.at).getTime() - at) < 20 * 60000)) all.push(t);
+      });
+      localStorage.setItem(TRACKS_KEY, JSON.stringify(all.slice(-1500)));
+    } catch (e) { console.warn('[spotify] soundtrack capture failed', e); }
   }
 
   // ── Rendering ────────────────────────────────────────────────────
@@ -461,7 +506,7 @@ window.SpotifyAccount = (() => {
   function onSheetOpen() { if (connected()) loadAll(); else render(); }
 
   return {
-    init, onSheetOpen, pauseHere,
+    init, onSheetOpen, pauseHere, captureFocusSession,
     get playingHere() { return !!(st.playingHere && st.now && st.now.playing); },
     _state: st, _render: render
   };
