@@ -4451,7 +4451,9 @@ initOnboarding() {
         const msg = {
             off: 'Off.',
             theme: 'Album colors only apply in the Normal theme.',
-            idle: 'Waiting for music — connect your Spotify account in Sounds, or play a Spotify link there.',
+            idle: window.SpotifyAccount && SpotifyAccount.connected
+                ? 'Spotify is connected, but nothing is playing on your account right now (checked every few seconds).'
+                : 'Spotify isn’t connected, so the app can’t see what the Spotify app is playing. Open Sounds → Connect Spotify.',
             unreadable: 'Couldn’t read this cover’s colors.'
         }[reason];
         if (msg) { el.textContent = msg; return; }

@@ -36,7 +36,9 @@ window.SpotifyAccount = (() => {
 
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const toast = (t, d) => window.app && app.showToast(t, d, '♪');
+  // app.js declares `const app`, which is a global binding but NOT window.app.
+  const hasApp = () => typeof app !== 'undefined';
+  const toast = (t, d) => hasApp() && app.showToast(t, d, '♪');
   const clientId = () => CLIENT_ID || localStorage.getItem(CID_KEY) || '';
   const redirectUri = () => location.origin + location.pathname;
 
@@ -292,7 +294,7 @@ window.SpotifyAccount = (() => {
     const imgs = n && n.item && ((n.item.album && n.item.album.images) || n.item.images || (n.item.show && n.item.show.images));
     const url = imgs && imgs.length ? (imgs[1] || imgs[0]).url : null;
     clearTimeout(albumOff);
-    if (!window.app || !app.setAlbumColors) return;
+    if (!hasApp() || !app.setAlbumColors) return;
     const label = n && n.item ? `${n.item.name}${artists(n.item) ? ' — ' + ((n.item.artists || []).map(a => a.name).join(', ')) : ''}` : '';
     if (n && n.playing && url) app.setAlbumColors(url, label);
     else albumOff = setTimeout(() => app.setAlbumColors(null), n ? 8000 : 0);
@@ -508,6 +510,7 @@ window.SpotifyAccount = (() => {
 
   return {
     init, onSheetOpen, pauseHere, captureFocusSession,
+    get connected() { return connected(); },
     get playingHere() { return !!(st.playingHere && st.now && st.now.playing); },
     _state: st, _render: render
   };
