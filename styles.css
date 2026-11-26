@@ -3541,3 +3541,50 @@ body.theme-pink {
 .np-btn-main:hover { color: #0b0d12; background: #fff; }
 body.theme-pink .np-btn-main { color: #fff; background: #e0559a; }
 body.zen-mode .np-card { display: none; }
+
+
+/* ===== MINI TIMER WINDOW (Document Picture-in-Picture) ===== */
+#btn-mini.active { color: var(--mode-accent); }
+body.mini-window {
+  margin: 0; min-height: 100vh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--mode-accent) 22%, transparent), transparent 70%),
+    var(--bg-primary);
+}
+body.mini-window::before, body.mini-window::after { display: none; }
+.mini { width: 100%; height: 100vh; padding: 5vmin 6vmin; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3.6vmin; }
+.mini-top { display: flex; align-items: center; gap: 8px; }
+.mini-mode {
+  padding: 3px 10px; border-radius: 999px; font-size: max(11px, 3.6vmin); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mode-accent); background: color-mix(in srgb, var(--mode-accent) 14%, transparent);
+}
+.mini-session { font-size: max(10px, 3.2vmin); color: var(--text-muted); }
+.mini-ring { position: relative; width: min(62vmin, 62vh); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+.mini-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.mini-track { fill: none; stroke: var(--surface-2); stroke-width: 7; }
+.mini-prog { fill: none; stroke: var(--mode-accent); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 0.35s linear, stroke 0.6s var(--ease); }
+/* Album cover as the face, as in the main window. */
+body.album-mode .mini-ring::before {
+  content: ''; position: absolute; inset: 9%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.4), rgba(0,0,0,0.68)), var(--album-cover, none) center / cover;
+  animation: albumSpin 40s linear infinite;
+}
+.mini-time { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: min(15vmin, 15vh); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(0,0,0,0.5); }
+.mini-ctrls { display: flex; align-items: center; gap: 4vmin; }
+.mini-btn {
+  width: max(32px, 11vmin); height: max(32px, 11vmin); display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.14)); border-radius: 50%; cursor: pointer;
+  color: var(--text-secondary); background: var(--glass-bg, rgba(255,255,255,0.06));
+  transition: transform 0.12s ease, color 0.2s, background-color 0.2s;
+}
+.mini-btn svg { width: 45%; height: 45%; }
+.mini-btn:hover { color: var(--text-primary); }
+.mini-btn:active { transform: scale(0.92); }
+.mini-btn-main { width: max(42px, 15vmin); height: max(42px, 15vmin); color: #fff; border: 0; background: var(--mode-accent); box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.mini-np { margin: 0; width: 100%; max-width: 360px; }
+.mini-np .np-btn { width: 28px; height: 28px; }
+.mini-np .np-btn-main { width: 32px; height: 32px; }
+.mini-np .np-cover { width: 36px; height: 36px; border-radius: 10px; }
+/* Short windows: drop the extras first. */
+@media (max-height: 300px) { .mini-np { display: none !important; } .mini-top { display: none; } }
