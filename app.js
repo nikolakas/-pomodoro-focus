@@ -1440,6 +1440,9 @@ inputs.forEach(input => input.addEventListener('change', () => this.saveSettings
   // Let the first position land without animating, then enable the slide.
   requestAnimationFrame(() => { this._syncIndicators(); requestAnimationFrame(() => document.body.classList.add('seg-ready')); });
 
+  const albumNow = document.getElementById('album-now');
+  if (albumNow) albumNow.addEventListener('click', e => { if (e.target.closest('[data-link="toggle"]')) this.toggleLinkPlayback(); });
+
   // Cat Dash modal chrome
   const catGameModal = document.getElementById('cat-game-modal');
   const catGameClose = document.getElementById('cat-game-close');
@@ -1787,10 +1790,10 @@ initSpotify() {
             const cur = this.spotify.current;
             if (cur && `${cur.type}:${cur.id}` === key) {
                 this.spotify.current = null;
+                this._destroySpotifyPlayer();
                 const box = document.getElementById('sp-player');
                 if (box) { box.innerHTML = ''; box.hidden = true; delete box.dataset.key; }
                 this.spotify.mounted = false;
-                this.setAlbumSource('link', null);
             }
             this._saveSpotify();
             this._renderSpotifyChips();
@@ -1839,7 +1842,26 @@ loadSpotify(item) {
     if (!S.current.title || !S.current.thumb) this._fetchSpotifyTitle(S.current);
 },
 
-// (Re)build the iframe only when the selection changes — rebuilding it
+// The link player uses Spotify's iFrame API (the official way to embed with
+// control): it reports which song is playing and whether it's paused, so the
+// album colours follow the actual song and the widget can play/pause. The API
+// has no next/previous, so the link widget only offers play/pause.
+_loadSpotifyIframeApi() {
+    if (this._spApiPromise) return this._spApiPromise;
+    this._spApiPromise = new Promise((resolve, reject) => {
+        const prev = window.onSpotifyIframeApiReady;
+        window.onSpotifyIframeApiReady = api => { if (prev) try { prev(api); } catch (e) {} resolve(api); };
+        const s = document.createElement('script');
+        s.src = 'https://open.spotify.com/embed/iframe-api/v1';
+        s.async = true;
+        s.onerror = () => reject(new Error('Spotify iFrame API blocked'));
+        document.body.appendChild(s);
+        setTimeout(() => reject(new Error('Spotify iFrame API timed out')), 12000);
+    });
+    return this._spApiPromise;
+},
+
+// (Re)build the player only when the selection changes — rebuilding it
 // would cut off whatever is playing.
 _mountSpotify(force = false) {
     const S = this.spotify;
@@ -1849,30 +1871,116 @@ _mountSpotify(force = false) {
     const linkbox = document.getElementById('sp-linkbox');
     if (linkbox) linkbox.open = true;
     const key = `${S.current.type}:${S.current.id}`;
-    if (S.mounted && box.dataset.key === key && !force) return;
     if (box.dataset.key === key && box.querySelector('iframe') && !force) return;
-    const compact = S.current.type === 'track' || S.current.type === 'episode';
-    const title = this._esc(S.current.title ? `Spotify Embed: ${S.current.title}` : 'Spotify Embed');
-    box.innerHTML = `<iframe style="border-radius: 12px" width="100%" height="${compact ? 152 : 352}" title="${title}" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" src="https://open.spotify.com/embed/${S.current.type}/${S.current.id}?utm_source=generator&theme=0"></iframe>`;
+    const uri = `spotify:${S.current.type}:${S.current.id}`;
+    const height = S.current.type === 'track' || S.current.type === 'episode' ? 152 : 352;
     box.dataset.key = key;
     box.hidden = false;
     S.mounted = true;
-    this._linkAlbum();
+    this._linkState = null;
+    this._renderLinkWidget();
+
+    if (this._spCtrl) {
+        this._spCtrl.loadEntity ? this._spCtrl.loadEntity(uri) : this._spCtrl.loadUri(uri);
+        const f = box.querySelector('iframe'); if (f) f.height = height;
+        return;
+    }
+    box.innerHTML = '<div id="sp-embed"></div>';
+    this._loadSpotifyIframeApi().then(api => {
+        api.createController(document.getElementById('sp-embed'), { uri, width: '100%', height }, ctrl => {
+            this._spCtrl = ctrl;
+            ctrl.addListener('playback_update', e => this._onLinkPlayback(e.data || {}));
+        });
+    }).catch(err => {
+        // API blocked (extension, network): fall back to the plain embed.
+        console.warn('[spotify] iFrame API unavailable, using plain embed', err);
+        box.innerHTML = `<iframe style="border-radius: 12px" width="100%" height="${height}" title="Spotify Embed" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" src="https://open.spotify.com/embed/${S.current.type}/${S.current.id}?utm_source=generator&theme=0"></iframe>`;
+    });
 },
 
-// The link player can't report the exact song, so it lends the loaded
-// item's cover (an album/track link's cover is the album art itself).
-_linkAlbum() {
-    const S = this.spotify;
-    const live = S && S.current && document.querySelector('#sp-player iframe');
-    this.setAlbumSource('link', live && S.current.thumb ? S.current.thumb : null, live ? S.current.title : '');
+_onLinkPlayback(d) {
+    const prev = this._linkState || {};
+    this._linkState = { uri: d.playingURI || prev.uri, paused: !!d.isPaused, title: prev.title, cover: prev.cover };
+    const L = this._linkState;
+    clearTimeout(this._linkOffTimer);
+    if (L.uri && L.uri !== prev.uri) {
+        // Look up the song's own cover (oEmbed of a track gives its album art).
+        const [, type, id] = L.uri.split(':');
+        this._linkTrackInfo(type, id).then(info => {
+            if (!this._linkState || this._linkState.uri !== L.uri) return;
+            Object.assign(this._linkState, info);
+            this._syncLinkAlbum();
+            this._renderLinkWidget();
+        });
+    }
+    this._syncLinkAlbum();
+    this._renderLinkWidget();
 },
 
-// Reloading the frame is the only way to silence a plain embed.
+async _linkTrackInfo(type, id) {
+    this._linkInfoCache = this._linkInfoCache || {};
+    const key = `${type}:${id}`;
+    if (this._linkInfoCache[key]) return this._linkInfoCache[key];
+    try {
+        const r = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(`https://open.spotify.com/${type}/${id}`)}`);
+        const d = await r.json();
+        return (this._linkInfoCache[key] = { title: d.title || '', cover: d.thumbnail_url || null });
+    } catch (e) {
+        const cur = this.spotify && this.spotify.current;
+        return { title: (cur && cur.title) || '', cover: (cur && cur.thumb) || null };
+    }
+},
+
+// Colours while it plays; a short pause doesn't flip the app back and forth.
+_syncLinkAlbum() {
+    const L = this._linkState;
+    const fallback = this.spotify && this.spotify.current && this.spotify.current.thumb;
+    if (L && !L.paused && (L.cover || fallback)) {
+        this.setAlbumSource('link', L.cover || fallback, L.title || (this.spotify.current && this.spotify.current.title) || '');
+    } else {
+        this._linkOffTimer = setTimeout(() => this.setAlbumSource('link', null), L ? 8000 : 0);
+    }
+},
+
+toggleLinkPlayback() {
+    if (this._spCtrl) this._spCtrl.togglePlay();
+},
+
+// Stop all: pause rather than reload, so the player keeps its place.
 stopSpotify() {
-    const frame = document.querySelector('#sp-player iframe');
-    if (frame) frame.src = frame.src;
+    if (this._spCtrl) this._spCtrl.pause();
+    else { const f = document.querySelector('#sp-player iframe'); if (f) f.src = f.src; }
+    clearTimeout(this._linkOffTimer);
     this.setAlbumSource('link', null);
+},
+
+_destroySpotifyPlayer() {
+    if (this._spCtrl && this._spCtrl.destroy) try { this._spCtrl.destroy(); } catch (e) {}
+    this._spCtrl = null;
+    this._linkState = null;
+    clearTimeout(this._linkOffTimer);
+    this.setAlbumSource('link', null);
+    this._renderLinkWidget();
+},
+
+// Minimal now-playing widget for the link player (play/pause only). The
+// connected-account widget (spotify.js) takes precedence when it's showing.
+_renderLinkWidget() {
+    const card = document.getElementById('album-now');
+    if (!card) return;
+    const L = this._linkState;
+    const accountShowing = !!(document.getElementById('sp-mini') && !document.getElementById('sp-mini').hidden);
+    if (!L || !L.uri || accountShowing) { card.hidden = true; return; }
+    const cur = (this.spotify && this.spotify.current) || {};
+    const cover = L.cover || cur.thumb;
+    card.hidden = false;
+    card.innerHTML = `${cover ? `<img class="np-cover" src="${this._esc(cover)}" width="44" height="44" alt="">` : ''}
+        <span class="np-text"><b>${this._esc(L.title || cur.title || 'Spotify')}</b><span>${this._esc(cur.title && L.title && cur.title !== L.title ? cur.title : 'Spotify')}</span></span>
+        <span class="np-ctrls">
+            <button type="button" class="np-btn np-btn-main" data-link="toggle" aria-label="${L.paused ? 'Play' : 'Pause'}">${L.paused
+                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>'
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1.2"/><rect x="14" y="4.5" width="4" height="15" rx="1.2"/></svg>'}</button>
+        </span>`;
 },
 
 async _fetchSpotifyTitle(item) {
@@ -1887,7 +1995,7 @@ async _fetchSpotifyTitle(item) {
         upd(this.spotify.current);
         this._saveSpotify();
         this._renderSpotifyChips();
-        this._linkAlbum();
+        this._renderLinkWidget();
     } catch (e) { /* the chip just keeps its generic label */ }
 },
 
@@ -4446,17 +4554,6 @@ initOnboarding() {
     },
 
     _renderAlbumStatus(reason, src, pal) {
-        // The link player can't report its own song, so it gets a now-playing
-        // card here (a connected account uses the Spotify module's card, which
-        // has controls).
-        const card = document.getElementById('album-now');
-        if (card) {
-            const srcs = this._albumSrc || {};
-            const show = !reason && src && srcs.link === src && !srcs.account;
-            card.hidden = !show;
-            if (show) card.innerHTML = `<img class="np-cover" src="${this._esc(src.url)}" width="44" height="44" alt="">
-                <span class="np-text"><b>${this._esc(src.label || 'Spotify')}</b><span>Playing from your Spotify link</span></span>`;
-        }
         const el = document.getElementById('album-status');
         if (!el) return;
         const msg = {

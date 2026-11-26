@@ -453,17 +453,30 @@ window.SpotifyAccount = (() => {
   }
 
   // Small now-playing line under the timer, so you see the song without opening Sounds.
+  // Minimal now-playing widget under the timer: cover, song, artist and
+  // previous / play-pause / next. Stays while paused so you can resume.
+  const ICON = {
+    prev: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.2v14H6zM19 5.5v13L9.6 12z"/></svg>',
+    next: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.8 5H18v14h-2.2zM5 5.5v13L14.4 12z"/></svg>',
+    play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+    pause: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1.2"/><rect x="14" y="4.5" width="4" height="15" rx="1.2"/></svg>'
+  };
   function renderMini() {
     const el = $('sp-mini');
     if (!el) return;
     const n = st.now;
-    if (!connected() || !n || !n.playing) { el.hidden = true; return; }
+    if (!connected() || !n || !n.item) { el.hidden = true; if (hasApp() && app._renderLinkWidget) app._renderLinkWidget(); return; }
     el.hidden = false;
     const imgs = (n.item.album && n.item.album.images) || n.item.images || [];
     const cover = imgs.length ? (imgs[1] || imgs[0]).url : '';
     el.innerHTML = `${cover ? `<img class="np-cover" src="${esc(cover)}" width="44" height="44" alt="">` : ''}
       <span class="np-text"><b>${esc(n.item.name)}</b><span>${artists(n.item)}</span></span>
-      <button type="button" class="sp-mini-btn" data-spa="toggle" aria-label="Pause"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>`;
+      <span class="np-ctrls">
+        <button type="button" class="np-btn" data-spa="prev" aria-label="Previous song">${ICON.prev}</button>
+        <button type="button" class="np-btn np-btn-main" data-spa="toggle" aria-label="${n.playing ? 'Pause' : 'Play'}">${n.playing ? ICON.pause : ICON.play}</button>
+        <button type="button" class="np-btn" data-spa="next" aria-label="Next song">${ICON.next}</button>
+      </span>`;
+    if (hasApp() && app._renderLinkWidget) app._renderLinkWidget();
   }
 
   // ── Wiring ───────────────────────────────────────────────────────
