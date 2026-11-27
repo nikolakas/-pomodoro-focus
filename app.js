@@ -16,7 +16,7 @@ const app = {
             rounds: 4, dailyGoal: 8,
             sound: 'bell', theme: 'normal',
             wallpaper: 'default', accent: 'coral',
-            saber: 'blue', swMusic: true, autoStart: false, catGame: true, uiSounds: true, albumColors: true
+            saber: 'blue', swMusic: true, autoStart: false, catGame: true, uiSounds: true, albumColors: true, fiveMinChime: true
         },
         currentRound: 1,
         sessionsToday: 0,
@@ -2354,7 +2354,10 @@ toggleTimer() {
             // Derive timeLeft from real wall-clock elapsed time so background
             // tab throttling never causes the timer to drift or run slow.
             const elapsed = Math.floor((Date.now() - this.state.sessionStartTime) / 1000);
+            const before = this.state.timeLeft;
             this.state.timeLeft = Math.max(0, this.state.sessionTotalSeconds - elapsed);
+            // Heads-up when crossing 5:00 left (never on a session that starts at 5:00 or less).
+            if (before > 300 && this.state.timeLeft <= 300 && this.state.timeLeft > 0) this.fiveMinuteChime();
             this.saveSessionState();
             this.updateTimeDisplay();
             this.updateRing();
@@ -2988,6 +2991,8 @@ el.addEventListener('click', () => {
         if (catGameEl) catGameEl.checked = !!this.state.settings.catGame;
         const uiSoundsEl = document.getElementById('setting-ui-sounds');
         if (uiSoundsEl) uiSoundsEl.checked = this.state.settings.uiSounds !== false;
+        const chimeEl = document.getElementById('setting-five-min-chime');
+        if (chimeEl) chimeEl.checked = this.state.settings.fiveMinChime !== false;
         const albumEl = document.getElementById('setting-album-colors');
         if (albumEl) albumEl.checked = this.state.settings.albumColors !== false;
 		this.setWallpaper(this.state.settings.wallpaper);
@@ -3011,6 +3016,8 @@ el.addEventListener('click', () => {
         if (catGameEl) this.state.settings.catGame = catGameEl.checked;
         const uiSoundsEl = document.getElementById('setting-ui-sounds');
         if (uiSoundsEl) this.state.settings.uiSounds = uiSoundsEl.checked;
+        const chimeEl = document.getElementById('setting-five-min-chime');
+        if (chimeEl) this.state.settings.fiveMinChime = chimeEl.checked;
         const albumEl = document.getElementById('setting-album-colors');
         if (albumEl) this.state.settings.albumColors = albumEl.checked;
         if (this._refreshAlbum) this._refreshAlbum();
@@ -4695,6 +4702,32 @@ initOnboarding() {
     // app has a single sonic identity. Quiet, under 200 ms, and optional
     // (Settings › Interface sounds). Every sound accompanies a visible change.
     // ===================================
+    // Soft two-bell chime at 5 minutes left. Independent of interface sounds,
+    // switchable in Settings.
+    fiveMinuteChime() {
+        if (this.state.settings.fiveMinChime === false) return;
+        try {
+            if (!this.toneCtx) this.toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.toneCtx.state === 'suspended') this.toneCtx.resume();
+            const ctx = this.toneCtx, t = ctx.currentTime;
+            const bell = (freq, at) => {
+                // Fundamental + a quiet inharmonic partial = small bell, long gentle decay.
+                [[1, 0.09], [2.76, 0.025]].forEach(([mul, gain]) => {
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(freq * mul, t + at);
+                    g.gain.setValueAtTime(0.0001, t + at);
+                    g.gain.exponentialRampToValueAtTime(gain, t + at + 0.012);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + at + (mul === 1 ? 1.6 : 0.6));
+                    o.connect(g).connect(ctx.destination);
+                    o.start(t + at); o.stop(t + at + 1.7);
+                });
+            };
+            bell(659.25, 0);      // E5
+            bell(987.77, 0.28);   // B5
+        } catch (e) { /* audio is never essential */ }
+    },
+
     uiSound(name) {
         if (this.state.settings.uiSounds === false) return;
         try {
