@@ -141,6 +141,7 @@
             </div>
 <div class="sp-mini np-card" id="sp-mini" hidden></div>
 <div class="np-card" id="album-now" hidden></div>
+<div class="room-pill" id="room-pill" hidden></div>
 <div class="intention-reminder" id="intention-reminder" style="display:none;"></div>
 <div class="subtask-tracker" id="subtask-tracker"></div>
 
@@ -451,6 +452,13 @@
     </div>
 
     <div id="friends-content">
+      <!-- Study together -->
+      <section class="settings-section-card glass-card room-card">
+        <h3 class="settings-section-title">Study together</h3>
+        <p class="friends-hint">Open a room and friends follow your timer live: same focus, same breaks. Everyone's sessions count for them.</p>
+        <div id="room-body"></div>
+      </section>
+
       <!-- Your username -->
       <section class="settings-section-card glass-card">
         <h3 class="settings-section-title">Your username <span class="my-username" id="my-username">not set yet</span></h3>
@@ -1120,6 +1128,7 @@
 <script src="spotify.js" defer></script>
 <script src="share.js" defer></script>
 <script src="mini.js" defer></script>
+<script src="room.js" defer></script>
 
 <!-- Medical ECG background — canvas-based real-time PQRST -->
 <canvas id="med-ecg-canvas" aria-hidden="true"></canvas>

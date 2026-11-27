@@ -31,7 +31,8 @@ window.SpotifyAccount = (() => {
     profile: null, now: null, recent: [], top: [], playlists: [],
     list: 'recent', setupOpen: false, error: '',
     deviceId: null, player: null, sdkLoading: false, playingHere: false,
-    pollTimer: null, lastLocalState: 0
+    pollTimer: null, lastLocalState: 0,
+    volume: null, volSupported: true, volAt: 0, volDragging: false, volOpen: false, volBeforeMute: 50
   };
 
   const $ = id => document.getElementById(id);
@@ -188,8 +189,14 @@ window.SpotifyAccount = (() => {
     // API poll overwrite it with older data.
     if (Date.now() - st.lastLocalState < 4000) return;
     try {
-      const d = await api('/me/player/currently-playing?additional_types=episode');
+      // /me/player = currently-playing + the device, which carries the volume.
+      const d = await api('/me/player?additional_types=episode');
       st.now = d && d.item ? { item: d.item, playing: d.is_playing, progress: d.progress_ms, at: Date.now() } : null;
+      const dev = d && d.device;
+      if (dev && Date.now() - st.volAt > 3000) {
+        st.volSupported = dev.supports_volume !== false && dev.volume_percent != null;
+        if (dev.volume_percent != null) st.volume = dev.volume_percent;
+      }
     } catch (e) {
       if (e.status === 429) stopPolling();
     }
@@ -240,7 +247,7 @@ window.SpotifyAccount = (() => {
         volume: 0.6
       });
       st.player = player;
-      player.addListener('ready', ({ device_id }) => { st.deviceId = device_id; st.sdkLoading = false; transferHere(true); });
+      player.addListener('ready', ({ device_id }) => { st.deviceId = device_id; st.volume = 60; st.volSupported = true; st.sdkLoading = false; transferHere(true); });
       player.addListener('not_ready', () => { st.playingHere = false; render(); });
       player.addListener('account_error', () => { st.sdkLoading = false; st.error = 'Playing in the browser needs Spotify Premium. You can still control Spotify on your phone or computer from here.'; render(); });
       player.addListener('authentication_error', () => { st.sdkLoading = false; st.error = 'Spotify rejected the login for in-browser playback — disconnect and connect again.'; render(); });
@@ -280,6 +287,56 @@ window.SpotifyAccount = (() => {
       st.error = explain(e);
     }
     render();
+  }
+
+  // -- Volume ----------------------------------------------------------
+  // In-browser player: set directly on the SDK (instant). Any other device
+  // (phone, desktop app, speaker): Web API, debounced so a drag sends a
+  // handful of requests, not hundreds. Some devices (iPhone, some speakers)
+  // don't allow remote volume; Spotify says so and the slider is disabled.
+  let volTimer = null;
+  function setVolume(v) {
+    if (!connected()) return;
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    if (v > 0) st.volBeforeMute = v;
+    st.volume = v; st.volAt = Date.now();
+    syncVolUI();
+    if (st.player && st.playingHere) { st.player.setVolume(v / 100).catch(() => {}); return; }
+    clearTimeout(volTimer);
+    volTimer = setTimeout(async () => {
+      try {
+        await api(`/me/player/volume?volume_percent=${v}`, { method: 'PUT' });
+        st.volAt = Date.now();
+      } catch (e) {
+        if (e.reason === 'VOLUME_CONTROL_DISALLOW' || /volume/i.test(e.message)) {
+          st.volSupported = false;
+          st.error = 'This device doesn\u2019t let apps change its volume (iPhones and some speakers). Use the volume on the device itself.';
+        } else st.error = explain(e);
+        render(); renderMini();
+      }
+    }, 180);
+  }
+  function toggleMute() { setVolume(st.volume > 0 ? 0 : (st.volBeforeMute || 50)); }
+  const VOL_ICON = v => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/>${v === 0 ? '<path d="m22 9-6 6M16 9l6 6"/>' : '<path d="M15.5 8.5a5 5 0 0 1 0 7"/>'}${v >= 50 ? '<path d="M18.8 5.2a9.5 9.5 0 0 1 0 13.6"/>' : ''}</svg>`;
+  function volRow(cls) {
+    if (st.volume == null) return '';
+    const dis = st.volSupported ? '' : 'disabled';
+    return `<div class="${cls}" style="--vol:${st.volume}%">
+      <button type="button" class="np-btn sp-vol-mute" data-spa="mute" aria-label="${st.volume ? 'Mute' : 'Unmute'}" ${dis}>${VOL_ICON(st.volume)}</button>
+      <input type="range" class="sp-vol" data-spa-vol min="0" max="100" step="1" value="${st.volume}" aria-label="Spotify volume" ${dis}>
+      <span class="sp-vol-num">${st.volSupported ? st.volume : '\u2014'}</span>
+    </div>`;
+  }
+  // Update sliders in place: never re-render under a dragging finger.
+  function syncVolUI() {
+    document.querySelectorAll('[data-spa-vol]').forEach(i => { if (+i.value !== st.volume) i.value = st.volume; });
+    document.querySelectorAll('.sp-vol-row, .np-vol').forEach(r => {
+      r.style.setProperty('--vol', st.volume + '%');
+      const n = r.querySelector('.sp-vol-num'); if (n) n.textContent = st.volume;
+      const m = r.querySelector('.sp-vol-mute'); if (m) m.innerHTML = VOL_ICON(st.volume);
+    });
+    const b = document.querySelector('#sp-mini [data-spa="vol"]');
+    if (b) b.innerHTML = VOL_ICON(st.volume);
   }
 
   function pauseHere() {
@@ -420,7 +477,7 @@ window.SpotifyAccount = (() => {
 
   function renderNow() {
     const box = $('spa-now');
-    if (!box) return;
+    if (!box || st.volDragging) return;
     const n = st.now;
     const playHereBtn = st.playingHere ? '' :
       `<button type="button" class="spa-btn" data-spa="here" ${st.sdkLoading ? 'disabled' : ''}>${st.sdkLoading ? 'Connecting…' : 'Play here'}</button>`;
@@ -449,7 +506,8 @@ window.SpotifyAccount = (() => {
         </div>
       </div>
       <div class="spa-progress"><span style="width:${dur ? (pos / dur * 100).toFixed(1) : 0}%"></span></div>
-      <div class="spa-now-foot"><span>${mmss(pos)}</span>${playHereBtn}<span>${mmss(dur)}</span></div>`;
+      <div class="spa-now-foot"><span>${mmss(pos)}</span>${playHereBtn}<span>${mmss(dur)}</span></div>
+      ${volRow('sp-vol-row')}`;
   }
 
   // Small now-playing line under the timer, so you see the song without opening Sounds.
@@ -463,7 +521,7 @@ window.SpotifyAccount = (() => {
   };
   function renderMini() {
     const el = $('sp-mini');
-    if (!el) return;
+    if (!el || st.volDragging) return;
     const n = st.now;
     if (!connected() || !n || !n.item) { el.hidden = true; if (hasApp() && app._renderLinkWidget) app._renderLinkWidget(); return; }
     el.hidden = false;
@@ -475,7 +533,10 @@ window.SpotifyAccount = (() => {
         <button type="button" class="np-btn" data-spa="prev" aria-label="Previous song">${ICON.prev}</button>
         <button type="button" class="np-btn np-btn-main" data-spa="toggle" aria-label="${n.playing ? 'Pause' : 'Play'}">${n.playing ? ICON.pause : ICON.play}</button>
         <button type="button" class="np-btn" data-spa="next" aria-label="Next song">${ICON.next}</button>
-      </span>`;
+        ${st.volume != null ? `<button type="button" class="np-btn np-btn-vol${st.volOpen ? ' on' : ''}" data-spa="vol" aria-label="Volume" aria-expanded="${st.volOpen}">${VOL_ICON(st.volume)}</button>` : ''}
+      </span>
+      ${st.volOpen && st.volume != null ? volRow('np-vol') : ''}`;
+    el.classList.toggle('has-vol', !!(st.volOpen && st.volume != null));
     if (hasApp() && app._renderLinkWidget) app._renderLinkWidget();
   }
 
@@ -488,6 +549,8 @@ window.SpotifyAccount = (() => {
       if (a === 'login') login();
       else if (a === 'logout') disconnect();
       else if (a === 'here') playHere();
+      else if (a === 'mute') toggleMute();
+      else if (a === 'vol') { st.volOpen = !st.volOpen; renderMini(); }
       else if (a === 'copy') { navigator.clipboard && navigator.clipboard.writeText(act.textContent.trim()); act.classList.add('copied'); setTimeout(() => act.classList.remove('copied'), 1200); }
       else control(a);
       return;
@@ -509,11 +572,29 @@ window.SpotifyAccount = (() => {
     login();
   }
 
+  function onVolInput(e) {
+    if (!e.target.matches('[data-spa-vol]')) return;
+    st.volDragging = e.type === 'input';
+    setVolume(+e.target.value);
+  }
+  // Scroll over the widget to nudge the volume, like a media key.
+  function onWheel(e) {
+    if (!connected() || st.volume == null || !st.volSupported) return;
+    e.preventDefault();
+    setVolume(st.volume + (e.deltaY < 0 ? 5 : -5));
+  }
+
   async function init() {
     ['spa', 'sp-mini'].forEach(id => {
       const el = $(id);
-      if (el) { el.addEventListener('click', onClick); el.addEventListener('submit', onSubmit); }
+      if (el) {
+        el.addEventListener('click', onClick); el.addEventListener('submit', onSubmit);
+        el.addEventListener('input', onVolInput); el.addEventListener('change', onVolInput);
+      }
     });
+    const mini = $('sp-mini');
+    if (mini) mini.addEventListener('wheel', onWheel, { passive: false });
+    document.addEventListener('pointerup', () => { st.volDragging = false; });
     await handleRedirect();
     render();
     if (connected()) { await loadAll(); startPolling(); }
@@ -524,10 +605,11 @@ window.SpotifyAccount = (() => {
   function onSheetOpen() { if (connected()) loadAll(); else render(); }
 
   return {
-    init, onSheetOpen, pauseHere, captureFocusSession,
+    init, onSheetOpen, pauseHere, captureFocusSession, setVolume, toggleMute,
+    get volume() { return st.volume; },
     get connected() { return connected(); },
     get playingHere() { return !!(st.playingHere && st.now && st.now.playing); },
-    _state: st, _render: render
+    _state: st, _render: render, _renderMini: renderMini
   };
 })();
 

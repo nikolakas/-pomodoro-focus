@@ -59,6 +59,8 @@ window.MiniTimer = (() => {
     const np = $('m-np');
     if (!src) { np.hidden = true; np.dataset.html = ''; return; }
     np.hidden = false;
+    np.classList.toggle("has-vol", src.classList.contains("has-vol"));
+    if (MiniTimer._pipDragging && MiniTimer._pipDragging()) return;
     if (np.dataset.html !== src.innerHTML) { np.innerHTML = src.innerHTML; np.dataset.html = src.innerHTML; }
   }
 
@@ -102,6 +104,7 @@ window.MiniTimer = (() => {
         const a = btn.dataset.mini;
         // Start/stop directly: the "what are you focusing on?" prompt lives in the
         // main window, which may be minimised while you use this one.
+        if (a !== 'mini' && window.StudyRoom && StudyRoom.locked) { StudyRoom.lockedToast(); return; }
         if (a === 'toggle') app.state.isRunning ? app.stopTimer() : app.startTimer();
         else if (a === 'reset') app.resetTimer();
         else if (a === 'skip') app.skipSession();
@@ -116,6 +119,18 @@ window.MiniTimer = (() => {
         if (real) real.click();
       }
     });
+    // Volume from the floating window: drive the real player directly.
+    let pipDrag = false;
+    d.body.addEventListener('input', e => {
+      if (!e.target.matches('[data-spa-vol]') || !window.SpotifyAccount) return;
+      pipDrag = true; SpotifyAccount.setVolume(+e.target.value);
+    });
+    d.addEventListener('pointerup', () => { pipDrag = false; });
+    d.body.addEventListener('wheel', e => {
+      if (!e.target.closest('#m-np') || !window.SpotifyAccount || SpotifyAccount.volume == null) return;
+      e.preventDefault(); SpotifyAccount.setVolume(SpotifyAccount.volume + (e.deltaY < 0 ? 5 : -5));
+    }, { passive: false });
+    MiniTimer._pipDragging = () => pipDrag;
     // Space toggles the timer from inside the mini window too.
     d.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); app.state.isRunning ? app.stopTimer() : app.startTimer(); render(); } });
 

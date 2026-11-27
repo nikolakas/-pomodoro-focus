@@ -594,7 +594,7 @@ async loadFromFirestore(uid) {
                 level: this.levelFromHours(totalHours),
                 daily: this.computeDailyHoursMap(),
                 updatedAt: new Date().toISOString()
-            });
+            }, { merge: true }); // merge: keeps the study-room `live` field
         } catch (e) { /* offline / rules — non-fatal */ }
     },
 
@@ -805,6 +805,7 @@ async loadFromFirestore(uid) {
             btn.addEventListener('click', () => this.removeFriend(btn.dataset.uid)));
         el.querySelectorAll('.friend-msg-btn').forEach(btn =>
             btn.addEventListener('click', () => this.openChat(btn.dataset.uid, btn.dataset.username)));
+        if (window.StudyRoom) window.StudyRoom.watchFriends(friends.map(f => f.uid));
     },
 
     async loadSocial() {
