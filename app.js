@@ -2405,10 +2405,7 @@ toggleTimer() {
     },
 
     adjustTimer(deltaSecs) {
-        if (!this.state.isRunning) {
-            this.showToast('Timer not running', 'Start the timer first, then use ±5 min.', '⏱');
-            return;
-        }
+        // Works paused too: the new time is simply where the timer resumes from.
         const newTime = this.state.timeLeft + deltaSecs;
         if (newTime < 10) return;
 
@@ -2418,9 +2415,11 @@ toggleTimer() {
         }
 
         this.state.timeLeft = newTime;
-        // Re-anchor the wall-clock baseline so the next interval tick doesn't overwrite the adjustment.
-        this.state.sessionStartTime = Date.now();
-        this.state.sessionTotalSeconds = newTime;
+        if (this.state.isRunning) {
+            // Re-anchor the wall-clock baseline so the next interval tick doesn't overwrite the adjustment.
+            this.state.sessionStartTime = Date.now();
+            this.state.sessionTotalSeconds = newTime;
+        }
         this.state.adjustedTotal += deltaSecs;
         this.state.timeAdjustment = (this.state.timeAdjustment || 0) + deltaSecs;
 
